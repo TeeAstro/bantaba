@@ -1,0 +1,30 @@
+// This is a deliberately minimal Phase 1 schema — just enough for
+// `prisma migrate dev` to create a database and prove the connection
+// works end to end. The full schema (events, tickets, orders, seating,
+// NFC credentials, etc.) is built out in Phase 2 per docs/architecture.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ORGANIZER
+  STAFF
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  role      UserRole @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
