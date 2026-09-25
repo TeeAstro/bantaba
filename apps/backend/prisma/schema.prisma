@@ -155,6 +155,39 @@ enum NotificationStatus {
   FAILED
 }
 
+// ---------- Auth ----------
+
+model RefreshToken {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash       String    @unique // never store the raw refresh token
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  replacedByTokenId String? @unique
+  replacedByToken  RefreshToken? @relation("TokenRotation", fields: [replacedByTokenId], references: [id])
+  replacesToken    RefreshToken? @relation("TokenRotation")
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // never store the raw reset token
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 // ---------- Identity ----------
 
 model User {
@@ -180,6 +213,8 @@ model User {
   reviews        Review[]
   favorites      FavoriteEvent[]
   notifications  Notification[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
   @@map("users")
 }

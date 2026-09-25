@@ -105,6 +105,41 @@ The schema now covers the core entities from `docs/architecture.md` (users, orga
 | 6 | Queries work | `npx prisma studio`, browse a few tables | Data displays, relations navigate correctly |
 | 7 | Invalid data is rejected | Try creating a `Ticket` with a `ticketTypeId` that doesn't exist | Foreign key violation, insert fails |
 
+## Phase 3 — Authentication
+
+See `docs/auth.md` for the token strategy and design decisions. New env vars needed — add these to `apps/backend/.env` (already in the updated `.env.example`):
+```
+JWT_ACCESS_SECRET="dev-only-access-secret-change-me"
+JWT_ACCESS_EXPIRES_IN="15m"
+```
+
+1. Apply the new migration (adds `refresh_tokens` and `password_reset_tokens` tables):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev --name add_auth
+   ```
+
+2. Re-seed to pick up real password hashes and the new admin account:
+   ```bash
+   npx prisma db seed
+   ```
+   Seeded accounts, all with password `SeedPassword123!`: `admin@example.com` (ADMIN), `organizer@example.com` (ORGANIZER), `customer@example.com` (CUSTOMER).
+
+3. Start the backend if it isn't running: `npm run start:dev`
+
+### Phase 3 test checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Customer registration works | `curl -X POST http://localhost:4000/api/auth/register -H "Content-Type: application/json" -d '{"email":"newcustomer@example.com","password":"a-long-enough-password"}'` | HTTP 201, JSON with `user`, `accessToken`, `refreshToken` |
+| 2 | Login works | `curl -X POST http://localhost:4000/api/auth/login -H "Content-Type: application/json" -d '{"email":"customer@example.com","password":"SeedPassword123!"}'` | HTTP 200, same shape as above |
+| 3 | Incorrect password rejected | Same as above with a wrong password | HTTP 401, `"Invalid email or password"` |
+| 4 | Protected endpoints reject unauthenticated users | `curl http://localhost:4000/api/auth/me` (no auth header) | HTTP 401 |
+| 5 | Role permissions work | Log in as `customer@example.com`, then `curl http://localhost:4000/api/admin/ping -H "Authorization: Bearer <that access token>"` | HTTP 403 |
+| 6 | Admin-only routes are protected | Log in as `admin@example.com`, then the same `admin/ping` request with the admin's access token | HTTP 200, `{"message":"You have admin access",...}` |
+
+Two extra things worth trying, not on the original checklist but proving real behavior: hit `/api/auth/refresh` with a refresh token, then try using that *same* refresh token again — the second call should fail and (per `docs/auth.md`) silently revoke all your other sessions too.
+
 ## Project structure
 
 ```
@@ -112,6 +147,8 @@ event-ticketing-platform/
 ├── apps/
 │   ├── backend/         # NestJS API
 │   │   ├── src/
+│   │   │   ├── auth/          # registration, login, JWT, refresh rotation, RBAC guards
+│   │   │   ├── admin/         # RBAC smoke-test route (full dashboard is Phase 14)
 │   │   │   ├── health/       # /api/health endpoint
 │   │   │   ├── prisma/       # Prisma service (DB connection)
 │   │   │   ├── app.module.ts
@@ -123,7 +160,8 @@ event-ticketing-platform/
 │       └── app/
 ├── docs/
 │   ├── architecture.md   # Phase 0 planning document
-│   └── database.md       # Phase 2 schema decisions and constraint notes
+│   ├── database.md       # Phase 2 schema decisions and constraint notes
+│   └── auth.md            # Phase 3 token strategy and design decisions
 ├── docker-compose.yml
 └── .github/workflows/    # CI, added properly from Phase 2 onward
 ```
