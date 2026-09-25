@@ -1,7 +1,8 @@
-// This is a deliberately minimal Phase 1 schema — just enough for
-// `prisma migrate dev` to create a database and prove the connection
-// works end to end. The full schema (events, tickets, orders, seating,
-// NFC credentials, etc.) is built out in Phase 2 per docs/architecture.md.
+// Phase 2 — core schema.
+// Money is always stored as an integer in minor units (butut) with an
+// explicit currency column — never floating point, per the Phase 0 plan.
+// Append-only tables (CheckIn, WalletTransaction, AuditLog) are never
+// updated or deleted by application code; they exist as a source of truth.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,6 +13,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------- Enums ----------
+
 enum UserRole {
   CUSTOMER
   ORGANIZER
@@ -19,12 +22,666 @@ enum UserRole {
   ADMIN
 }
 
+enum OrganizerVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum EventStatus {
+  DRAFT
+  PENDING_APPROVAL
+  PUBLISHED
+  SOLD_OUT
+  CANCELLED
+  COMPLETED
+}
+
+enum TicketTypeCategory {
+  REGULAR
+  VIP
+  VVIP
+  EARLY_BIRD
+  STUDENT
+  GROUP
+  FAMILY
+  GENERAL_ADMISSION
+  BACKSTAGE
+  MEET_AND_GREET
+  SEASON_PASS
+  DAY_PASS
+}
+
+enum TicketStatus {
+  ACTIVE
+  USED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+  TRANSFERRED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentProviderType {
+  WAVE
+  BANK_TRANSFER
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSED
+}
+
+enum PromoType {
+  PERCENTAGE
+  FIXED
+}
+
+enum NfcCredentialStatus {
+  ACTIVE
+  REVOKED
+  REPLACED
+}
+
+enum CheckInResult {
+  VALID
+  ALREADY_USED
+  INVALID
+  CANCELLED
+  REFUNDED
+  WRONG_EVENT
+  WRONG_DATE
+  NO_ACCESS
+}
+
+enum StaffRole {
+  GATE_STAFF
+  SCANNER_OPERATOR
+  SECURITY
+  MANAGER
+  CASHIER
+  VIP_STAFF
+  EVENT_ADMINISTRATOR
+}
+
+enum WalletTransactionType {
+  TOPUP
+  PAYMENT
+  REFUND
+}
+
+enum TransferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ResaleStatus {
+  LISTED
+  SOLD
+  CANCELLED
+}
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ---------- Identity ----------
+
 model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  role         UserRole @default(CUSTOMER)
+  fullName     String?
+  profilePictureUrl String?
+  emailVerifiedAt   DateTime?
+  phoneVerifiedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organizer      Organizer?
+  wallet         Wallet?
+  orders         TicketOrder[]
+  tickets        Ticket[]
+  eventStaffRoles EventStaff[]
+  transfersSent     TicketTransfer[] @relation("TransferFrom")
+  transfersReceived TicketTransfer[] @relation("TransferTo")
+  reviews        Review[]
+  favorites      FavoriteEvent[]
+  notifications  Notification[]
+
+  @@map("users")
+}
+
+model Organizer {
+  id                 String                       @id @default(uuid())
+  userId             String                       @unique
+  user               User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName       String
+  verificationStatus OrganizerVerificationStatus   @default(PENDING)
+  verifiedAt         DateTime?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+
+  events      Event[]
+  staff       EventStaff[]
+
+  @@map("organizers")
+}
+
+// ---------- Venues ----------
+
+model Venue {
   id        String   @id @default(uuid())
-  email     String   @unique
-  role      UserRole @default(CUSTOMER)
+  name      String
+  address   String
+  city      String
+  country   String   @default("The Gambia")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("users")
+  sections    VenueSection[]
+  gates       Gate[]
+  accessZones AccessZone[]
+  events      Event[]
+
+  @@map("venues")
+}
+
+model VenueSection {
+  id      String  @id @default(uuid())
+  venueId String
+  venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name    String
+  isVip   Boolean @default(false)
+
+  seats Seat[]
+
+  @@index([venueId])
+  @@map("venue_sections")
+}
+
+model Seat {
+  id        String       @id @default(uuid())
+  sectionId String
+  section   VenueSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  row       String
+  number    String
+  isBlocked Boolean      @default(false)
+
+  tickets Ticket[]
+
+  @@unique([sectionId, row, number])
+  @@map("seats")
+}
+
+model Gate {
+  id      String @id @default(uuid())
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name    String
+
+  checkIns     CheckIn[]
+  staffDefault EventStaff[]
+
+  @@index([venueId])
+  @@map("gates")
+}
+
+model AccessZone {
+  id      String @id @default(uuid())
+  venueId String
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name    String // e.g. "Main", "VIP", "VVIP", "Backstage"
+  level   Int    @default(0) // higher = more access; used for zone-inclusion checks
+
+  ticketTypes TicketType[]
+
+  @@index([venueId])
+  @@map("access_zones")
+}
+
+// ---------- Events ----------
+
+model EventCategory {
+  id   String @id @default(uuid())
+  name String @unique
+  slug String @unique
+
+  events Event[]
+
+  @@map("event_categories")
+}
+
+model Event {
+  id             String        @id @default(uuid())
+  organizerId    String
+  organizer      Organizer     @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  categoryId     String
+  category       EventCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  venueId        String
+  venue          Venue         @relation(fields: [venueId], references: [id], onDelete: Restrict)
+
+  name        String
+  slug        String   @unique
+  description String?
+  posterUrl   String?
+  bannerUrl   String?
+  startDate   DateTime
+  endDate     DateTime
+  ageRestriction Int?
+  rules       String?
+  contactEmail String?
+  contactPhone String?
+  socialLinks Json?
+  status      EventStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticketTypes TicketType[]
+  orders      TicketOrder[]
+  promoCodes  PromoCode[]
+  eventStaff  EventStaff[]
+  reviews     Review[]
+  favorites   FavoriteEvent[]
+
+  @@index([organizerId])
+  @@index([categoryId])
+  @@index([venueId])
+  @@index([status])
+  @@map("events")
+}
+
+// ---------- Ticketing ----------
+
+model TicketType {
+  id           String             @id @default(uuid())
+  eventId      String
+  event        Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name         String
+  category     TicketTypeCategory @default(REGULAR)
+  price        Int // minor units (butut)
+  currency     String             @default("GMD")
+  quantityTotal Int
+  quantitySold Int                @default(0)
+  accessZoneId String?
+  accessZone   AccessZone?        @relation(fields: [accessZoneId], references: [id], onDelete: SetNull)
+  salesStart   DateTime?
+  salesEnd     DateTime?
+  isActive     Boolean            @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets    Ticket[]
+  orderItems OrderItem[]
+
+  @@index([eventId])
+  @@map("ticket_types")
+}
+
+model Ticket {
+  id             String       @id @default(uuid())
+  ticketTypeId   String
+  ticketType     TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  orderId        String?
+  order          TicketOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  ownerId        String
+  owner          User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  seatId         String?
+  seat           Seat?        @relation(fields: [seatId], references: [id], onDelete: SetNull)
+
+  qrCredentialHash String   @unique // hash of the random token encoded in the QR — never the raw ticket ID
+  status           TicketStatus @default(ACTIVE)
+  purchasedAt      DateTime @default(now())
+  expiresAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nfcCredential NfcCredential?
+  checkIns      CheckIn[]
+  transfers     TicketTransfer[]
+  resale        TicketResale?
+
+  @@index([ticketTypeId])
+  @@index([ownerId])
+  @@index([orderId])
+  @@index([status])
+  @@map("tickets")
+}
+
+model TicketOrder {
+  id          String      @id @default(uuid())
+  customerId  String
+  customer    User        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  eventId     String
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  promoCodeId String?
+  promoCode   PromoCode?  @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+
+  subtotal    Int
+  discount    Int         @default(0)
+  platformFee Int         @default(0)
+  paymentFee  Int         @default(0)
+  total       Int
+  currency    String      @default("GMD")
+  status      OrderStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items    OrderItem[]
+  tickets  Ticket[]
+  payments Payment[]
+
+  @@index([customerId])
+  @@index([eventId])
+  @@index([status])
+  @@map("ticket_orders")
+}
+
+model OrderItem {
+  id           String      @id @default(uuid())
+  orderId      String
+  order        TicketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTypeId String
+  ticketType   TicketType  @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  quantity     Int
+  unitPrice    Int // minor units, snapshot of price at purchase time
+
+  @@index([orderId])
+  @@index([ticketTypeId])
+  @@map("order_items")
+}
+
+// ---------- Payments ----------
+
+model Payment {
+  id               String              @id @default(uuid())
+  orderId          String
+  order            TicketOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider         PaymentProviderType
+  providerReference String?            @unique // Wave session id / bank ref / PayPal order id
+  amount           Int
+  currency         String              @default("GMD")
+  status           PaymentStatus       @default(PENDING)
+  rawPayload       Json? // last known verified payload from the provider, for audit/debugging
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Refund {
+  id             String       @id @default(uuid())
+  paymentId      String
+  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  amount         Int
+  reason         String?
+  status         RefundStatus @default(REQUESTED)
+  requestedById  String?
+  approvedById   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([paymentId])
+  @@map("refunds")
+}
+
+model PromoCode {
+  id          String    @id @default(uuid())
+  eventId     String?
+  event       Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  code        String    @unique
+  type        PromoType
+  value       Int // percentage points, or minor-unit amount, depending on `type`
+  usageLimit  Int?
+  usageCount  Int       @default(0)
+  minPurchase Int?
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders TicketOrder[]
+
+  @@index([eventId])
+  @@map("promo_codes")
+}
+
+// ---------- NFC ----------
+
+model NfcCredential {
+  id              String              @id @default(uuid())
+  ticketId        String              @unique
+  ticket          Ticket              @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  secureTokenHash String              @unique // hash of the secure token — never the raw chip UID
+  status          NfcCredentialStatus @default(ACTIVE)
+  issuedAt        DateTime            @default(now())
+  revokedAt       DateTime?
+
+  @@map("nfc_credentials")
+}
+
+// ---------- Access control / check-in ----------
+
+model CheckIn {
+  id       String        @id @default(uuid())
+  ticketId String
+  ticket   Ticket        @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  gateId   String?
+  gate     Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
+  staffId  String?
+  result   CheckInResult
+  scannedAt DateTime     @default(now())
+
+  // Append-only: application code must never UPDATE or DELETE rows here.
+  @@index([ticketId])
+  @@index([scannedAt])
+  @@map("check_ins")
+}
+
+model EventStaff {
+  id             String    @id @default(uuid())
+  eventId        String
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizerId    String
+  organizer      Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  role           StaffRole
+  assignedGateId String?
+  assignedGate   Gate?     @relation(fields: [assignedGateId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  devices StaffDevice[]
+
+  @@unique([eventId, userId])
+  @@index([organizerId])
+  @@map("event_staff")
+}
+
+model StaffDevice {
+  id               String     @id @default(uuid())
+  staffId          String
+  staff            EventStaff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  deviceIdentifier String
+  registeredAt     DateTime   @default(now())
+  lastSeenAt       DateTime?
+
+  @@unique([staffId, deviceIdentifier])
+  @@map("staff_devices")
+}
+
+// ---------- Wallet (Phase 17 groundwork — tables exist now, not used yet) ----------
+
+model Wallet {
+  id       String @id @default(uuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance  Int    @default(0)
+  currency String @default("GMD")
+
+  updatedAt DateTime @updatedAt
+
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id           String                @id @default(uuid())
+  walletId     String
+  wallet       Wallet                @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  type         WalletTransactionType
+  amount       Int // positive for top-up/refund, negative for payment
+  balanceAfter Int
+  referenceId  String?
+
+  createdAt DateTime @default(now())
+
+  // Append-only ledger: never mutate a balance without a row here.
+  @@index([walletId])
+  @@map("wallet_transactions")
+}
+
+// ---------- Transfers & resale ----------
+
+model TicketTransfer {
+  id           String         @id @default(uuid())
+  ticketId     String
+  ticket       Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromUserId   String
+  fromUser     User           @relation("TransferFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+  toUserId     String
+  toUser       User           @relation("TransferTo", fields: [toUserId], references: [id], onDelete: Restrict)
+  status       TransferStatus @default(PENDING)
+
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@index([ticketId])
+  @@map("ticket_transfers")
+}
+
+model TicketResale {
+  id       String        @id @default(uuid())
+  ticketId String        @unique
+  ticket   Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sellerId String
+  price    Int
+  status   ResaleStatus  @default(LISTED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ticket_resales")
+}
+
+// ---------- Engagement ----------
+
+model Notification {
+  id      String              @id @default(uuid())
+  userId  String
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel NotificationChannel
+  type    String // e.g. "ticket_purchase", "event_reminder"
+  payload Json?
+  status  NotificationStatus  @default(PENDING)
+  sentAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating     Int
+  comment    String?
+  isVerified Boolean  @default(false) // true only for confirmed attendees (checked-in ticket holders)
+
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@map("reviews")
+}
+
+model FavoriteEvent {
+  id      String @id @default(uuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
+  @@map("favorite_events")
+}
+
+// ---------- Audit ----------
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actorRole  String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+
+  // Append-only: never updated or deleted by application code.
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@map("audit_logs")
 }
