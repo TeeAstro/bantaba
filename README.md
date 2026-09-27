@@ -140,6 +140,52 @@ JWT_ACCESS_EXPIRES_IN="15m"
 
 Two extra things worth trying, not on the original checklist but proving real behavior: hit `/api/auth/refresh` with a refresh token, then try using that *same* refresh token again — the second call should fail and (per `docs/auth.md`) silently revoke all your other sessions too.
 
+## Phase 4 — Event Management
+
+See `docs/events.md` for the status lifecycle, visibility rules, and why price filtering isn't here yet.
+
+1. Apply the migration (no schema changes this phase — Events already existed from Phase 2 — so this step just confirms nothing drifted):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+   Expected: `Already in sync, no schema change or pending migration was found.`
+
+2. Re-seed to pick up the extra categories and two new sample events:
+   ```bash
+   npx prisma db seed
+   ```
+   Adds: 7 categories, `sample-comedy-night` (PUBLISHED, Comedy Shows), and `draft-tech-conference` (DRAFT — should never show up in public search).
+
+3. Start the backend if it isn't running: `npm run start:dev`
+
+### Phase 4 test checklist
+
+First, log in as the seeded organizer and save the access token — most of these need it:
+```bash
+curl -X POST http://localhost:4000/api/auth/login -H "Content-Type: application/json" -d '{"email":"organizer@example.com","password":"SeedPassword123!"}'
+```
+
+You'll also need a real `categoryId` and `venueId` for the create test — get them from:
+```bash
+curl http://localhost:4000/api/events | python3 -m json.tool
+```
+(grab `categoryId`/`venueId` off any item in the `items` array, or query the database directly via `npx prisma studio`)
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Organizer can create event | `curl -X POST http://localhost:4000/api/events -H "Authorization: Bearer <organizer token>" -H "Content-Type: application/json" -d '{"name":"Test Event","categoryId":"<id>","venueId":"<id>","startDate":"2027-01-01T20:00:00Z","endDate":"2027-01-01T23:00:00Z"}'` | HTTP 201, event returned with `status: "DRAFT"` |
+| 2 | Organizer can edit event | `curl -X PUT http://localhost:4000/api/events/<id from test 1> -H "Authorization: Bearer <organizer token>" -H "Content-Type: application/json" -d '{"description":"Updated description"}'` | HTTP 200, `description` changed, everything else unchanged |
+| 3 | Published event appears publicly | `curl http://localhost:4000/api/events` (no auth) | `sample-concert-night` and `sample-comedy-night` both appear in `items`; `draft-tech-conference` does **not** |
+| 4 | Customer can search event | `curl "http://localhost:4000/api/events?search=comedy"` | Only `sample-comedy-night` in `items` |
+| 5 | Filters work | `curl "http://localhost:4000/api/events?categorySlug=comedy-shows"` | Only `sample-comedy-night`; try `categorySlug=concerts` and only `sample-concert-night` should show |
+| 6 | Unauthorized users cannot modify another organizer's event | Register a second organizer (`/auth/register-organizer`), then try to `PUT` the first organizer's event using the *second* organizer's token | HTTP 403, `"You do not own this event"` |
+
+A few extra checks worth doing, not on the original list but proving real behavior:
+- `curl http://localhost:4000/api/events/draft-tech-conference` with no auth header → **404**, not 403 (see `docs/events.md` for why that distinction matters)
+- Same request with the owning organizer's token in the `Authorization` header → 200, the draft event's full details
+- Try `POST /api/events/<draft event id>/publish` with the organizer's token → should succeed (organizer is seeded as `APPROVED`); then try deleting that now-published event with `DELETE` → should fail with 400, since only `DRAFT` events can be deleted
+
 ## Project structure
 
 ```
@@ -149,6 +195,7 @@ event-ticketing-platform/
 │   │   ├── src/
 │   │   │   ├── auth/          # registration, login, JWT, refresh rotation, RBAC guards
 │   │   │   ├── admin/         # RBAC smoke-test route (full dashboard is Phase 14)
+│   │   │   ├── events/        # create/edit/publish/cancel/search events
 │   │   │   ├── health/       # /api/health endpoint
 │   │   │   ├── prisma/       # Prisma service (DB connection)
 │   │   │   ├── app.module.ts
@@ -161,7 +208,8 @@ event-ticketing-platform/
 ├── docs/
 │   ├── architecture.md   # Phase 0 planning document
 │   ├── database.md       # Phase 2 schema decisions and constraint notes
-│   └── auth.md            # Phase 3 token strategy and design decisions
+│   ├── auth.md            # Phase 3 token strategy and design decisions
+│   └── events.md          # Phase 4 status lifecycle and visibility rules
 ├── docker-compose.yml
 └── .github/workflows/    # CI, added properly from Phase 2 onward
 ```
