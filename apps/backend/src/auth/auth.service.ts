@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { randomBytes, createHash } from 'crypto';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { generateRandomToken, hashToken } from '../common/token.util';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterOrganizerDto } from './dto/register-organizer.dto';
 import { LoginDto } from './dto/login.dto';
@@ -17,14 +17,6 @@ import { JwtPayload } from './jwt-payload.interface';
 const ACCESS_TOKEN_EXPIRY = process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-function hashToken(rawToken: string): string {
-  // Refresh/reset tokens are already high-entropy random values, so a fast
-  // hash (not argon2) is appropriate here — argon2's slowness is for
-  // resisting brute force against low-entropy *passwords*, which doesn't
-  // apply to a 256-bit random token.
-  return createHash('sha256').update(rawToken).digest('hex');
-}
 
 @Injectable()
 export class AuthService {
@@ -40,7 +32,7 @@ export class AuthService {
       expiresIn: ACCESS_TOKEN_EXPIRY,
     });
 
-    const rawRefreshToken = randomBytes(32).toString('hex');
+    const rawRefreshToken = generateRandomToken();
     await this.prisma.refreshToken.create({
       data: {
         userId,
@@ -179,7 +171,7 @@ export class AuthService {
       );
     }
 
-    const rawNewRefreshToken = randomBytes(32).toString('hex');
+    const rawNewRefreshToken = generateRandomToken();
     const newToken = await this.prisma.$transaction(async (tx) => {
       const created = await tx.refreshToken.create({
         data: {
@@ -230,7 +222,7 @@ export class AuthService {
       return genericResponse;
     }
 
-    const rawResetToken = randomBytes(32).toString('hex');
+    const rawResetToken = generateRandomToken();
     await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,

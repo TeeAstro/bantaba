@@ -201,6 +201,25 @@ async function main() {
     });
   }
 
+  // A ticket type with a deliberately tiny quantity, so Phase 5's
+  // "sold-out ticket cannot be purchased" test doesn't require buying
+  // hundreds of tickets first to trigger it.
+  let limitedTicketType = await prisma.ticketType.findFirst({
+    where: { eventId: comedyEvent.id, name: 'Front Row (Limited)' },
+  });
+  if (!limitedTicketType) {
+    limitedTicketType = await prisma.ticketType.create({
+      data: {
+        eventId: comedyEvent.id,
+        name: 'Front Row (Limited)',
+        category: 'VIP',
+        price: 50000, // D500.00
+        currency: 'GMD',
+        quantityTotal: 2,
+      },
+    });
+  }
+
   // A DRAFT event — never returned by the public search/list endpoint,
   // and only visible via GET /events/:id to its owning organizer or an
   // admin. Exists specifically so Phase 4's visibility rules have a
@@ -226,6 +245,7 @@ async function main() {
     venue: venue.name,
     event: event.slug,
     comedyEvent: comedyEvent.slug,
+    limitedTicketType: { id: limitedTicketType.id, quantityTotal: limitedTicketType.quantityTotal },
     draftEvent: draftEvent.slug,
   });
   console.log('Seed complete.');

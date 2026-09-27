@@ -186,6 +186,56 @@ A few extra checks worth doing, not on the original list but proving real behavi
 - Same request with the owning organizer's token in the `Authorization` header → 200, the draft event's full details
 - Try `POST /api/events/<draft event id>/publish` with the organizer's token → should succeed (organizer is seeded as `APPROVED`); then try deleting that now-published event with `DELETE` → should fail with 400, since only `DRAFT` events can be deleted
 
+## Phase 5 — Ticketing
+
+See `docs/ticketing.md` — especially the "Temporary shortcut" section: checkout currently marks orders PAID immediately with no real payment provider involved. That's deliberate and gets replaced in Phase 6, but it means **this should not be exposed publicly as-is**.
+
+New env var — add to `apps/backend/.env`:
+```
+TICKET_PLATFORM_FEE_MINOR_UNITS=5000
+```
+
+1. No schema changes this phase (`TicketType`/`Ticket`/`TicketOrder` already existed from Phase 2):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+   Expected: `Already in sync, no schema change or pending migration was found.`
+
+2. Re-seed to get the new low-inventory ticket type for sold-out testing:
+   ```bash
+   npx prisma db seed
+   ```
+   Adds a "Front Row (Limited)" ticket type on `sample-comedy-night` with `quantityTotal: 2`.
+
+3. Start the backend if it isn't running.
+
+### Phase 5 test checklist
+
+Log in as the seeded customer first:
+```bash
+curl -X POST http://localhost:4000/api/auth/login -H "Content-Type: application/json" -d '{"email":"customer@example.com","password":"SeedPassword123!"}'
+```
+Save the `accessToken`. Get the limited ticket type's ID from the seed output (`npx prisma db seed` prints it), or:
+```bash
+curl http://localhost:4000/api/events/sample-comedy-night
+```
+(then look up its ticket types via `GET /events/<that id>/ticket-types`)
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Ticket can be purchased | `curl -X POST http://localhost:4000/api/orders/checkout -H "Authorization: Bearer <customer token>" -H "Content-Type: application/json" -d '{"eventId":"<comedy event id>","items":[{"ticketTypeId":"<limited ticket type id>","quantity":1}]}'` | HTTP 201, `order.status: "PAID"`, `tickets` array with 1 item including a `qrToken` |
+| 2 | Inventory decreases | `curl http://localhost:4000/api/events/sample-comedy-night/ticket-types` | `quantitySold` on "Front Row (Limited)" went from 0 to 1 |
+| 3 | Sold-out ticket cannot be purchased | Repeat test 1's request with `"quantity":2` (only 1 seat left of 2 total) | HTTP 409, `"Not enough ... tickets available"` |
+| 4 | Order is created | `curl http://localhost:4000/api/orders/mine -H "Authorization: Bearer <customer token>"` | The order from test 1 appears, with correct `subtotal`/`platformFee`/`total` |
+| 5 | Ticket is generated | `curl http://localhost:4000/api/tickets/mine -H "Authorization: Bearer <customer token>"` | The ticket from test 1 appears |
+| 6 | Ticket status is correct | Same response as test 5 | `status: "ACTIVE"` |
+
+Extra checks worth trying, not on the original list:
+- Try checkout on a `DRAFT` event (e.g. `draft-tech-conference`'s id) → 400, "Tickets can only be purchased for published events"
+- Try checkout with an `ORGANIZER` token instead of a customer's → 403 (only `CUSTOMER` can hit `/orders/checkout`)
+- Buy the last remaining seat (quantity 1, when 1 is left) → succeeds, and a follow-up purchase of any quantity fails — confirms the boundary is exact, not off-by-one
+
 ## Project structure
 
 ```
@@ -196,6 +246,10 @@ event-ticketing-platform/
 │   │   │   ├── auth/          # registration, login, JWT, refresh rotation, RBAC guards
 │   │   │   ├── admin/         # RBAC smoke-test route (full dashboard is Phase 14)
 │   │   │   ├── events/        # create/edit/publish/cancel/search events
+│   │   │   ├── ticket-types/  # organizer-managed ticket types per event
+│   │   │   ├── orders/        # checkout, atomic inventory locking, order history
+│   │   │   ├── tickets/       # ticket listing (scanning/QR display is Phase 7)
+│   │   │   ├── common/        # shared token generation/hashing util
 │   │   │   ├── health/       # /api/health endpoint
 │   │   │   ├── prisma/       # Prisma service (DB connection)
 │   │   │   ├── app.module.ts
@@ -209,7 +263,8 @@ event-ticketing-platform/
 │   ├── architecture.md   # Phase 0 planning document
 │   ├── database.md       # Phase 2 schema decisions and constraint notes
 │   ├── auth.md            # Phase 3 token strategy and design decisions
-│   └── events.md          # Phase 4 status lifecycle and visibility rules
+│   ├── events.md          # Phase 4 status lifecycle and visibility rules
+│   └── ticketing.md       # Phase 5 checkout design, concurrency, temporary shortcuts
 ├── docker-compose.yml
 └── .github/workflows/    # CI, added properly from Phase 2 onward
 ```
