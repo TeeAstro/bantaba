@@ -6,23 +6,34 @@ import {
 } from '@nestjs/common';
 import { UserRole, EventStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { generateRandomToken, hashToken } from '../common/token.util';
+import { PaymentsService } from '../payments/payments.service';
 import { CheckoutDto } from './dto/checkout.dto';
 
 interface AuthenticatedUser {
   id: string;
   role: UserRole;
+  email: string;
 }
 
 const PLATFORM_FEE_MINOR_UNITS = Number(
   process.env.TICKET_PLATFORM_FEE_MINOR_UNITS ?? 5000,
 ); // D50.00 default
 
+const RESERVATION_TTL_MINUTES = Number(process.env.RESERVATION_TTL_MINUTES ?? 15);
+
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly paymentsService: PaymentsService,
+  ) {}
 
   async checkout(user: AuthenticatedUser, dto: CheckoutDto) {
+    // Best-effort cleanup of anyone else's abandoned reservations before
+    // checking availability — see docs/payments.md for why this is lazy
+    // rather than a scheduled job.
+    await this.paymentsService.releaseExpiredReservations();
+
     const event = await this.prisma.event.findUnique({ where: { id: dto.eventId } });
     if (!event) throw new NotFoundException('Event not found');
     if (event.status !== EventStatus.PUBLISHED) {
@@ -41,13 +52,15 @@ export class OrdersService {
       );
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    // Step 1: reserve inventory and create a PENDING order, all inside one
+    // DB transaction. No external network call happens in here — that's
+    // deliberate, see the comment on PaymentsService.initiatePayment.
+    const order = await this.prisma.$transaction(async (tx) => {
       const orderItemsData: {
         ticketTypeId: string;
         quantity: number;
         unitPrice: number;
       }[] = [];
-      const ticketsToCreate: { ticketTypeId: string; qrRawToken: string }[] = [];
       let subtotal = 0;
       let currency: string | null = null;
 
@@ -77,13 +90,9 @@ export class OrdersService {
         }
         currency = ticketType.currency;
 
-        // Atomic conditional update: the WHERE clause re-checks capacity
-        // against the row's current committed value at update time, and
-        // Postgres's row-level locking means two concurrent requests for
-        // the same ticket type can't both pass this check for the last
-        // remaining tickets — the second one's WHERE simply won't match
-        // once the first has committed its increment. This is what
-        // actually prevents overselling, not application-level checks.
+        // Atomic conditional update — see docs/ticketing.md for the full
+        // explanation of why this specific pattern is what actually
+        // prevents overselling under concurrent requests.
         const affected = await tx.$executeRaw`
           UPDATE ticket_types
           SET "quantitySold" = "quantitySold" + ${quantity}
@@ -98,23 +107,13 @@ export class OrdersService {
 
         orderItemsData.push({ ticketTypeId, quantity, unitPrice: ticketType.price });
         subtotal += ticketType.price * quantity;
-        for (let i = 0; i < quantity; i += 1) {
-          ticketsToCreate.push({ ticketTypeId, qrRawToken: generateRandomToken() });
-        }
       }
 
       const platformFee = PLATFORM_FEE_MINOR_UNITS;
       const total = subtotal + platformFee;
+      const expiresAt = new Date(Date.now() + RESERVATION_TTL_MINUTES * 60 * 1000);
 
-      // TEMPORARY (Phase 5 → Phase 6): this checkout marks the order PAID
-      // and generates tickets immediately, with no real payment provider
-      // involved yet. This lets the core inventory-locking and
-      // ticket-generation logic be built and tested in isolation. Phase 6
-      // replaces this: the order will start PENDING, and only a
-      // signature-verified webhook from Wave/bank/PayPal will trigger the
-      // same ticket-generation step that happens unconditionally here.
-      // See docs/ticketing.md.
-      const order = await tx.ticketOrder.create({
+      return tx.ticketOrder.create({
         data: {
           customerId: user.id,
           eventId: dto.eventId,
@@ -122,63 +121,50 @@ export class OrdersService {
           platformFee,
           total,
           currency: currency ?? 'GMD',
-          status: 'PAID',
+          status: 'PENDING',
+          expiresAt,
           items: { create: orderItemsData },
         },
         include: { items: true },
       });
-
-      const createdTickets: Array<{
-        id: string;
-        ticketTypeId: string;
-        status: string;
-        qrToken: string;
-      }> = [];
-      for (const t of ticketsToCreate) {
-        const ticket = await tx.ticket.create({
-          data: {
-            ticketTypeId: t.ticketTypeId,
-            orderId: order.id,
-            ownerId: user.id,
-            qrCredentialHash: hashToken(t.qrRawToken),
-            status: 'ACTIVE',
-          },
-        });
-        createdTickets.push({
-          id: ticket.id,
-          ticketTypeId: ticket.ticketTypeId,
-          status: ticket.status,
-          qrToken: t.qrRawToken,
-        });
-      }
-
-      await tx.auditLog.create({
-        data: {
-          actorId: user.id,
-          actorRole: user.role,
-          action: 'order_checkout_completed',
-          entityType: 'TicketOrder',
-          entityId: order.id,
-        },
-      });
-
-      return { order, tickets: createdTickets };
     });
 
-    return {
-      order: result.order,
-      // Raw QR tokens are returned here, once, at purchase time — the
-      // server only ever stores their hash. Real QR code image
-      // generation and scan validation are Phase 7; for now this is the
-      // underlying secure credential a QR code would encode.
-      tickets: result.tickets,
-    };
+    // Step 2: hand off to the chosen payment provider, outside the DB
+    // transaction. If this throws (e.g. Wave isn't configured, or Wave's
+    // API itself errors), the reservation from step 1 must not be left
+    // dangling — release it and surface the original error.
+    try {
+      const paymentResult = await this.paymentsService.initiatePayment(
+        order,
+        dto.provider,
+        user.email,
+      );
+      // `order` above is a snapshot from BEFORE payment ran. For a
+      // provider that auto-completes (MOCK today; conceivably others
+      // later), initiatePayment has already flipped the order to PAID
+      // and minted tickets by this point — but it only returns the
+      // payment, not the order, so the stale in-memory `order` would
+      // still say PENDING here. Re-fetch so the response always reflects
+      // the real final state instead of a pre-payment snapshot.
+      const finalOrder = await this.prisma.ticketOrder.findUnique({
+        where: { id: order.id },
+        include: { items: true, tickets: true },
+      });
+      return { order: finalOrder, ...paymentResult };
+    } catch (err) {
+      await this.paymentsService.failOrder(order.id, null, 'initiate_payment_failed');
+      throw err;
+    }
   }
 
   async findMine(user: AuthenticatedUser) {
     return this.prisma.ticketOrder.findMany({
       where: { customerId: user.id },
-      include: { items: { include: { ticketType: true } }, event: true },
+      include: {
+        items: { include: { ticketType: true } },
+        event: true,
+        payments: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -189,6 +175,7 @@ export class OrdersService {
       include: {
         items: { include: { ticketType: true } },
         tickets: true,
+        payments: true,
         event: true,
       },
     });

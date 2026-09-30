@@ -236,6 +236,63 @@ Extra checks worth trying, not on the original list:
 - Try checkout with an `ORGANIZER` token instead of a customer's → 403 (only `CUSTOMER` can hit `/orders/checkout`)
 - Buy the last remaining seat (quantity 1, when 1 is left) → succeeds, and a follow-up purchase of any quantity fails — confirms the boundary is exact, not off-by-one
 
+## Phase 6 — Payments
+
+**Read `docs/payments.md` first** — checkout's request/response shape changed from Phase 5 (it now requires a `provider` field, and no longer returns tickets immediately), and there's no Wave Business account yet, so testing uses `MOCK` and `BANK_TRANSFER` instead.
+
+1. Apply the migration (adds `MOCK` to the payment provider enum, adds `TicketOrder.expiresAt`):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev --name add_payments
+   ```
+
+2. Add the new env vars to `apps/backend/.env` (see the updated `.env.example` — `RESERVATION_TTL_MINUTES`, `BANK_NAME`/`BANK_ACCOUNT_NAME`/`BANK_ACCOUNT_NUMBER`; leave `WAVE_*` commented out/unset).
+
+3. No seed changes this phase — re-run `npx prisma db seed` only if you want, it's a no-op for anything that already exists.
+
+4. Restart the backend.
+
+### Phase 6 test checklist
+
+Log in as the seeded customer and organizer first (you'll need both tokens).
+
+**Test A — MOCK provider: instant end-to-end purchase** (proves the whole PENDING → PAID → tickets pipeline works without any real payment provider):
+```bash
+curl -X POST http://localhost:4000/api/orders/checkout \
+  -H "Authorization: Bearer <customer token>" \
+  -H "Content-Type: application/json" \
+  -d '{"eventId":"<a published event id>","items":[{"ticketTypeId":"<a ticket type id>","quantity":1}],"provider":"MOCK"}'
+```
+Expected: HTTP 201, `order.status: "PAID"` immediately, `payment.status: "SUCCESSFUL"`. Check `GET /tickets/mine` afterward — a real ticket should exist.
+
+**Test B — BANK_TRANSFER: stays PENDING until confirmed**
+```bash
+curl -X POST http://localhost:4000/api/orders/checkout \
+  -H "Authorization: Bearer <customer token>" \
+  -H "Content-Type: application/json" \
+  -d '{"eventId":"<event id>","items":[{"ticketTypeId":"<ticket type id>","quantity":1}],"provider":"BANK_TRANSFER"}'
+```
+Expected: HTTP 201, `order.status: "PENDING"` (not PAID), `instructions` field with bank details and a reference. **No ticket exists yet** — confirm via `GET /tickets/mine`, the count shouldn't have grown.
+
+Save the returned `payment.id`, then confirm it as the organizer:
+```bash
+curl -X POST http://localhost:4000/api/payments/<payment id>/confirm-bank-transfer \
+  -H "Authorization: Bearer <organizer token>"
+```
+Expected: HTTP 200/201, order now `PAID`, and `GET /tickets/mine` now shows the new ticket.
+
+**Test C — WAVE fails clearly without credentials** (proves the "fail loudly, not silently" behavior from `docs/payments.md`):
+```bash
+curl -X POST http://localhost:4000/api/orders/checkout \
+  -H "Authorization: Bearer <customer token>" \
+  -H "Content-Type: application/json" \
+  -d '{"eventId":"<event id>","items":[{"ticketTypeId":"<ticket type id>","quantity":1}],"provider":"WAVE"}'
+```
+Expected: HTTP 503, a clear message about Wave not being configured. Then check ticket-type inventory (`GET /events/:eventId/ticket-types`) — `quantitySold` should **not** have increased, confirming the reservation was correctly rolled back after the provider failed.
+
+**Test D — order never becomes PAID without going through completeOrder**
+There's no endpoint that lets a customer or organizer directly set an order's status — the only ways to reach `PAID` are the two tested above. Worth a quick code-level sanity check rather than an API call: `grep -rn "status.*PAID" apps/backend/src` should only turn up `payments.service.ts`.
+
 ## Project structure
 
 ```
@@ -247,6 +304,7 @@ event-ticketing-platform/
 │   │   │   ├── admin/         # RBAC smoke-test route (full dashboard is Phase 14)
 │   │   │   ├── events/        # create/edit/publish/cancel/search events
 │   │   │   ├── ticket-types/  # organizer-managed ticket types per event
+│   │   │   ├── payments/      # Wave/Bank/Mock providers, webhook, refund stub
 │   │   │   ├── orders/        # checkout, atomic inventory locking, order history
 │   │   │   ├── tickets/       # ticket listing (scanning/QR display is Phase 7)
 │   │   │   ├── common/        # shared token generation/hashing util
@@ -264,7 +322,8 @@ event-ticketing-platform/
 │   ├── database.md       # Phase 2 schema decisions and constraint notes
 │   ├── auth.md            # Phase 3 token strategy and design decisions
 │   ├── events.md          # Phase 4 status lifecycle and visibility rules
-│   └── ticketing.md       # Phase 5 checkout design, concurrency, temporary shortcuts
+│   ├── ticketing.md       # Phase 5 checkout design, concurrency, temporary shortcuts
+│   └── payments.md        # Phase 6 provider design, Wave status, reservation expiry
 ├── docker-compose.yml
 └── .github/workflows/    # CI, added properly from Phase 2 onward
 ```

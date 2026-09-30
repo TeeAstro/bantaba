@@ -10,6 +10,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 interface AuthenticatedUser {
   id: string;
   role: UserRole;
+  email: string;
 }
 
 @Controller('orders')

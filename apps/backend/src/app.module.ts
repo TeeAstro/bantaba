@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
 import { EventsModule } from './events/events.module';
 import { TicketTypesModule } from './ticket-types/ticket-types.module';
+import { PaymentsModule } from './payments/payments.module';
 import { OrdersModule } from './orders/orders.module';
 import { TicketsModule } from './tickets/tickets.module';
 
@@ -18,6 +19,7 @@ import { TicketsModule } from './tickets/tickets.module';
     AdminModule,
     EventsModule,
     TicketTypesModule,
+    PaymentsModule,
     OrdersModule,
     TicketsModule,
   ],

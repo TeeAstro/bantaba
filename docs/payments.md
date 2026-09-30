@@ -1,0 +1,64 @@
+# Payments — Phase 6
+
+## The big structural change from Phase 5
+
+Checkout used to do everything in one request: reserve inventory, mark the order `PAID`, generate tickets. That was flagged in `docs/ticketing.md` as a temporary shortcut. It's gone now. The real flow:
+
+```
+POST /orders/checkout
+  → reserve inventory (same atomic UPDATE as Phase 5)
+  → create order, status PENDING, expiresAt = now + 15 min
+  → hand off to the chosen PaymentProvider
+  → return a redirect URL (Wave) or instructions (Bank Transfer) to the client
+
+  ... time passes, customer actually pays ...
+
+Wave webhook (signature-verified) OR organizer/admin bank-transfer confirmation
+  → PaymentsService.completeOrder()
+  → order flips to PAID, tickets are generated — THIS is the only code path that does this
+```
+
+No request from the frontend can flip an order to `PAID` directly. That only happens inside `PaymentsService.completeOrder`, called from exactly three places: the Wave webhook handler (after signature verification), the bank-transfer confirmation endpoint (organizer/admin only, tied to a specific payment ID they're vouching for), and `MockProvider`'s auto-complete path (dev-only, disabled in production). This is the concrete implementation of the Phase 0 rule "never mark an order as paid only because the frontend says payment was successful."
+
+## `completeOrder` is concurrency-safe, not just idempotent
+
+`completeOrder` doesn't do a plain "read the order, check its status, then write PAID." It does the status transition itself as a single conditional `UPDATE ticket_orders SET status = 'PAID' WHERE id = ... AND status = 'PENDING'` — the same pattern `orders.service.ts` uses for inventory locking — and only mints tickets if that update actually claimed a row (`affected > 0`).
+
+This matters because payment providers retry webhook delivery on purpose (Wave included), so two calls to `completeOrder` for the same order arriving close together, or genuinely concurrently, is a real scenario, not a hypothetical one. A naive "if order.status === 'PAID', return early" check is safe against *sequential* duplicate calls but not against two transactions that both read `status: PENDING` before either commits — under Postgres's default READ COMMITTED isolation, both would pass that check and both would go on to create a full set of duplicate tickets. The conditional `UPDATE` closes that: only one transaction's `WHERE status = 'PENDING'` can ever match, because the first commit changes the row before the second transaction's `UPDATE` runs. `failOrder`'s `PENDING -> CANCELLED` transition uses the same pattern for the same reason.
+
+## No Wave Business account yet — what that means for this phase
+
+`WaveProvider` is written against Wave's publicly documented Checkout Sessions API (`POST /v1/checkout/sessions`, HMAC-SHA256 webhook signatures) but **has never been run against a real Wave account**, because one doesn't exist yet. It fails loudly and clearly if `WAVE_API_KEY`/`WAVE_WEBHOOK_SECRET` aren't set, rather than silently doing nothing.
+
+Two things exist specifically to make this phase fully testable anyway:
+
+- **`BankTransferProvider`** — no external API at all, so it's fully real and fully testable today. This is genuinely how Phase 0 Section 9 describes bank transfer working (manual reference matching), not a stand-in for something else.
+- **`MockProvider`** — auto-completes a payment instantly, with no real money or external call involved. **Hard-refuses to run when `NODE_ENV=production`** (throws `ForbiddenException`), so it can never become a way to get free tickets in a real deployment. Exists purely so the PENDING → PAID → tickets-generated pipeline can be exercised end-to-end right now.
+
+**When the Wave Business account is ready:** set `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET` in `.env`, point Wave's dashboard webhook URL at `POST /api/payments/webhook/wave`, and test a real checkout with `provider: "WAVE"`. The one thing to specifically verify at that point, flagged since Phase 0: **whether Wave's API accepts `"GMD"` as a currency code for a checkout session**, or whether it needs to be something else for a Gambian account. `WaveProvider.initiate()` will surface Wave's actual error message if it rejects the currency — that's the first thing to check if Wave integration fails.
+
+## Inventory reservation and expiry
+
+A `PENDING` order holds its inventory reservation (the same `quantitySold` increment from Phase 5) for `RESERVATION_TTL_MINUTES` (default 15). If payment never completes, that hold needs releasing eventually or a customer who abandons checkout permanently locks tickets away from everyone else.
+
+**How this is actually triggered right now:** lazily, at the start of every `POST /orders/checkout` call, before that request's own availability check — `OrdersService.checkout` calls `PaymentsService.releaseExpiredReservations()` first. This is a real gap, not glossed over: it means an expired reservation isn't released until *someone else* happens to try to check out. A production deployment needs a real scheduled job for this — `docker-compose.yml` already runs Redis, and `docs/architecture.md`'s stack section already calls for BullMQ, so the natural fix is a BullMQ repeatable job calling `releaseExpiredReservations()` every minute or so. That wiring isn't built yet; it's not hard, it just wasn't this phase's job to also stand up a background-job system.
+
+## Refund — architecture only
+
+`POST /payments/:id/refund` (admin-only) exists to prove the state transition works: it marks the payment `REFUNDED`, the order `REFUNDED`, every ticket from that order `REFUNDED`, and creates a `Refund` row. What it does **not** do: partial refunds, actually calling Wave/the bank to move money back, or a customer-initiated request flow. That's Phase 13's job, building on this rather than redoing it.
+
+## Known limitation: a rare orphaned-payment edge case
+
+If `WaveProvider.initiate()` successfully creates a checkout session with Wave, but the local `Payment` row then fails to save (a database error at exactly the wrong moment), there's a live Wave checkout session with no local record tracking it. This is a genuine gap — closing it properly needs either a two-phase-commit-style flow or a reconciliation job that periodically checks Wave for sessions with no matching local payment. Not built in Phase 6; noted here rather than pretended not to exist.
+
+## Fixed bug: checkout response showed a stale order for auto-completing providers
+
+Found by actually running Test A against a live database (not caught by review or by hand-tracing the code): `POST /orders/checkout` with `provider: "MOCK"` returned `order.status: "PENDING"` in the response body even though `payment.status: "SUCCESSFUL"` — and the database was in fact correct (`GET /tickets/mine` showed a real ticket, `quantitySold` had incremented). The order really was `PAID`; only the JSON handed back to the client was wrong.
+
+Cause: `OrdersService.checkout()` builds its `order` variable in Step 1, before payment runs, then calls `paymentsService.initiatePayment(order, ...)` in Step 2. For an auto-completing provider (MOCK today), that call internally runs `completeOrder()` and updates the DB row to `PAID` — but `initiatePayment` only ever returns `{ payment, redirectUrl, instructions }`, never the order. So `return { order, ...paymentResult }` shipped the pre-payment snapshot every time, silently wrong specifically for the one provider whose whole purpose is to complete before the response goes out.
+
+Fix: `checkout()` now re-fetches the order by ID right before returning, regardless of which provider was used, so the response always reflects the true final state rather than trusting an in-memory snapshot that payment processing may have already invalidated.
+
+## Authorization note: 403, not 401, for "wrong organizer"
+
+`confirmBankTransfer` throws `ForbiddenException` (403) when the caller is authenticated but isn't the event's organizer or an admin — not `UnauthorizedException` (401). 401 means "you haven't proven who you are"; the caller already has, via `JwtAuthGuard`. 403 is "I know who you are, and you're not allowed to do this." Same distinction `events.md` draws for event ownership checks, applied here.
