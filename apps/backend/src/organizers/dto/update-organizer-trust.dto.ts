@@ -45,6 +45,14 @@ export class UpdateOrganizerTrustDto {
   @IsOptional() @IsInt() @Min(0) @Max(100)
   payoutAdvancePercent?: number;
 
+  /** Their payout requests are approved automatically (an admin still sends the money). Checks on the balance, hold period and verified payout details still apply. */
+  @IsOptional() @IsBoolean()
+  payoutAutoApprove?: boolean;
+
+  /** With payoutAutoApprove: largest payout (minor units) approved automatically; bigger ones wait for an admin. null = no limit. */
+  @IsOptional() @ValidateIf((_, v) => v !== null) @IsInt() @Min(1) @Max(10_000_000_000)
+  payoutAutoApproveMax?: number | null;
+
   /** Private admin note (why) */
   @IsOptional() @IsString() @MaxLength(1000)
   note?: string;

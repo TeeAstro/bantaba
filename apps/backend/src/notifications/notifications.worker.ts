@@ -370,15 +370,16 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
       bankName: p.bankName, requestedAt: p.createdAt, reference: p.reference, note: p.note,
     };
     if (forAdmin) {
-      if (p.status !== 'REQUESTED') return { skip: `payout is ${p.status.toLowerCase()}` };
+      const waiting = p.status === 'REQUESTED' || (p.status === 'APPROVED' && p.autoApproved);
+      if (!waiting) return { skip: `payout is ${p.status.toLowerCase()}` };
       const o = p.organizer;
       const accountWarning = !o.payoutDetailsVerifiedAt ? 'Their payout details aren’t verified yet.' : o.payoutAccountNumber !== p.accountNumber ? 'Their payout details changed after asking.' : null;
-      return { send: T.payoutRequested({ name, organizer: o.businessName, payout: info, accountWarning, payoutId: p.id, organizerId: o.id }) };
+      return { send: T.payoutRequested({ name, organizer: o.businessName, payout: info, accountWarning, payoutId: p.id, organizerId: o.id, autoApproved: p.status === 'APPROVED' }) };
     }
     const expected = { payout_approved: 'APPROVED', payout_paid: 'PAID', payout_rejected: 'REJECTED' }[type as 'payout_approved'];
     // An approval overtaken by "paid" before sending: just send the paid email.
     if (type === NotificationType.PAYOUT_APPROVED && p.status !== expected) return { skip: `payout is ${p.status.toLowerCase()}` };
-    return { send: T.payoutDecided({ name, type: type as 'payout_paid', payout: info, decisionNote: p.decisionNote, payoutsUrl: `${this.notifications.frontendUrl}/organizer/payouts` }) };
+    return { send: T.payoutDecided({ name, type: type as 'payout_paid', payout: info, decisionNote: p.decisionNote, autoApproved: p.autoApproved, payoutsUrl: `${this.notifications.frontendUrl}/organizer/payouts` }) };
   }
 
   // ---------- Phase 13 ----------

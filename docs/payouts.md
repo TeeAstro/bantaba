@@ -34,11 +34,21 @@ Changing where money goes is how a hijacked account gets drained, so:
 - **No changes mid-payout:** details can't be changed while a payout is in progress.
 - **Copied at request time:** each payout keeps the details it was requested with. If they don't match what's on file when an admin approves, the approval is refused.
 
+### Approved automatically, for chosen organizers
+
+An admin can let an organizer's payouts skip the approval step, for well-known organizers such as a federation or a regular venue:
+- **Turning it on:** `PATCH /admin/organizers/:id` with `{"payoutAutoApprove": true}`.
+- **Optional limit:** add `"payoutAutoApproveMax": 500000` (D5,000) so larger payouts still wait for an admin; `null` means no limit.
+
+Their request goes straight to `APPROVED`, marked `autoApproved`. The organizer is emailed that it's approved, and admins get a **"Payout to send"** email. **Every other safety rule still applies:** money only after the event and the hold, the balance, verified payout details (a change still needs an admin's confirmation), and not suspended.
+
+The money itself is still sent by an admin, who then records it as paid: the platform has no automatic payout connection yet. Modem Pay has a payouts API, so sending could be automated later for these organizers.
+
 ### Steps
 
 | Status | Meaning |
 |---|---|
-| `REQUESTED` | The organizer asked; admins are emailed. The organizer can still cancel. |
+| `REQUESTED` | The organizer asked; admins are emailed. The organizer can still cancel. Skipped for organizers with automatic approval. |
 | `APPROVED` | An admin approved it; the money is still to be sent. The organizer is emailed. |
 | `PAID` | The admin sent the money and recorded the reference; the organizer is emailed. |
 | `REJECTED` | Declined with a reason (emailed); the amount goes back into the balance. |
@@ -68,7 +78,7 @@ The web app's **Payouts** page (`/organizer/payouts`) shows:
 | | |
 |---|---|
 | Organizer | `GET /payouts/summary` (balance by event, account, payout in progress, `cannotRequestReason`), `GET /payouts`, `PUT /payouts/account` `{method, accountName, accountNumber, bankName?, password}`, `POST /payouts` `{amount, note?}`, `POST /payouts/:id/cancel` |
-| Admin | `GET /admin/payouts?status=REQUESTED` (oldest first, with an `accountWarning` when the account changed or isn't verified), `GET /admin/organizers/:id/payouts` (balance, account, history), `POST /admin/organizers/:id/payout-account/verify` `{updatedAt}`, `POST /admin/payouts/:id/approve`, `POST /admin/payouts/:id/reject` `{note}`, `POST /admin/payouts/:id/mark-paid` `{reference}`, and `payoutAdvancePercent` via `PATCH /admin/organizers/:id` |
+| Admin | `GET /admin/payouts?status=REQUESTED` (oldest first, with an `accountWarning` when the account changed or isn't verified), `GET /admin/organizers/:id/payouts` (balance, account, history), `POST /admin/organizers/:id/payout-account/verify` `{updatedAt}`, `POST /admin/payouts/:id/approve`, `POST /admin/payouts/:id/reject` `{note}`, `POST /admin/payouts/:id/mark-paid` `{reference}`, and `payoutAdvancePercent`, `payoutAutoApprove`, `payoutAutoApproveMax` via `PATCH /admin/organizers/:id` |
 
 The `updatedAt` sent when verifying is the `payoutAccount.updatedAt` the admin saw. If the organizer changed the details in the meantime, the verification is refused, so an admin never confirms details they haven't seen.
 

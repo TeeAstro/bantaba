@@ -280,6 +280,7 @@ export interface Payout {
   bankName: string | null;
   note: string | null;
   decisionNote: string | null;
+  autoApproved: boolean;
   reference: string | null;
   requestedAt: string;
   decidedAt: string | null;
@@ -321,4 +322,5 @@ export interface PayoutSummary {
   account: PayoutAccount | null;
   openPayout: Payout | null;
   cannotRequestReason: string | null;
+  autoApprove: { max: number | null } | null; // payouts approved without waiting (up to max)
 }

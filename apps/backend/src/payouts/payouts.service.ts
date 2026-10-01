@@ -50,6 +50,10 @@ export interface Balance {
 
 export const mask = (n: string) => `•••• ${n.slice(-4)}`;
 
+// Whether a payout of this amount skips the admin's approval (docs/payouts.md).
+export const autoApproves = (o: Pick<Organizer, 'payoutAutoApprove' | 'payoutAutoApproveMax'>, amount: number) =>
+  o.payoutAutoApprove && (o.payoutAutoApproveMax === null || amount <= o.payoutAutoApproveMax);
+
 // Organizer payouts (docs/payouts.md). Customers pay the platform; an
 // organizer asks for their money and an admin approves every payout.
 @Injectable()
@@ -153,7 +157,10 @@ export class PayoutsService {
   async summary(user: Actor) {
     const o = await this.organizerFor(user);
     const [b, open] = await Promise.all([this.balance(this.prisma, o), this.prisma.payout.findFirst({ where: { organizerId: o.id, status: { in: OPEN } } })]);
-    return { balance: b, account: this.presentAccount(o), openPayout: open ? this.present(open) : null, cannotRequestReason: this.blocker(o, b, open) };
+    return {
+      balance: b, account: this.presentAccount(o), openPayout: open ? this.present(open) : null, cannotRequestReason: this.blocker(o, b, open),
+      autoApprove: o.payoutAutoApprove ? { max: o.payoutAutoApproveMax } : null,
+    };
   }
 
   async mine(user: Actor) {
@@ -220,14 +227,21 @@ export class PayoutsService {
       const avail = b.totals.available;
       if (dto.amount > avail) throw new BadRequestException(`You can ask for up to ${money(avail)} now.`);
       if (dto.amount < b.minAmount && dto.amount !== avail) throw new BadRequestException(`The smallest payout is ${money(b.minAmount)} (or everything that’s available).`);
+      // Organizers an admin has chosen are approved straight away (up to
+      // their limit). Every check above still applies: verified account,
+      // the hold after the event, the balance, not suspended.
+      const auto = autoApproves(o, dto.amount);
       const p = await tx.payout.create({
         data: {
           organizerId: o.id, amount: dto.amount, method: o.payoutMethod!, accountName: o.payoutAccountName!, accountNumber: o.payoutAccountNumber!,
           bankName: o.payoutBankName, note: dto.note?.trim() || null, requestedById: user.id,
+          ...(auto ? { status: PayoutStatus.APPROVED, decidedAt: new Date(), autoApproved: true } : {}),
         },
       });
-      await tx.auditLog.create({ data: { actorId: user.id, actorRole: user.role, action: 'payout_requested', entityType: 'Payout', entityId: p.id, metadata: { amount: p.amount, available: avail } } });
+      await tx.auditLog.create({ data: { actorId: user.id, actorRole: user.role, action: auto ? 'payout_auto_approved' : 'payout_requested', entityType: 'Payout', entityId: p.id, metadata: { amount: p.amount, available: avail, autoApproveMax: o.payoutAutoApproveMax } } });
+      // Admins hear either way: to approve it, or (auto-approved) to send the money.
       await this.notifications.payoutRequested(tx, p.id);
+      if (auto) await this.notifications.payoutDecided(tx, { payoutId: p.id, organizerId: o.id, type: 'payout_approved' });
       return p;
     });
     return this.present(payout);
@@ -374,6 +388,7 @@ export class PayoutsService {
       bankName: p.bankName,
       note: p.note,
       decisionNote: p.decisionNote,
+      autoApproved: p.autoApproved,
       reference: p.reference,
       requestedAt: p.createdAt,
       decidedAt: p.decidedAt,

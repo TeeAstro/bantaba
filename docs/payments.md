@@ -37,6 +37,47 @@ Two things exist specifically to make this phase fully testable anyway:
 
 **When the Wave Business account is ready:** set `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET` in `.env`, point Wave's dashboard webhook URL at `POST /api/payments/webhook/wave`, and test a real checkout with `provider: "WAVE"`. The one thing to specifically verify at that point, flagged since Phase 0: **whether Wave's API accepts `"GMD"` as a currency code for a checkout session**, or whether it needs to be something else for a Gambian account. `WaveProvider.initiate()` will surface Wave's actual error message if it rejects the currency — that's the first thing to check if Wave integration fails.
 
+## Card payments (Visa / Mastercard)
+
+Customers can pay by **debit or credit card** (`provider: "CARD"` at checkout), alongside Wave and bank transfer. Cards go through **[Modem Pay](https://docs.modempay.com)**, a Gambian payment gateway that accepts Visa and Mastercard.
+
+**How it works:**
+1. **Checkout:** the backend asks Modem Pay for a checkout (`POST https://api.modempay.com/v1/payments`, cards only), with our own reference in its metadata, and returns `redirectUrl`.
+2. **Paying:** the customer types their card details **on Modem Pay's page**. Card numbers never reach our servers, which keeps the platform out of most PCI-DSS card-security rules. Never build a page that collects card numbers ourselves.
+3. **Confirmation:** Modem Pay calls `POST /api/v1/payments/webhook/card`. The request is checked with an HMAC-SHA512 signature (`x-modem-signature`, `MODEMPAY_WEBHOOK_SECRET`). The amount and currency must also match the order, or the order isn't completed and an error is logged.
+
+**Events:**
+
+| Event | Result |
+|---|---|
+| `charge.succeeded` | order paid, tickets issued and emailed; repeats are harmless |
+| `charge.failed` (card declined) | nothing: the customer can try another card on the same page |
+| `payment_intent.cancelled` / `.expired` | order cancelled, tickets released |
+| nothing arrives | the reservation lapses after 15 minutes, as for every provider |
+
+**Paid after the order closed.** A customer can finish paying after the reservation lapsed. They're charged, but there are no tickets.
+- **How it's recorded:** the payment is marked `SUCCESSFUL` with `paidAfterOrderClosed: true`, and an audit entry `card_paid_after_order_closed` is written.
+- **What to do:** refund them from the Modem Pay dashboard.
+- **Making it rarer:** confirm with Modem Pay whether checkout links can expire with the reservation.
+
+**Refunds.** Modem Pay doesn't document a refund API, so card refunds are **paid back by hand** (`RefundMethod.MANUAL`): an admin refunds in the Modem Pay dashboard, then records it (`POST /admin/refunds/:id/mark-paid`).
+
+**Setup** (`apps/backend/.env`), once a Modem Pay merchant account is open:
+```bash
+MODEMPAY_SECRET_KEY=sk_live_...        # sk_test_... for their test mode
+MODEMPAY_WEBHOOK_SECRET=...            # from the Modem Pay dashboard
+# MODEMPAY_AMOUNT_UNIT=major           # amounts in dalasis (D750.00 → 750); "minor" sends butut (75000)
+# CARD_RETURN_URL / CARD_CANCEL_URL    # where customers land afterwards (default FRONTEND_URL/checkout/...)
+```
+In the Modem Pay dashboard, set the webhook URL to `https://<your-api>/api/v1/payments/webhook/card`.
+
+**Not yet tried against a live account.** Like Wave, this follows Modem Pay's public docs and is tested against a stand-in (`card-autopayout-test.js`). Check these with their test keys before going live:
+- **Amount unit:** whether amounts are dalasis or butut (`MODEMPAY_AMOUNT_UNIT`). A wrong unit is caught by the amount check, so it can't complete an order for the wrong price.
+- **Metadata in webhooks:** that webhooks include the `metadata` we send (our reference).
+- **Card fees:** card payments usually cost more than Wave. Decide whether the booking fee covers it or there's a card surcharge.
+
+Without the keys, a card checkout answers 503 "Card payments are not configured yet", the same as Wave.
+
 ## Inventory reservation and expiry
 
 A `PENDING` order holds its inventory reservation (the same `quantitySold` increment from Phase 5) for `RESERVATION_TTL_MINUTES` (default 15). If payment never completes, that hold needs releasing eventually or a customer who abandons checkout permanently locks tickets away from everyone else.

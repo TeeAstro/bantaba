@@ -834,6 +834,27 @@
         ]
       }
     },
+    "/api/v1/payments/webhook/card": {
+      "post": {
+        "operationId": "Payments_cardWebhook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
     "/api/v1/payments/{id}/confirm-bank-transfer": {
       "post": {
         "operationId": "Payments_confirmBankTransfer",
@@ -3999,6 +4020,17 @@
             "minimum": 0,
             "maximum": 100
           },
+          "payoutAutoApprove": {
+            "type": "boolean",
+            "description": "Their payout requests are approved automatically (an admin still sends the money). Checks on the balance, hold period and verified payout details still apply."
+          },
+          "payoutAutoApproveMax": {
+            "type": "number",
+            "nullable": true,
+            "description": "With payoutAutoApprove: largest payout (minor units) approved automatically; bigger ones wait for an admin. null = no limit.",
+            "minimum": 1,
+            "maximum": 10000000000
+          },
           "note": {
             "type": "string",
             "description": "Private admin note (why)",
@@ -4713,6 +4745,7 @@
           "WAVE",
           "BANK_TRANSFER",
           "PAYPAL",
+          "CARD",
           "MOCK"
         ]
       },

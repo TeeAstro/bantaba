@@ -15,6 +15,7 @@ import { generateQrCodeSvg } from '../common/qr.util';
 import { WaveProvider } from './providers/wave.provider';
 import { BankTransferProvider } from './providers/bank-transfer.provider';
 import { MockProvider } from './providers/mock.provider';
+import { CardProvider } from './providers/card.provider';
 import { PaymentProvider } from './providers/payment-provider.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { organizerPermissions } from '../organizers/organizer-permissions';
@@ -34,6 +35,7 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
     private readonly waveProvider: WaveProvider,
     private readonly bankTransferProvider: BankTransferProvider,
     private readonly mockProvider: MockProvider,
+    private readonly cardProvider: CardProvider,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -61,6 +63,8 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
         return this.bankTransferProvider;
       case PaymentProviderType.MOCK:
         return this.mockProvider;
+      case PaymentProviderType.CARD:
+        return this.cardProvider;
       case PaymentProviderType.PAYPAL:
         throw new BadRequestException('PayPal is not implemented yet');
       default:
@@ -366,6 +370,51 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       await this.failOrder(payment.orderId, payment.id, 'wave_payment_failed');
     }
     return { received: true, matched: true };
+  }
+
+  // Card payments (Modem Pay). Authenticity comes from the HMAC signature;
+  // the amount and currency must also match what we asked for, so a
+  // misconfigured amount unit or a tampered metadata reference can never
+  // turn a smaller payment into a paid order.
+  async handleCardWebhook(rawBody: Buffer, signatureHeader: string | undefined) {
+    if (!this.cardProvider.verifyWebhookSignature(rawBody, signatureHeader)) {
+      throw new UnauthorizedException('Invalid card webhook signature');
+    }
+    const ev = this.cardProvider.parseCardEvent(rawBody);
+    if (ev.kind === 'IGNORED') return { received: true, event: ev.event };
+    const payment = ev.reference
+      ? await this.prisma.payment.findFirst({ where: { providerReference: ev.reference, provider: PaymentProviderType.CARD } })
+      : null;
+    if (!payment) {
+      this.logger.warn(`Card webhook ${ev.event} for an unknown payment (reference ${ev.reference ?? 'missing'})`);
+      return { received: true, matched: false };
+    }
+    const note = { event: ev.event, chargeId: ev.chargeId, amount: ev.amountMinor, currency: ev.currency, at: new Date().toISOString() };
+    if (ev.kind === 'SUCCEEDED') {
+      if (ev.amountMinor !== payment.amount || (ev.currency && ev.currency !== payment.currency)) {
+        this.logger.error(`Card payment ${payment.id}: paid ${ev.amountMinor} ${ev.currency}, expected ${payment.amount} ${payment.currency}. Not completing the order; check MODEMPAY_AMOUNT_UNIT and the Modem Pay dashboard.`);
+        await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: { ...note, mismatch: true } } });
+        return { received: true, matched: true, completed: false, reason: 'amount_mismatch' };
+      }
+      await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: note } });
+      const order = await this.completeOrder(payment.orderId, payment.id);
+      if (order.status !== 'PAID') {
+        // Paid after the reservation lapsed (or the order was otherwise
+        // closed): the customer was charged but has no tickets. Recorded
+        // as a successful payment with a flag and an audit entry, so it's
+        // found and refunded from the Modem Pay dashboard (docs/payments.md).
+        this.logger.error(`Card payment ${payment.id} succeeded for order ${payment.orderId}, which is ${order.status}. Refund it by hand.`);
+        await this.prisma.$transaction([
+          this.prisma.payment.update({ where: { id: payment.id }, data: { status: 'SUCCESSFUL', rawPayload: { ...note, paidAfterOrderClosed: true } } }),
+          this.prisma.auditLog.create({ data: { actorId: null, actorRole: null, action: 'card_paid_after_order_closed', entityType: 'Payment', entityId: payment.id, metadata: { orderId: payment.orderId, orderStatus: order.status, amount: payment.amount } } }),
+        ]);
+        return { received: true, matched: true, completed: false, reason: 'order_closed' };
+      }
+      return { received: true, matched: true, completed: true };
+    }
+    await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: note } });
+    await this.failOrder(payment.orderId, payment.id, 'card_payment_failed');
+    return { received: true, matched: true, completed: false };
   }
 
   async confirmBankTransfer(actor: AuthenticatedUser, paymentId: string) {

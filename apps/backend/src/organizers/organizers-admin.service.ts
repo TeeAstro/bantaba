@@ -67,6 +67,8 @@ export class OrganizersAdminService {
       verifiedBadge: dto.verifiedBadge,
       verifiedBadgeAt: dto.verifiedBadge === undefined ? undefined : dto.verifiedBadge ? (before.verifiedBadge ? undefined : new Date()) : null,
       payoutAdvancePercent: dto.payoutAdvancePercent,
+      payoutAutoApprove: dto.payoutAutoApprove,
+      payoutAutoApproveMax: dto.payoutAutoApproveMax,
       trustNote: dto.note,
       trustUpdatedAt: new Date(),
     };
@@ -75,7 +77,7 @@ export class OrganizersAdminService {
       await tx.auditLog.create({
         data: {
           actorId: actor.id, actorRole: actor.role, action: 'organizer_trust_updated', entityType: 'Organizer', entityId: id,
-          metadata: JSON.parse(JSON.stringify({ changes: dto, before: { verificationStatus: before.verificationStatus, trustLevel: before.trustLevel, verifiedBadge: before.verifiedBadge, payoutAdvancePercent: before.payoutAdvancePercent } })),
+          metadata: JSON.parse(JSON.stringify({ changes: dto, before: { verificationStatus: before.verificationStatus, trustLevel: before.trustLevel, verifiedBadge: before.verifiedBadge, payoutAdvancePercent: before.payoutAdvancePercent, payoutAutoApprove: before.payoutAutoApprove, payoutAutoApproveMax: before.payoutAutoApproveMax } })),
         },
       });
       // Tell the organizer about changes that affect them.
@@ -126,6 +128,8 @@ export class OrganizersAdminService {
       // A verified organizer this name resembles: possible impersonation.
       lookalikeOf: o.verifiedBadge ? null : lookalikeOf(o, verified),
       payoutAdvancePercent: o.payoutAdvancePercent,
+      payoutAutoApprove: o.payoutAutoApprove,
+      payoutAutoApproveMax: o.payoutAutoApproveMax,
       payoutAccount: o.payoutMethod ? { method: o.payoutMethod, accountName: o.payoutAccountName, accountNumber: o.payoutAccountNumber, bankName: o.payoutBankName, updatedAt: o.payoutDetailsUpdatedAt, verified: !!o.payoutDetailsVerifiedAt } : null,
       overrides: {
         requireEventReview: o.requireEventReview,

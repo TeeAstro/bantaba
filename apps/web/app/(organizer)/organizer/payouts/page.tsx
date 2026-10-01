@@ -138,6 +138,14 @@ function AccountPanel({ account, locked, onSaved }: { account: PayoutAccount | n
 
 // ---------- request ----------
 
+// Who approves this payout: automatically (the organizer's setting, up to
+// its limit) or the platform team.
+function autoText(s: PayoutSummary, minor: number) {
+  const to = s.account ? where(s.account) : '';
+  const auto = s.autoApprove && (s.autoApprove.max === null || (Number.isFinite(minor) && minor <= s.autoApprove.max));
+  return auto ? `Paid to ${to}. Approved automatically.` : `Paid to ${to} once the platform team approves it.`;
+}
+
 function RequestPanel({ s, onDone }: { s: PayoutSummary; onDone: () => void }) {
   const avail = s.balance.totals.available;
   const [amount, setAmount] = useState(fromMinor(avail));
@@ -185,7 +193,7 @@ function RequestPanel({ s, onDone }: { s: PayoutSummary; onDone: () => void }) {
           </div>
         </div>
         <p className="small muted">
-          Paid to {s.account ? where(s.account) : ''} once the platform team approves it. You’ll get an email when it’s approved and when it’s sent.
+          {autoText(s, minor)} You’ll get an email when it’s approved and when it’s sent.
         </p>
         {error && <div className="notice notice-error" role="alert">{error}</div>}
         <div>
@@ -220,7 +228,7 @@ function OpenPayout({ p, onDone }: { p: Payout; onDone: () => void }) {
         <div className="num" style={{ fontWeight: 700, fontSize: 22 }}>{money(p.amount, p.currency)}</div>
       </div>
       <div>
-        <span className={`badge ${p.status === 'APPROVED' ? 'badge-teal' : 'badge-gold'}`}>{STATUS_TEXT[p.status]}</span>
+        <span className={`badge ${p.status === 'APPROVED' ? 'badge-teal' : 'badge-gold'}`}>{p.autoApproved && p.status === 'APPROVED' ? 'Approved automatically, being sent' : STATUS_TEXT[p.status]}</span>
       </div>
       {error && <div className="notice notice-error" role="alert">{error}</div>}
       {p.status === 'REQUESTED' && (
@@ -268,7 +276,10 @@ export default function PayoutsPage() {
           <h1>Payouts</h1>
           <p className="muted">
             Ticket buyers pay the platform. Money from an event can be paid out {hold ? `${hold} day${hold === 1 ? '' : 's'} after it ends` : 'once it ends'}
-            {s.balance.advancePercent > 0 ? `, and up to ${s.balance.advancePercent}% of an upcoming event’s sales before it` : ''}. Every payout is approved by the platform team.
+            {s.balance.advancePercent > 0 ? `, and up to ${s.balance.advancePercent}% of an upcoming event’s sales before it` : ''}.{' '}
+            {s.autoApprove
+              ? `Your payouts${s.autoApprove.max !== null ? ` up to ${money(s.autoApprove.max)}` : ''} are approved automatically${s.autoApprove.max !== null ? '; larger ones by the platform team' : ''}.`
+              : 'Every payout is approved by the platform team.'}
           </p>
         </div>
       </div>

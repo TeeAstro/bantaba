@@ -518,7 +518,7 @@ Groundwork for the organizer/staff mobile apps (`docs/mobile-apps.md`, Step 1). 
 | 1 | Versioned routes | `curl http://localhost:4000/api/v1/health` and `curl http://localhost:4000/api/health` | Both 200, same response. `curl -i http://localhost:4000/api/v2/health` → 404 |
 | 2 | API docs | Open `http://localhost:4000/api/docs` in a browser | Swagger UI listing the API by area (Auth, Events, Scanner, …) |
 | 3 | Try a request from the docs | In the docs, run **Auth → POST /api/v1/auth/login** with `organizer@example.com` / `SeedPassword123!`, copy `accessToken`, click **Authorize** and paste it, then run **Scanner → GET /api/v1/scanner/events** | Login 200 with tokens; scanner events 200 with the organizer's live events |
-| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 88 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
+| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 89 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
 | 5 | App config | `curl http://localhost:4000/api/v1/app-config` | `apiVersion "1"`, versions `0.0.0`. Set `MOBILE_MIN_VERSION_IOS=1.2.0` in `.env`, restart → the iOS minimum shows `1.2.0` |
 | 6 | Web app still works | Sign in at `http://localhost:3000` and open an event | Works as before (requests now go to `/api/v1`, visible in the browser's network tab) |
 
@@ -742,6 +742,38 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 13 | Name copies | Sign up an organizer called "The Sample Events Ltd Official" | 409 "That name belongs to a verified organizer…" |
 | 14 | Lookalikes | Sign up "Sample Eventz" | Allowed; `GET /admin/organizers/{id}` shows `lookalikeOf: Sample Events Ltd` |
 | 15 | Automated | `node payouts-badge-test.js` in `apps/backend` | `12/12 passed` |
+
+## Card payments and automatic payout approval
+
+**Read the "Card payments" section of `docs/payments.md`, and "Approved automatically" in `docs/payouts.md`.**
+
+- **Card payments:** ticket buyers can pay by **Visa/Mastercard debit or credit card** (checkout `provider: "CARD"`). Wave and bank transfer stay.
+  - Cards go through **Modem Pay**'s checkout page, so card numbers never touch our servers.
+  - It needs a Modem Pay merchant account. Until the keys are set, card checkout says "not configured".
+  - Card refunds are paid back by hand from the Modem Pay dashboard.
+- **Automatic payout approval:** an admin can set chosen organizers' payouts to be **approved automatically**, optionally only up to an amount. The safety checks (after the event, verified payout details, balance) still apply, and an admin still sends the money.
+
+1. Apply the migration and restart:
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+2. To try card payments without a Modem Pay account, start the backend against the test's stand-in:
+   ```bash
+   MODEMPAY_SECRET_KEY=sk_test_fake MODEMPAY_WEBHOOK_SECRET=whsec_fake MODEMPAY_API_BASE_URL=http://localhost:4599 npm run start:dev
+   ```
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Not configured | Backend started normally; `POST /orders/checkout` with `"provider": "CARD"` | 503 "Card payments are not configured yet…" |
+| 2 | Automated card tests | Backend started as in step 2, then `node card-autopayout-test.js` | `9/9 passed`: checkout link, signature check, amount check, paid → tickets, cancelled → tickets released, late payment flagged, refunds by hand, auto-approval |
+| 3 | Same test, normal backend | Backend started normally, `node card-autopayout-test.js` | Card tests show `SKIP` with the reason; the payout tests run: `3/3 passed` |
+| 4 | Turn on auto-approval | Admin: `PATCH /admin/organizers/{id}` with `{"payoutAutoApprove": true, "payoutAutoApproveMax": 200000}` for `organizer@example.com` | Payouts page says "Your payouts up to D2,000.00 are approved automatically" |
+| 5 | Request under the limit | Request D1,500 | "Approved automatically, being sent"; admin gets a "Payout to send" email |
+| 6 | Over the limit | Admin records #5 paid (`…/mark-paid`); request more than D2,000 | Waits for approval as before |
+| 7 | Turn it off | `PATCH` with `{"payoutAutoApprove": false}` | Requests wait for approval again |
 
 ## Project structure
 

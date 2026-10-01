@@ -453,23 +453,27 @@ function payoutTable(x: PayoutInfo) {
 }
 const payoutText = (x: PayoutInfo) => [`  Amount: ${money(x.amount, x.currency)}`, `  To: ${dest(x)}`, `  Requested: ${when(x.requestedAt)}`, x.reference ? `  Reference: ${x.reference}` : ''].filter(Boolean).join('\n');
 
-export function payoutRequested(d: { name: string | null; organizer: string; payout: PayoutInfo; accountWarning: string | null; payoutId: string; organizerId: string }): Rendered {
-  const subject = `Payout request: ${d.organizer}, ${money(d.payout.amount, d.payout.currency)}`;
+export function payoutRequested(d: { name: string | null; organizer: string; payout: PayoutInfo; accountWarning: string | null; payoutId: string; organizerId: string; autoApproved?: boolean }): Rendered {
+  const subject = d.autoApproved
+    ? `Payout to send: ${d.organizer}, ${money(d.payout.amount, d.payout.currency)}`
+    : `Payout request: ${d.organizer}, ${money(d.payout.amount, d.payout.currency)}`;
   const body =
     p(greet(d.name)) +
-    p(`<b>${h(d.organizer)}</b> is asking to be paid.`) +
+    p(d.autoApproved
+      ? `<b>${h(d.organizer)}</b> asked to be paid, and it was <b>approved automatically</b> (their account is set to auto-approve payouts). Please send the money, then record it as paid.`
+      : `<b>${h(d.organizer)}</b> is asking to be paid.`) +
     payoutTable(d.payout) +
     (d.payout.note ? `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px"><b>Their note:</b> ${h(d.payout.note)}</div>` : '') +
     (d.accountWarning ? p(`<b style="color:${COLORS.red}">${h(d.accountWarning)}</b>`) : '') +
     muted(`Their balance is checked again when you approve. Details and per-event breakdown: <code>GET /api/v1/admin/organizers/${h(d.organizerId)}/payouts</code>. Approve: <code>POST /api/v1/admin/payouts/${h(d.payoutId)}/approve</code>; after sending the money, <code>…/mark-paid</code> with the reference; or <code>…/reject</code> with a note.`);
-  const text = [greet(d.name), '', `${d.organizer} is asking to be paid:`, payoutText(d.payout), d.payout.note ? `  Note: ${d.payout.note}` : '', d.accountWarning ?? '', '', `Approve: POST /api/v1/admin/payouts/${d.payoutId}/approve`, `Paid: POST /api/v1/admin/payouts/${d.payoutId}/mark-paid {reference}`, `Reject: POST /api/v1/admin/payouts/${d.payoutId}/reject {note}`].join('\n');
-  return { subject, html: layout({ preheader: `${d.organizer} · ${money(d.payout.amount, d.payout.currency)}`, title: 'Payout request', body, tone: 'marigold' }), text };
+  const text = [greet(d.name), '', d.autoApproved ? `${d.organizer}'s payout was approved automatically. Please send it:` : `${d.organizer} is asking to be paid:`, payoutText(d.payout), d.payout.note ? `  Note: ${d.payout.note}` : '', d.accountWarning ?? '', '', `Approve: POST /api/v1/admin/payouts/${d.payoutId}/approve`, `Paid: POST /api/v1/admin/payouts/${d.payoutId}/mark-paid {reference}`, `Reject: POST /api/v1/admin/payouts/${d.payoutId}/reject {note}`].join('\n');
+  return { subject, html: layout({ preheader: `${d.organizer} · ${money(d.payout.amount, d.payout.currency)}`, title: d.autoApproved ? 'Payout to send' : 'Payout request', body, tone: 'marigold' }), text };
 }
 
-export function payoutDecided(d: { name: string | null; type: 'payout_approved' | 'payout_rejected' | 'payout_paid'; payout: PayoutInfo; decisionNote: string | null; payoutsUrl: string }): Rendered {
+export function payoutDecided(d: { name: string | null; type: 'payout_approved' | 'payout_rejected' | 'payout_paid'; payout: PayoutInfo; decisionNote: string | null; autoApproved?: boolean; payoutsUrl: string }): Rendered {
   const amt = money(d.payout.amount, d.payout.currency);
   const t = {
-    payout_approved: { subject: `Your payout of ${amt} is approved`, line: 'Your payout has been approved. We’ll send the money shortly and email you when it’s on its way.', tone: 'teal' as const },
+    payout_approved: { subject: `Your payout of ${amt} is approved`, line: (d.autoApproved ? 'Your payout was approved automatically.' : 'Your payout has been approved.') + ' We’ll send the money shortly and email you when it’s on its way.', tone: 'teal' as const },
     payout_paid: { subject: `${amt} is on its way to you`, line: d.payout.method === 'WAVE' ? 'We’ve sent your payout to your Wave account.' : 'We’ve sent your payout by bank transfer. It may take a working day or two to appear.', tone: 'teal' as const },
     payout_rejected: { subject: `Your payout of ${amt} wasn’t approved`, line: 'Your payout request wasn’t approved. The money stays in your balance.', tone: 'red' as const },
   }[d.type];

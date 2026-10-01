@@ -106,6 +106,7 @@ enum PaymentProviderType {
   WAVE
   BANK_TRANSFER
   PAYPAL
+  CARD // Visa/Mastercard debit and credit cards, through Modem Pay's hosted checkout (docs/payments.md)
   MOCK // dev/testing only — PaymentsService refuses this when NODE_ENV=production
 }
 
@@ -322,6 +323,10 @@ model Organizer {
   // Share (0-100) of an upcoming event's earnings that may be paid out
   // before it has taken place. 0 = only after the event.
   payoutAdvancePercent      Int           @default(0)
+  // Payouts this organizer asks for are approved automatically (an admin
+  // still sends the money). Up to payoutAutoApproveMax each when set.
+  payoutAutoApprove         Boolean       @default(false)
+  payoutAutoApproveMax      Int? // minor units; null = no limit
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -700,6 +705,7 @@ model Payout {
   requestedById String
   decidedById   String?
   decidedAt     DateTime?
+  autoApproved  Boolean      @default(false) // approved by the organizer's auto-approval setting, not by an admin
   decisionNote  String? // reason when rejected
   paidAt        DateTime?
   paidById      String?

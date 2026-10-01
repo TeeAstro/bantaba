@@ -49,6 +49,7 @@ Some details:
 | **Wave**, whole payment | `PROVIDER` | Wave's API: `POST /v1/checkout/sessions/:id/refund`. A timer sends approved refunds every 30 s; on failure it retries up to 5 times, then an admin can retry. |
 | **Wave**, part of a payment | `MANUAL` | Wave's Checkout API only refunds whole payments, so this is paid back by hand (e.g. a Wave payout) |
 | **Bank transfer** | `MANUAL` | paid back by bank transfer |
+| **Card** (Visa/Mastercard, via Modem Pay) | `MANUAL` | refunded from the Modem Pay dashboard (no refund API documented), then recorded |
 
 **Manual refunds** stay `APPROVED` until an admin sends the money and records it (the customer is emailed when approved, and again when paid):
 - `GET /api/v1/admin/refunds?status=APPROVED&method=MANUAL` lists the payouts still to make.

@@ -50,6 +50,18 @@ export class PaymentsController {
     return this.paymentsService.handleWaveWebhook(req.rawBody, signature);
   }
 
+  // Public — Modem Pay's server (card payments). Verified by the
+  // x-modem-signature HMAC inside handleCardWebhook (docs/payments.md).
+  @Post('webhook/card')
+  @HttpCode(200)
+  async cardWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('x-modem-signature') signature: string | undefined,
+  ) {
+    if (!req.rawBody) throw new NotFoundException('Raw body not available for signature verification');
+    return this.paymentsService.handleCardWebhook(req.rawBody, signature);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
   @Post(':id/confirm-bank-transfer')

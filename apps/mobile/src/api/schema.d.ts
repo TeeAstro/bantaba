@@ -383,6 +383,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/webhook/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["Payments_cardWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/{id}/confirm-bank-transfer": {
         parameters: {
             query?: never;
@@ -1678,6 +1694,10 @@ export interface components {
             verifiedBadge?: boolean;
             /** @description Share (0-100) of an upcoming event's earnings they may be paid before it happens. 0 = only after the event (docs/payouts.md). */
             payoutAdvancePercent?: number;
+            /** @description Their payout requests are approved automatically (an admin still sends the money). Checks on the balance, hold period and verified payout details still apply. */
+            payoutAutoApprove?: boolean;
+            /** @description With payoutAutoApprove: largest payout (minor units) approved automatically; bigger ones wait for an admin. null = no limit. */
+            payoutAutoApproveMax?: number | null;
             /** @description Private admin note (why) */
             note?: string;
         };
@@ -1893,7 +1913,7 @@ export interface components {
             isBlocked: boolean;
         };
         /** @enum {string} */
-        PaymentProviderType: "WAVE" | "BANK_TRANSFER" | "PAYPAL" | "MOCK";
+        PaymentProviderType: "WAVE" | "BANK_TRANSFER" | "PAYPAL" | "CARD" | "MOCK";
         CheckoutItemDto: {
             ticketTypeId: string;
             quantity: number;
@@ -2692,6 +2712,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    Payments_cardWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
