@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertWithinLimits, organizerPermissions } from '../organizers/organizer-permissions';
 import { CreateTicketTypeDto } from './dto/create-ticket-type.dto';
 import { UpdateTicketTypeDto } from './dto/update-ticket-type.dto';
+import { VenuesService } from '../venues/venues.service';
 
 interface AuthenticatedUser {
   id: string;
@@ -16,7 +18,28 @@ interface AuthenticatedUser {
 
 @Injectable()
 export class TicketTypesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly venuesService: VenuesService,
+  ) {}
+
+  private async assertZoneInVenue(accessZoneId: string, venueId: string) {
+    const zone = await this.prisma.accessZone.findUnique({ where: { id: accessZoneId } });
+    if (!zone || zone.venueId !== venueId) {
+      throw new BadRequestException("accessZoneId must belong to this event's venue");
+    }
+  }
+
+  // A seated ticket type can never promise more tickets than its section
+  // has sellable (non-blocked) seats.
+  private async assertFitsSection(sectionId: string, quantityTotal: number) {
+    const sellable = await this.venuesService.countSellableSeats(sectionId);
+    if (quantityTotal > sellable) {
+      throw new BadRequestException(
+      `quantityTotal (${quantityTotal}) exceeds the ${sellable} sellable seats in this section`,
+      );
+    }
+  }
 
   private async assertOwnsEvent(eventId: string, user: AuthenticatedUser) {
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
@@ -33,8 +56,23 @@ export class TicketTypesService {
     return event;
   }
 
+  // Ticket and price limits for organizers who aren't trusted yet
+  // (docs/organizer-trust.md). `change` is the ticket type being created or
+  // edited, with its new values; admins aren't limited.
+  private async assertLimits(user: AuthenticatedUser, event: { id: string; organizerId: string }, change: { id?: string; quantityTotal: number; price: number }) {
+    if (user.role === UserRole.ADMIN) return;
+    const organizer = await this.prisma.organizer.findUniqueOrThrow({ where: { id: event.organizerId } });
+    const others = await this.prisma.ticketType.findMany({ where: { eventId: event.id, ...(change.id ? { id: { not: change.id } } : {}) }, select: { quantityTotal: true, price: true } });
+    assertWithinLimits(
+      organizerPermissions(organizer),
+      others.reduce((n, t) => n + t.quantityTotal, 0) + change.quantityTotal,
+      [...others.map((t) => t.price), change.price],
+    );
+  }
+
   async create(user: AuthenticatedUser, dto: CreateTicketTypeDto) {
     const event = await this.assertOwnsEvent(dto.eventId, user);
+    await this.assertLimits(user, event, { quantityTotal: dto.quantityTotal, price: dto.price });
 
     if (event.status === 'CANCELLED' || event.status === 'COMPLETED') {
       throw new BadRequestException(
@@ -42,15 +80,16 @@ export class TicketTypesService {
       );
     }
 
-    if (dto.accessZoneId) {
-      const zone = await this.prisma.accessZone.findUnique({
-        where: { id: dto.accessZoneId },
+    if (dto.accessZoneId) await this.assertZoneInVenue(dto.accessZoneId, event.venueId);
+
+    if (dto.sectionId) {
+      const section = await this.prisma.venueSection.findUnique({
+        where: { id: dto.sectionId },
       });
-      if (!zone || zone.venueId !== event.venueId) {
-        throw new BadRequestException(
-          'accessZoneId must belong to this event\'s venue',
-        );
+      if (!section || section.venueId !== event.venueId) {
+        throw new BadRequestException("sectionId must belong to this event's venue");
       }
+      await this.assertFitsSection(dto.sectionId, dto.quantityTotal);
     }
 
     return this.prisma.ticketType.create({
@@ -61,6 +100,7 @@ export class TicketTypesService {
         price: dto.price,
         quantityTotal: dto.quantityTotal,
         accessZoneId: dto.accessZoneId,
+        sectionId: dto.sectionId,
         salesStart: dto.salesStart ? new Date(dto.salesStart) : undefined,
         salesEnd: dto.salesEnd ? new Date(dto.salesEnd) : undefined,
         isActive: dto.isActive ?? true,
@@ -87,6 +127,7 @@ export class TicketTypesService {
 
     return this.prisma.ticketType.findMany({
       where: { eventId },
+      include: { section: { select: { id: true, name: true, isVip: true } } },
       orderBy: { price: 'asc' },
     });
   }
@@ -97,7 +138,18 @@ export class TicketTypesService {
     });
     if (!ticketType) throw new NotFoundException('Ticket type not found');
 
-    await this.assertOwnsEvent(ticketType.eventId, user);
+    const event = await this.assertOwnsEvent(ticketType.eventId, user);
+    if (dto.quantityTotal !== undefined || dto.price !== undefined) {
+      await this.assertLimits(user, event, { id: ticketType.id, quantityTotal: dto.quantityTotal ?? ticketType.quantityTotal, price: dto.price ?? ticketType.price });
+    }
+
+    // Previously unchecked on update (only on create), which let a ticket
+    // type point at another venue's zone. That starts to matter in
+    // Phase 8, since check-in now enforces zone levels at gates.
+    if (dto.accessZoneId) await this.assertZoneInVenue(dto.accessZoneId, event.venueId);
+    if (ticketType.sectionId && dto.quantityTotal !== undefined) {
+      await this.assertFitsSection(ticketType.sectionId, dto.quantityTotal);
+    }
 
     if (
       dto.quantityTotal !== undefined &&

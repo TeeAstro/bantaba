@@ -42,6 +42,7 @@ async function main() {
       userId: organizerUser.id,
       businessName: 'Sample Events Ltd',
       verificationStatus: 'APPROVED',
+      trustLevel: 'TRUSTED', // docs/organizer-trust.md: the sample organizer has every permission
     },
   });
 
@@ -56,10 +57,27 @@ async function main() {
     },
   });
 
-  console.log('Seeded accounts (password for all three: SeedPassword123!):', {
+  // Phase 7: a STAFF account for testing POST /check-ins. Phase 9: it
+  // belongs to the seeded organizer (staffOrganizerId), so that organizer
+  // can assign it to events from the dashboard. Check-in itself still
+  // lets any STAFF scan any event until Phase 10 enforces assignments.
+  const staff = await prisma.user.upsert({
+    where: { email: 'staff@example.com' },
+    update: { passwordHash: seedPasswordHash, staffOrganizerId: organizer.id },
+    create: {
+      email: 'staff@example.com',
+      passwordHash: seedPasswordHash,
+      role: 'STAFF',
+      fullName: 'Sample Gate Staff',
+      staffOrganizerId: organizer.id,
+    },
+  });
+
+  console.log('Seeded accounts (password for all four: SeedPassword123!):', {
     admin: admin.email,
     organizer: organizerUser.email,
     customer: customer.email,
+    staff: staff.email,
   });
 
   // Categories are upserted by slug — always safe to re-run.
@@ -241,12 +259,88 @@ async function main() {
     });
   }
 
+  // ---------- Phase 8: reserved seating ----------
+  //
+  // Everything below is find-or-create (and seats use skipDuplicates on
+  // the (sectionId, row, number) unique key), so it runs cleanly on a
+  // database seeded by any earlier phase as well as on a fresh one.
+
+  const lowerBowl = await prisma.venueSection.findFirst({
+    where: { venueId: venue.id, name: 'Lower Bowl' },
+  });
+  if (!lowerBowl) {
+    throw new Error('Venue has no "Lower Bowl" section — inconsistent seed state.');
+  }
+  // Grow the Phase 2 section (row A, seats 1–5) into rows A–C × 8 seats.
+  await prisma.seat.createMany({
+    data: ['A', 'B', 'C'].flatMap((row) =>
+      Array.from({ length: 8 }, (_, i) => ({ sectionId: lowerBowl.id, row, number: String(i + 1) })),
+    ),
+    skipDuplicates: true,
+  });
+
+  let vipZone = await prisma.accessZone.findFirst({ where: { venueId: venue.id, name: 'VIP' } });
+  if (!vipZone) {
+    vipZone = await prisma.accessZone.create({ data: { venueId: venue.id, name: 'VIP', level: 10 } });
+  }
+
+  let vipBox = await prisma.venueSection.findFirst({ where: { venueId: venue.id, name: 'VIP Box' } });
+  if (!vipBox) {
+    vipBox = await prisma.venueSection.create({ data: { venueId: venue.id, name: 'VIP Box', isVip: true } });
+  }
+  const vipBoxId = vipBox.id;
+  await prisma.seat.createMany({
+    data: ['A', 'B'].flatMap((row) =>
+      Array.from({ length: 4 }, (_, i) => ({ sectionId: vipBoxId, row, number: String(i + 1) })),
+    ),
+    skipDuplicates: true,
+  });
+
+  let vipGate = await prisma.gate.findFirst({ where: { venueId: venue.id, name: 'VIP Gate' } });
+  if (!vipGate) {
+    vipGate = await prisma.gate.create({
+      data: { venueId: venue.id, name: 'VIP Gate', accessZoneId: vipZone.id },
+    });
+  }
+
+  // A published reserved-seating event: one seated ticket type per
+  // section. The VIP Box type carries the VIP zone, so its tickets get
+  // through the VIP Gate; Lower Bowl tickets (Main zone, level 0) don't.
+  let seatedEvent = await prisma.event.findUnique({ where: { slug: 'sample-seated-show' } });
+  if (!seatedEvent) {
+    seatedEvent = await prisma.event.create({
+      data: {
+        organizerId: organizer.id,
+        categoryId: categories['theatre'].id,
+        venueId: venue.id,
+        name: 'Sample Seated Show',
+        slug: 'sample-seated-show',
+        description: 'A seeded reserved-seating event for Phase 8 testing.',
+        startDate: new Date('2026-12-20T19:00:00Z'),
+        endDate: new Date('2026-12-20T22:00:00Z'),
+        status: 'PUBLISHED',
+      },
+    });
+  }
+  const seatedTypes = [
+    { name: 'Lower Bowl Reserved', category: 'REGULAR' as const, price: 30000, quantityTotal: 24, sectionId: lowerBowl.id, accessZoneId: mainZone.id },
+    { name: 'VIP Box', category: 'VIP' as const, price: 100000, quantityTotal: 8, sectionId: vipBoxId, accessZoneId: vipZone.id },
+  ];
+  for (const t of seatedTypes) {
+    const exists = await prisma.ticketType.findFirst({ where: { eventId: seatedEvent.id, name: t.name } });
+    if (!exists) {
+      await prisma.ticketType.create({ data: { eventId: seatedEvent.id, currency: 'GMD', ...t } });
+    }
+  }
+
   console.log({
     venue: venue.name,
     event: event.slug,
     comedyEvent: comedyEvent.slug,
     limitedTicketType: { id: limitedTicketType.id, quantityTotal: limitedTicketType.quantityTotal },
     draftEvent: draftEvent.slug,
+    seatedEvent: seatedEvent.slug,
+    vipGate: { id: vipGate.id, zone: vipZone.name },
   });
   console.log('Seed complete.');
 }

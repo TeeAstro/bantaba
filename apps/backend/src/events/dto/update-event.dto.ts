@@ -1,4 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { CreateEventDto } from './create-event.dto';
 
 // All fields optional — a PATCH-style update where you only send what's

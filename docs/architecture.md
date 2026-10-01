@@ -342,6 +342,45 @@ event-ticketing-platform/
 
 Your Section 36 phase list (0 through 22) is sound and I'll follow it as written, with one adjustment worth flagging: **Phase 7 (QR) and Phase 8 (Seating)** have a dependency in practice — seat-level tickets need a seat reference before a QR credential is meaningful for reserved-seating events. I'll implement general-admission QR ticketing fully in Phase 7, then extend it to seat-bound tickets as part of Phase 8, rather than treating them as fully independent. Everything else in your phase list is unchanged.
 
+### Roadmap additions (agreed after Phase 9)
+
+These came out of reviewing the Phase 9 dashboard. They're slotted around the existing phases rather than renumbering them.
+
+| When | Addition | What it involves |
+|---|---|---|
+| Right after Phase 10 — **done** (see `docs/storage.md`) | **Edit event + banner upload** | An "edit event" screen in the organizer dashboard (the `PUT /events/:id` API exists since Phase 4; there's no UI for it yet). Image upload for the existing `Event.posterUrl` / `bannerUrl` fields: object storage (Section 1), type/size validation, crop and preview. A full banner *designer* (templates, text, colours) is a later, separate feature once uploads work. |
+| With the customer storefront / seat-picking checkout | **Visual venue maps (templates)** | Admin-maintained drawings of well-known venues (e.g. the national stadium, cinemas) that every organizer reuses — the Phase 8 model where venue layouts are shared, admin-managed data. Adds geometry the current schema lacks: a shape per section on a venue plan, seat positions or row curves, and landmarks (pitch, stage, screen). Customer view is two-level: whole venue with sections coloured by price/availability → tap a section → pick seats. Needs floor plans, photos or sketches of each real venue to draw accurately. |
+| Before the customer storefront is built | **Brand foundations** | Logo, colours, typography and tone settled first, because the storefront is customer-facing and expensive to restyle afterwards. The organizer UI already draws its colours and spacing from shared CSS variables (`apps/web/app/globals.css`), so it picks up the brand largely for free. |
+| After real organizers have used it | **Design pass on organizer / staff / admin screens** | Tailor layouts to how organizers actually work, based on their feedback, rather than polishing screens that features are still changing. Functional changes to the dashboard (missing fields, numbers, workflow) are made as they come up, not deferred. |
+| On hold (decided 1 Oct 2026) | **Phase 17: NFC cashless wristbands / wallet** | Not started until the core app has proven stable with real events. NFC *entry* credentials (Phase 11, no money involved) are a separate decision. |
+| Phase 11 (NFC), first task | **Hardware-scanner input** | Web scanner's code box keeps focus and submits on Enter, so a handheld's built-in 2D scanner in "keyboard" mode can scan hands-free. Only needed if handhelds are bought; the mobile apps would use the device's scanner SDK directly. |
+| After Phase 10, before/alongside Phase 11 | **Organizer & staff mobile apps (iOS + Android)** | Separate app on the same backend; performance first. Start with one React Native (Expo) app, measure it against agreed performance targets in a scanner bake-off, and switch to two native apps (Swift/SwiftUI, Kotlin/Compose) if it falls short. Prerequisites: OpenAPI spec, `/api/v1` versioning, mobile sign-in, minimum-version check. Full plan: `docs/mobile-apps.md`. (Replaces the earlier idea of wrapping the web scanner with Capacitor.) |
+| Before Phase 11 starts | **Choose handheld hardware** | Off-the-shelf Android handhelds / POS devices with built-in 2D scanner and NFC (makers such as Sunmi, Zebra, Honeywell, Urovo); we build software only, never hardware. Pick the device and the NFC credential type together — see "Handheld hardware checklist" below. Pilot 1–2 units against the Phase 10 checklist before buying in bulk. |
+| Later, optional | **Third-party gate integration** | For venues that already own turnstiles/access control: per-device API keys (`StaffDevice`, in the schema since Phase 2), a stable versioned validation endpoint, offline allowlist export (Phase 16). Our own app on handhelds stays the primary path. |
+
+**Handheld hardware checklist** (what matters for this system when shortlisting devices):
+
+- Android with Chrome and ideally Google Play services — runs the web scanner as-is; installs the mobile app normally.
+- Built-in 2D imager with a keyboard-wedge mode **and** a developer SDK.
+- NFC reader supporting ISO 14443 A/B and MIFARE (Classic / DESFire) — decides which wristbands/cards Phase 11 can use.
+- Wi-Fi **and** 4G — venue Wi-Fi often fails under crowd load; offline scanning isn't until Phase 16.
+- Full-day battery (hot-swappable if possible) and a drop/dust rating.
+- Built-in receipt printer only if box-office / door sales are wanted later.
+- Local availability of units, spares and repairs in The Gambia / the region.
+- Taking card payments on the device is a separate project (certified payment terminal + provider; relates to the Phase 17 NFC wallet), not part of scanning.
+
+**Shortlist (researched 1 Oct 2026; prices are indicative, check local distributors before buying):**
+
+| Device | Type | Scanner / NFC | Android | Approx. price | Verdict |
+|---|---|---|---|---|---|
+| **Sunmi L3** | Rugged handheld | Dedicated 2D engine; NFC ISO 14443 A/B + 15693 | 14, GMS | €480–545 | **Recommended for gates.** IP68, 4G, hot-swappable 5000 mAh battery, 6.8" screen |
+| **Sunmi V3H** (scanner variant) | Handheld POS with 58 mm printer | Dedicated 2D decoder (scanner variant only; base model is camera-only); EMV-certified NFC | 13, GMS | Quote-based | For a **box office**: sell, print, scan. 419 g |
+| **Zebra TC22** (TC27 = 4G) | Enterprise handheld | SE4710 / SE55 engines; NFC | Current | $1,200–1,650 | Premium build and long security support (LifeGuard); 2–3× the price |
+| **Honeywell EDA52** | Rugged handheld | S0703 imager; NFC; optional 4G | 11, upgradeable to 13 only | Mid-range | Durable but already on an old Android; not for new purchases |
+| Generic Alibaba/Amazon units (e.g. Urovo DT50) | Budget handhelds | Varies | Often 8–9 | Low | **Avoid**: outdated Android without security updates, on a device holding staff sign-ins |
+
+Plan: pilot 1–2 **Sunmi L3** units at the gates (plus one **V3H** only if door sales with printed tickets are wanted), run the Phase 10 checklist on them, then decide. When ordering, confirm the **dedicated-scanner variant** and the **GMS** (Google Play) version. Sources: shopnfc.com (Sunmi L3 listing), rospertech.com (V3H review), barcodegiant.com (Zebra TC22), honeywell.com (EDA52).
+
 ---
 
 ## 15. Progress Tracking Table (initial state)

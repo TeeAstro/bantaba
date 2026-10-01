@@ -14,6 +14,7 @@ import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { QueryEventsDto } from './dto/query-events.dto';
+import { CancelEventDto } from './dto/cancel-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -80,8 +81,8 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
   @Post(':id/cancel')
-  cancel(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.eventsService.cancel(user, id);
+  cancel(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() dto: CancelEventDto) {
+    return this.eventsService.cancel(user, id, dto.refundMode);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -24,4 +24,15 @@ export class MockProvider implements PaymentProvider {
       autoComplete: true,
     };
   }
+
+  canRefund() {
+    return true;
+  }
+
+  async refund(input: { providerReference: string }) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('The MOCK payment provider is disabled in production');
+    }
+    return { reference: `mock_refund_${randomUUID()}` };
+  }
 }

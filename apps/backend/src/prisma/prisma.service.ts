@@ -5,6 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { serverTimingEnabled, trackPrismaTiming } from '../common/server-timing';
 
 @Injectable()
 export class PrismaService
@@ -12,6 +13,11 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(PrismaService.name);
+
+  constructor() {
+    super();
+    if (serverTimingEnabled()) trackPrismaTiming(this);
+  }
 
   async onModuleInit() {
     await this.$connect();

@@ -1,18 +1,14 @@
+import './globals.css';
+
 export const metadata = {
   title: 'Event Ticketing Platform',
-  description: 'Phase 1 foundation — customer, organizer, and admin surfaces land here in later phases.',
+  description: 'Sell tickets, run check-in and track attendance for your events.',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif' }}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

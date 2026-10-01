@@ -1,17 +1,23 @@
 import {
   Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnApplicationShutdown,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PaymentProviderType, UserRole } from '@prisma/client';
+import { EventSeatStatus, PaymentProviderType, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateRandomToken, hashToken } from '../common/token.util';
+import { generateQrCodeSvg } from '../common/qr.util';
 import { WaveProvider } from './providers/wave.provider';
 import { BankTransferProvider } from './providers/bank-transfer.provider';
 import { MockProvider } from './providers/mock.provider';
 import { PaymentProvider } from './providers/payment-provider.interface';
+import { NotificationsService } from '../notifications/notifications.service';
+import { organizerPermissions } from '../organizers/organizer-permissions';
 
 interface AuthenticatedUser {
   id: string;
@@ -19,15 +25,35 @@ interface AuthenticatedUser {
 }
 
 @Injectable()
-export class PaymentsService {
+export class PaymentsService implements OnApplicationBootstrap, OnApplicationShutdown {
+  private readonly logger = new Logger('Payments');
+  private sweepTimer: NodeJS.Timeout | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly waveProvider: WaveProvider,
     private readonly bankTransferProvider: BankTransferProvider,
     private readonly mockProvider: MockProvider,
+    private readonly notifications: NotificationsService,
   ) {}
 
-  private resolveProvider(type: PaymentProviderType): PaymentProvider {
+  // Phase 12: expired reservations are now released on a timer, not only
+  // when someone else happens to start a checkout (the gap noted in
+  // docs/payments.md). This also sends the "reservation expired" email on
+  // time. Off with NOTIFICATIONS_WORKER=off, like the email sender.
+  onApplicationBootstrap() {
+    if (process.env.NOTIFICATIONS_WORKER === 'off') return;
+    const every = Number(process.env.RESERVATION_SWEEP_SECONDS ?? 60) * 1000;
+    this.sweepTimer = setInterval(() => {
+      this.releaseExpiredReservations().catch((err) => this.logger.warn(`Reservation sweep failed: ${(err as Error).message}`));
+    }, every);
+  }
+
+  onApplicationShutdown() {
+    if (this.sweepTimer) clearInterval(this.sweepTimer);
+  }
+
+  resolveProvider(type: PaymentProviderType): PaymentProvider {
     switch (type) {
       case PaymentProviderType.WAVE:
         return this.waveProvider;
@@ -74,15 +100,33 @@ export class PaymentsService {
     });
 
     if (result.autoComplete) {
-      await this.completeOrder(order.id, payment.id);
+      // Capture completeOrder's return value — it carries the freshly
+      // minted tickets, each with its one-time qrToken in memory (never
+      // persisted; see docs/checkin.md). Discarding this return value
+      // was a real bug: OrdersService.checkout() would otherwise have to
+      // re-fetch the order from the database to learn it's now PAID, and
+      // a DB re-fetch can only ever return qrCredentialHash/qrCodeSvg —
+      // never qrToken, since that column doesn't exist. Forwarding it
+      // here means the checkout response can include qrToken exactly
+      // once, consistently with the bank-transfer confirmation path
+      // (which calls completeOrder directly and always had this).
+      const completedOrder = await this.completeOrder(order.id, payment.id);
       return {
         payment: await this.prisma.payment.findUnique({ where: { id: payment.id } }),
+        completedOrder,
         redirectUrl: undefined,
         instructions: 'MOCK provider: payment auto-completed, no action needed.',
       };
     }
 
-    return { payment, redirectUrl: result.redirectUrl, instructions: result.instructions };
+    // Bank transfer: the customer has to act, so email them the payment
+    // details and deadline (Phase 12). Wave redirects them to pay straight away.
+    if (providerType === PaymentProviderType.BANK_TRANSFER && result.instructions) {
+      const full = await this.prisma.ticketOrder.findUnique({ where: { id: order.id }, select: { id: true, customerId: true, eventId: true } });
+      if (full) await this.notifications.orderAwaitingPayment(this.prisma, full, result.instructions);
+    }
+
+    return { payment, completedOrder: null, redirectUrl: result.redirectUrl, instructions: result.instructions };
   }
 
   // Shared by: the Wave webhook, the bank-transfer manual confirmation
@@ -132,20 +176,77 @@ export class PaymentsService {
         data: { status: 'SUCCESSFUL' },
       });
 
+      // Reserved-seating holds for this order (Phase 8), grouped by the
+      // ticket type each seat was bought as. General-admission items have
+      // none and mint exactly as before.
+      const holds = await tx.eventSeat.findMany({
+        where: { orderId: order.id, status: EventSeatStatus.HELD },
+        include: { seat: { include: { section: true } } },
+        orderBy: [{ seat: { row: 'asc' } }, { seat: { number: 'asc' } }],
+      });
+
+      // Seatedness comes from the ticket type itself, not from whether
+      // holds happen to exist — otherwise a seated item with no holds
+      // would silently mint seatless tickets instead of tripping the
+      // mismatch check below.
+      const seatedTypeIds = new Set(
+        (
+          await tx.ticketType.findMany({
+            where: { id: { in: order.items.map((i) => i.ticketTypeId) }, sectionId: { not: null } },
+            select: { id: true },
+          })
+        ).map((t) => t.id),
+      );
+
       const tickets = [];
       for (const item of order.items) {
+        const itemHolds = holds.filter((h) => h.ticketTypeId === item.ticketTypeId);
+        const isSeated = seatedTypeIds.has(item.ticketTypeId);
+        if (itemHolds.length !== (isSeated ? item.quantity : 0)) {
+          // Holds are only ever released by failOrder, which first moves
+          // the order out of PENDING — so for an order we just claimed
+          // from PENDING, a mismatch means corrupted state. Refuse to mint
+          // (the whole transaction rolls back) rather than issue tickets
+          // that don't match the seats actually held.
+          throw new Error(
+            `Order ${order.id}: ${item.quantity} seated tickets expected, ${itemHolds.length} seats held`,
+          );
+        }
+
         for (let i = 0; i < item.quantity; i += 1) {
+          const hold = isSeated ? itemHolds[i] : null;
           const rawToken = generateRandomToken();
+          // The QR image is rendered now, while rawToken is still in
+          // memory, and the rendered SVG (not the token) is what gets
+          // persisted — see the qrCodeSvg field comment in schema.prisma
+          // and docs/checkin.md. This is the only point in the whole
+          // system where a ticket's raw token ever exists outside this
+          // function call; it's discarded once this loop iteration ends.
+          const qrCodeSvg = await generateQrCodeSvg(rawToken);
           const ticket = await tx.ticket.create({
             data: {
               ticketTypeId: item.ticketTypeId,
               orderId: order.id,
               ownerId: order.customerId,
+              seatId: hold?.seatId ?? null,
               qrCredentialHash: hashToken(rawToken),
+              qrCodeSvg,
               status: 'ACTIVE',
             },
           });
-          tickets.push({ ...ticket, qrToken: rawToken });
+          if (hold) {
+            await tx.eventSeat.update({
+              where: { id: hold.id },
+              data: { status: EventSeatStatus.SOLD, ticketId: ticket.id },
+            });
+          }
+          tickets.push({
+            ...ticket,
+            qrToken: rawToken,
+            seat: hold
+              ? { section: hold.seat.section.name, row: hold.seat.row, number: hold.seat.number }
+              : null,
+          });
         }
       }
 
@@ -158,6 +259,10 @@ export class PaymentsService {
           entityId: order.id,
         },
       });
+
+      // Queued in this same transaction: if the tickets exist, so does the
+      // email that delivers them (Phase 12, docs/notifications.md).
+      await this.notifications.orderConfirmed(tx, order);
 
       return { ...order, status: 'PAID' as const, tickets };
     });
@@ -189,6 +294,14 @@ export class PaymentsService {
         });
       }
 
+      // Release this order's seat holds (Phase 8). Deleting the rows is
+      // what makes the seats available again — there is no AVAILABLE
+      // status. Only HELD rows: a SOLD seat can't belong to an order
+      // that's still being failed from PENDING.
+      await tx.eventSeat.deleteMany({
+        where: { orderId: order.id, status: EventSeatStatus.HELD },
+      });
+
       if (paymentId) {
         await tx.payment.update({ where: { id: paymentId }, data: { status: 'FAILED' } });
       }
@@ -203,16 +316,19 @@ export class PaymentsService {
           metadata: { reason },
         },
       });
+
+      // Someone who was told to pay by bank transfer hears that the
+      // reservation lapsed, instead of paying for tickets that are gone.
+      if (reason === 'reservation_expired') {
+        const wasBankTransfer = await tx.payment.count({ where: { orderId: order.id, provider: PaymentProviderType.BANK_TRANSFER } });
+        if (wasBankTransfer > 0) await this.notifications.orderExpired(tx, order);
+      }
     });
   }
 
-  // Best-effort cleanup, invoked lazily at the start of every checkout
-  // (see OrdersService). A real cron via the BullMQ setup mentioned in
-  // docs/architecture.md would run this on a schedule instead of relying
-  // on someone else's checkout request to trigger it — noted as a known
-  // gap in docs/payments.md rather than built now, since wiring up
-  // background jobs is its own piece of infrastructure this phase didn't
-  // need to also build.
+  // Releases reservations whose time is up. Runs every minute (see
+  // onApplicationBootstrap) and still at the start of every checkout
+  // (OrdersService), so inventory is freed even if the timer is off.
   async releaseExpiredReservations() {
     const expired = await this.prisma.ticketOrder.findMany({
       where: { status: 'PENDING', expiresAt: { lt: new Date() } },
@@ -273,6 +389,12 @@ export class PaymentsService {
       throw new ForbiddenException(
         "Only the event's organizer or an admin can confirm this payment",
       );
+    }
+    // Customers pay into the platform's account, so a false "paid" would
+    // be money that doesn't exist. Organizers not yet trusted with this
+    // leave it to the platform (docs/organizer-trust.md).
+    if (actor.role !== UserRole.ADMIN && !organizerPermissions(order.event.organizer).canConfirmBankTransfers) {
+      throw new ForbiddenException('The platform confirms bank-transfer payments for your account. They’ll be confirmed once the money arrives.');
     }
 
     return this.completeOrder(order.id, payment.id);

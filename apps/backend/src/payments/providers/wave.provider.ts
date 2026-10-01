@@ -70,6 +70,30 @@ export class WaveProvider implements PaymentProvider {
     };
   }
 
+  // Wave's Checkout API refunds a whole checkout session only
+  // (POST /v1/checkout/sessions/:id/refund, no amount), and repeating the
+  // call doesn't refund twice. Partial refunds are therefore paid back by
+  // hand (docs/refunds-transfers.md). Like initiate(), written against
+  // Wave's public docs and not yet exercised against a live account.
+  canRefund(input: { fullRefund: boolean }) {
+    return input.fullRefund;
+  }
+
+  async refund(input: { providerReference: string; fullRefund: boolean }) {
+    if (!this.isConfigured()) {
+      throw new ServiceUnavailableException('Wave is not configured (WAVE_API_KEY missing)');
+    }
+    if (!input.fullRefund) throw new Error('Wave can only refund a payment in full');
+    const response = await fetch(`${WAVE_API_BASE_URL}/checkout/sessions/${encodeURIComponent(input.providerReference)}/refund`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.WAVE_API_KEY}` },
+    });
+    if (!response.ok) {
+      throw new Error(`Wave refused the refund (HTTP ${response.status}): ${(await response.text()).slice(0, 300)}`);
+    }
+    return { reference: `wave_refund_${input.providerReference}` };
+  }
+
   verifyWebhookSignature(rawBody: Buffer, signatureHeader: string | undefined): boolean {
     if (!signatureHeader || !process.env.WAVE_WEBHOOK_SECRET) return false;
 

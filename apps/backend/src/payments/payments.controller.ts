@@ -57,43 +57,6 @@ export class PaymentsController {
     return this.paymentsService.confirmBankTransfer(user, paymentId);
   }
 
-  // Minimal refund "architecture" placeholder, per Phase 0 Section 12.
-  // Full refund business logic (partial refunds, actually calling the
-  // provider to move money back, customer-initiated requests) is Phase
-  // 13 — this just proves the state transition and ticket invalidation
-  // work, which Phase 13 builds on rather than redoing.
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @Post(':id/refund')
-  async refund(@Param('id') paymentId: string, @Body('reason') reason?: string) {
-    const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } });
-    if (!payment) throw new NotFoundException('Payment not found');
-    if (payment.status !== 'SUCCESSFUL') {
-      throw new NotFoundException('Only a successful payment can be refunded');
-    }
-
-    return this.prisma.$transaction(async (tx) => {
-      await tx.refund.create({
-        data: {
-          paymentId: payment.id,
-          amount: payment.amount,
-          reason,
-          status: 'PROCESSED',
-        },
-      });
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: { status: 'REFUNDED' },
-      });
-      await tx.ticketOrder.update({
-        where: { id: payment.orderId },
-        data: { status: 'REFUNDED' },
-      });
-      await tx.ticket.updateMany({
-        where: { orderId: payment.orderId },
-        data: { status: 'REFUNDED' },
-      });
-      return { success: true };
-    });
-  }
+  // POST /payments/:id/refund moved to RefundsController (Phase 13), which
+  // does the real thing: refunds/refunds.service.ts.
 }

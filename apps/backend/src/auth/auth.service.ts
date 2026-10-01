@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import { normalizeName } from '../organizers/public-organizer';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { generateRandomToken, hashToken } from '../common/token.util';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterOrganizerDto } from './dto/register-organizer.dto';
@@ -23,6 +25,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private async issueTokenPair(userId: string, role: UserRole) {
@@ -85,6 +88,14 @@ export class AuthService {
     });
     if (existing) {
       throw new ConflictException('An account with this email already exists');
+    }
+
+    // A verified organizer's name can't be reused (docs/payouts.md,
+    // "Verified badge"); near-misses are flagged to admins instead.
+    const wanted = normalizeName(dto.businessName);
+    const verified = await this.prisma.organizer.findMany({ where: { verifiedBadge: true }, select: { businessName: true } });
+    if (wanted && verified.some((v) => normalizeName(v.businessName) === wanted)) {
+      throw new ConflictException('That name belongs to a verified organizer. If you represent them, contact the platform team.');
     }
 
     const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
@@ -222,6 +233,15 @@ export class AuthService {
       return genericResponse;
     }
 
+    // At most 3 reset emails per account per 15 minutes, so this endpoint
+    // can't be used to flood someone's inbox. Same response either way.
+    const recent = await this.prisma.passwordResetToken.count({
+      where: { userId: user.id, createdAt: { gt: new Date(Date.now() - 15 * 60_000) } },
+    });
+    if (recent >= 3) {
+      return genericResponse;
+    }
+
     const rawResetToken = generateRandomToken();
     await this.prisma.passwordResetToken.create({
       data: {
@@ -233,11 +253,14 @@ export class AuthService {
 
     await this.audit(user.id, user.role, 'password_reset_requested', 'User', user.id);
 
-    // No email provider is wired up until Phase 12 (Notifications), so for
-    // now the raw token is returned directly in the response — this is
-    // fine for local development but MUST be removed once real email
-    // delivery exists, since it defeats the point of a reset flow.
-    return { ...genericResponse, devOnlyResetToken: rawResetToken };
+    // Phase 12: the link goes by email. Not awaited, so the response
+    // takes the same time whether or not the account exists. (Until
+    // Phase 12 the raw token was returned in this response for
+    // development; that's gone, since it also revealed which emails have
+    // accounts.)
+    void this.notifications.sendPasswordReset(user, rawResetToken, RESET_TOKEN_TTL_MS / 60_000).catch(() => undefined);
+
+    return genericResponse;
   }
 
   async resetPassword(rawToken: string, newPassword: string) {

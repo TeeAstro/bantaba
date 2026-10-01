@@ -26,7 +26,31 @@ enum OrganizerVerificationStatus {
   PENDING
   APPROVED
   REJECTED
-  SUSPENDED
+  SUSPENDED // ticket sales for all their events stop (docs/organizer-trust.md)
+}
+
+// How far the platform trusts an approved organizer (docs/organizer-trust.md).
+// NEW: events reviewed before going live, no bank-transfer confirming,
+// cancelling always refunds everyone, ticket/price limits per event.
+// TRUSTED: none of those restrictions. Per-organizer overrides on
+// Organizer can loosen or tighten either.
+enum OrganizerTrustLevel {
+  NEW
+  TRUSTED
+}
+
+// Organizer payouts (docs/payouts.md)
+enum PayoutStatus {
+  REQUESTED // organizer asked; waiting for an admin
+  APPROVED // admin approved; money still to be sent
+  PAID // money sent, with a reference
+  REJECTED // admin declined, with a reason
+  CANCELLED // organizer withdrew the request
+}
+
+enum PayoutMethod {
+  WAVE
+  BANK
 }
 
 enum EventStatus {
@@ -62,6 +86,14 @@ enum TicketStatus {
   TRANSFERRED
 }
 
+// Phase 8: state of one seat for one event. There is no AVAILABLE value
+// on purpose — a seat with no EventSeat row for an event is available.
+// See docs/seating.md.
+enum EventSeatStatus {
+  HELD // claimed by a PENDING order; released if that order fails or expires
+  SOLD // its ticket has been minted
+}
+
 enum OrderStatus {
   PENDING
   PAID
@@ -87,10 +119,34 @@ enum PaymentStatus {
 }
 
 enum RefundStatus {
-  REQUESTED
-  APPROVED
+  REQUESTED // customer asked; waiting for the organizer
+  APPROVED // decided: tickets are void, money still to be returned
   REJECTED
-  PROCESSED
+  PROCESSED // money returned
+  WITHDRAWN // customer took the request back
+}
+
+// Phase 13 (docs/refunds-transfers.md)
+enum RefundPolicy {
+  NONE // no refunds on request (cancellations and changes still refund)
+  UNTIL_DAYS_BEFORE // until refundDaysBefore days before the start
+  ANYTIME // until the event starts
+}
+
+enum RefundKind {
+  CUSTOMER_REQUEST
+  ORGANIZER // organizer/admin refunded directly
+  EVENT_CANCELLED
+}
+
+enum RefundMethod {
+  PROVIDER // returned through the payment provider's API (Wave full refunds, Mock)
+  MANUAL // paid back by hand (bank transfers, partial Wave refunds); an admin marks it done
+}
+
+enum CancellationRefundMode {
+  AUTOMATIC // everyone refunded in full when the event is cancelled
+  ORGANIZER // organizer handles it; holders may request a refund at any time
 }
 
 enum PromoType {
@@ -134,7 +190,9 @@ enum WalletTransactionType {
 enum TransferStatus {
   PENDING
   ACCEPTED
-  REJECTED
+  REJECTED // recipient declined
+  CANCELLED // sender took it back, or the ticket stopped being transferable
+  EXPIRED
 }
 
 enum ResaleStatus {
@@ -154,20 +212,21 @@ enum NotificationStatus {
   PENDING
   SENT
   FAILED
+  CANCELLED // no longer needed (e.g. a change that was undone before sending)
 }
 
 // ---------- Auth ----------
 
 model RefreshToken {
-  id              String    @id @default(uuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash       String    @unique // never store the raw refresh token
-  expiresAt       DateTime
-  revokedAt       DateTime?
-  replacedByTokenId String? @unique
-  replacedByToken  RefreshToken? @relation("TokenRotation", fields: [replacedByTokenId], references: [id])
-  replacesToken    RefreshToken? @relation("TokenRotation")
+  id                String        @id @default(uuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String        @unique // never store the raw refresh token
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?       @unique
+  replacedByToken   RefreshToken? @relation("TokenRotation", fields: [replacedByTokenId], references: [id])
+  replacesToken     RefreshToken? @relation("TokenRotation")
 
   createdAt DateTime @default(now())
 
@@ -192,28 +251,33 @@ model PasswordResetToken {
 // ---------- Identity ----------
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  phone        String?  @unique
-  passwordHash String
-  role         UserRole @default(CUSTOMER)
-  fullName     String?
+  id                String     @id @default(uuid())
+  email             String     @unique
+  phone             String?    @unique
+  passwordHash      String
+  role              UserRole   @default(CUSTOMER)
+  fullName          String?
   profilePictureUrl String?
   emailVerifiedAt   DateTime?
   phoneVerifiedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  // Phase 9: for STAFF accounts, the organizer that created (and employs)
+  // them. Staff are scoped to one organizer (docs/architecture.md
+  // Section 8): only that organizer can assign them to events.
+  staffOrganizerId  String?
+  staffOrganizer    Organizer? @relation("OrganizerStaffAccounts", fields: [staffOrganizerId], references: [id], onDelete: SetNull)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  organizer      Organizer?
-  wallet         Wallet?
-  orders         TicketOrder[]
-  tickets        Ticket[]
-  eventStaffRoles EventStaff[]
-  transfersSent     TicketTransfer[] @relation("TransferFrom")
-  transfersReceived TicketTransfer[] @relation("TransferTo")
-  reviews        Review[]
-  favorites      FavoriteEvent[]
-  notifications  Notification[]
+  organizer           Organizer?
+  wallet              Wallet?
+  orders              TicketOrder[]
+  tickets             Ticket[]
+  eventStaffRoles     EventStaff[]
+  transfersSent       TicketTransfer[]     @relation("TransferFrom")
+  transfersReceived   TicketTransfer[]     @relation("TransferTo")
+  reviews             Review[]
+  favorites           FavoriteEvent[]
+  notifications       Notification[]
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
 
@@ -221,17 +285,51 @@ model User {
 }
 
 model Organizer {
-  id                 String                       @id @default(uuid())
-  userId             String                       @unique
-  user               User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String                      @id @default(uuid())
+  userId             String                      @unique
+  user               User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessName       String
-  verificationStatus OrganizerVerificationStatus   @default(PENDING)
+  verificationStatus OrganizerVerificationStatus @default(PENDING)
   verifiedAt         DateTime?
-  createdAt          DateTime                     @default(now())
-  updatedAt          DateTime                     @updatedAt
 
-  events      Event[]
-  staff       EventStaff[]
+  // Anti-fraud permissions (docs/organizer-trust.md). An override of null
+  // means "use the trust level's default".
+  trustLevel                   OrganizerTrustLevel @default(NEW)
+  requireEventReview           Boolean?
+  canConfirmBankTransfers      Boolean?
+  canHandleCancellationRefunds Boolean?
+  customLimits                 Boolean             @default(false) // use the two limits below instead of the level's
+  maxTicketsPerEvent           Int? // with customLimits: null = no limit
+  maxTicketPrice               Int? // minor units; with customLimits: null = no limit
+  trustNote                    String? // admin's private note
+  trustUpdatedAt               DateTime?
+
+  // Verified badge (blue tick): the platform has confirmed this is the
+  // official account of who it says it is (e.g. a federation or a known
+  // venue). Shown publicly only while the account is APPROVED.
+  verifiedBadge   Boolean   @default(false)
+  verifiedBadgeAt DateTime?
+
+  // Payouts (docs/payouts.md). Where the organizer's money is sent; any
+  // change clears payoutDetailsVerifiedAt until an admin checks it again.
+  payoutMethod              PayoutMethod?
+  payoutAccountName         String?
+  payoutAccountNumber       String? // Wave: phone number; bank: account number
+  payoutBankName            String?
+  payoutDetailsUpdatedAt    DateTime?
+  payoutDetailsVerifiedAt   DateTime?
+  payoutDetailsVerifiedById String?
+  // Share (0-100) of an upcoming event's earnings that may be paid out
+  // before it has taken place. 0 = only after the event.
+  payoutAdvancePercent      Int           @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events        Event[]
+  staff         EventStaff[]
+  staffAccounts User[]       @relation("OrganizerStaffAccounts")
+  payouts       Payout[]
 
   @@map("organizers")
 }
@@ -262,7 +360,8 @@ model VenueSection {
   name    String
   isVip   Boolean @default(false)
 
-  seats Seat[]
+  seats       Seat[]
+  ticketTypes TicketType[] // seated ticket types sold against this section (Phase 8)
 
   @@index([venueId])
   @@map("venue_sections")
@@ -274,19 +373,25 @@ model Seat {
   section   VenueSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   row       String
   number    String
-  isBlocked Boolean      @default(false)
+  isBlocked Boolean      @default(false) // venue-wide: never sellable for any event (broken seat, camera position…)
 
-  tickets Ticket[]
+  tickets    Ticket[]
+  eventSeats EventSeat[]
 
   @@unique([sectionId, row, number])
   @@map("seats")
 }
 
 model Gate {
-  id      String @id @default(uuid())
-  venueId String
-  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  name    String
+  id           String      @id @default(uuid())
+  venueId      String
+  venue        Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name         String
+  // Phase 8: the zone this gate admits into. A ticket whose zone level is
+  // below this zone's level gets NO_ACCESS here. Null = open gate, any
+  // ticket for the venue may enter. See docs/seating.md.
+  accessZoneId String?
+  accessZone   AccessZone? @relation(fields: [accessZoneId], references: [id], onDelete: SetNull)
 
   checkIns     CheckIn[]
   staffDefault EventStaff[]
@@ -303,6 +408,7 @@ model AccessZone {
   level   Int    @default(0) // higher = more access; used for zone-inclusion checks
 
   ticketTypes TicketType[]
+  gates       Gate[]
 
   @@index([venueId])
   @@map("access_zones")
@@ -321,27 +427,41 @@ model EventCategory {
 }
 
 model Event {
-  id             String        @id @default(uuid())
-  organizerId    String
-  organizer      Organizer     @relation(fields: [organizerId], references: [id], onDelete: Restrict)
-  categoryId     String
-  category       EventCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  venueId        String
-  venue          Venue         @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  id          String        @id @default(uuid())
+  organizerId String
+  organizer   Organizer     @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  categoryId  String
+  category    EventCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  venueId     String
+  venue       Venue         @relation(fields: [venueId], references: [id], onDelete: Restrict)
 
-  name        String
-  slug        String   @unique
-  description String?
-  posterUrl   String?
-  bannerUrl   String?
-  startDate   DateTime
-  endDate     DateTime
+  name           String
+  slug           String      @unique
+  description    String?
+  posterUrl      String?
+  bannerUrl      String?
+  startDate      DateTime
+  endDate        DateTime
   ageRestriction Int?
-  rules       String?
-  contactEmail String?
-  contactPhone String?
-  socialLinks Json?
-  status      EventStatus @default(DRAFT)
+  rules          String?
+  contactEmail   String?
+  contactPhone   String?
+  socialLinks    Json?
+  status         EventStatus @default(DRAFT)
+
+  // Phase 13: refunds and transfers (docs/refunds-transfers.md)
+  refundPolicy           RefundPolicy            @default(NONE)
+  refundDaysBefore       Int? // with UNTIL_DAYS_BEFORE
+  transfersEnabled       Boolean                 @default(true)
+  scheduleChangedAt      DateTime? // last date/venue change while live; earlier buyers may then always ask for a refund
+  cancelledAt            DateTime?
+  cancellationRefundMode CancellationRefundMode?
+
+  // Review before going live, for organizers who need it (docs/organizer-trust.md)
+  submittedForReviewAt DateTime?
+  reviewedAt           DateTime?
+  reviewedById         String?
+  reviewNote           String? // shown to the organizer when sent back
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -352,6 +472,8 @@ model Event {
   eventStaff  EventStaff[]
   reviews     Review[]
   favorites   FavoriteEvent[]
+  eventSeats  EventSeat[]
+  checkIns    CheckIn[]
 
   @@index([organizerId])
   @@index([categoryId])
@@ -363,45 +485,52 @@ model Event {
 // ---------- Ticketing ----------
 
 model TicketType {
-  id           String             @id @default(uuid())
-  eventId      String
-  event        Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  name         String
-  category     TicketTypeCategory @default(REGULAR)
-  price        Int // minor units (butut)
-  currency     String             @default("GMD")
+  id            String             @id @default(uuid())
+  eventId       String
+  event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name          String
+  category      TicketTypeCategory @default(REGULAR)
+  price         Int // minor units (butut)
+  currency      String             @default("GMD")
   quantityTotal Int
-  quantitySold Int                @default(0)
-  accessZoneId String?
-  accessZone   AccessZone?        @relation(fields: [accessZoneId], references: [id], onDelete: SetNull)
-  salesStart   DateTime?
-  salesEnd     DateTime?
-  isActive     Boolean            @default(true)
+  quantitySold  Int                @default(0)
+  accessZoneId  String?
+  accessZone    AccessZone?        @relation(fields: [accessZoneId], references: [id], onDelete: SetNull)
+  // Phase 8: set = reserved seating. Buyers must pick specific seats in
+  // this section; null = general admission (quantity only).
+  sectionId     String?
+  section       VenueSection?      @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  salesStart    DateTime?
+  salesEnd      DateTime?
+  isActive      Boolean            @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tickets    Ticket[]
   orderItems OrderItem[]
+  eventSeats EventSeat[]
 
   @@index([eventId])
+  @@index([sectionId])
   @@map("ticket_types")
 }
 
 model Ticket {
-  id             String       @id @default(uuid())
-  ticketTypeId   String
-  ticketType     TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
-  orderId        String?
-  order          TicketOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  ownerId        String
-  owner          User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
-  seatId         String?
-  seat           Seat?        @relation(fields: [seatId], references: [id], onDelete: SetNull)
+  id           String       @id @default(uuid())
+  ticketTypeId String
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  orderId      String?
+  order        TicketOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  ownerId      String
+  owner        User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  seatId       String?
+  seat         Seat?        @relation(fields: [seatId], references: [id], onDelete: SetNull)
 
-  qrCredentialHash String   @unique // hash of the random token encoded in the QR — never the raw ticket ID
+  qrCredentialHash String       @unique // hash of the random token encoded in the QR — never the raw ticket ID
+  qrCodeSvg        String?      @db.Text // rendered QR image (SVG markup), generated once at mint time while the raw token is still in memory — see docs/checkin.md. The raw token itself is never stored here or anywhere else.
   status           TicketStatus @default(ACTIVE)
-  purchasedAt      DateTime @default(now())
+  purchasedAt      DateTime     @default(now())
   expiresAt        DateTime?
 
   createdAt DateTime @default(now())
@@ -411,6 +540,8 @@ model Ticket {
   checkIns      CheckIn[]
   transfers     TicketTransfer[]
   resale        TicketResale?
+  eventSeat     EventSeat?
+  refundItems   RefundItem[]
 
   @@index([ticketTypeId])
   @@index([ownerId])
@@ -420,13 +551,13 @@ model Ticket {
 }
 
 model TicketOrder {
-  id          String      @id @default(uuid())
+  id          String     @id @default(uuid())
   customerId  String
-  customer    User        @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customer    User       @relation(fields: [customerId], references: [id], onDelete: Restrict)
   eventId     String
-  event       Event       @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Restrict)
   promoCodeId String?
-  promoCode   PromoCode?  @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
 
   subtotal    Int
   discount    Int         @default(0)
@@ -440,9 +571,11 @@ model TicketOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items    OrderItem[]
-  tickets  Ticket[]
-  payments Payment[]
+  items      OrderItem[]
+  tickets    Ticket[]
+  payments   Payment[]
+  eventSeats EventSeat[]
+  refunds    Refund[]
 
   @@index([customerId])
   @@index([eventId])
@@ -464,18 +597,45 @@ model OrderItem {
   @@map("order_items")
 }
 
+// Phase 8: one row per seat that is held or sold for one event. The
+// @@unique([eventId, seatId]) constraint is what makes double-selling a
+// seat impossible: two concurrent checkouts both INSERT the same pair,
+// and Postgres lets exactly one of them win. Released holds are DELETEd,
+// not flipped to some AVAILABLE status. See docs/seating.md.
+model EventSeat {
+  id           String          @id @default(uuid())
+  eventId      String
+  event        Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seatId       String
+  seat         Seat            @relation(fields: [seatId], references: [id], onDelete: Restrict)
+  ticketTypeId String // the seated ticket type this seat was bought as (decides the price)
+  ticketType   TicketType      @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
+  status       EventSeatStatus
+  orderId      String
+  order        TicketOrder     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  ticketId     String?         @unique // set when status becomes SOLD
+  ticket       Ticket?         @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, seatId])
+  @@index([orderId])
+  @@map("event_seats")
+}
+
 // ---------- Payments ----------
 
 model Payment {
-  id               String              @id @default(uuid())
-  orderId          String
-  order            TicketOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  provider         PaymentProviderType
-  providerReference String?            @unique // Wave session id / bank ref / PayPal order id
-  amount           Int
-  currency         String              @default("GMD")
-  status           PaymentStatus       @default(PENDING)
-  rawPayload       Json? // last known verified payload from the provider, for audit/debugging
+  id                String              @id @default(uuid())
+  orderId           String
+  order             TicketOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider          PaymentProviderType
+  providerReference String?             @unique // Wave session id / bank ref / PayPal order id
+  amount            Int
+  currency          String              @default("GMD")
+  status            PaymentStatus       @default(PENDING)
+  rawPayload        Json? // last known verified payload from the provider, for audit/debugging
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -487,21 +647,84 @@ model Payment {
   @@map("payments")
 }
 
+// One refund = some tickets of one order, paid back through one payment.
+// amount = ticket share (items) + feeAmount (booking fee, only returned
+// when the event is cancelled). See docs/refunds-transfers.md.
 model Refund {
-  id             String       @id @default(uuid())
-  paymentId      String
-  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
-  amount         Int
-  reason         String?
-  status         RefundStatus @default(REQUESTED)
-  requestedById  String?
-  approvedById   String?
+  id            String       @id @default(uuid())
+  paymentId     String
+  payment       Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  orderId       String
+  order         TicketOrder  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  kind          RefundKind   @default(ORGANIZER)
+  method        RefundMethod @default(MANUAL)
+  amount        Int // total to return, minor units
+  feeAmount     Int          @default(0) // part of amount that is booking fee
+  reason        String?
+  status        RefundStatus @default(REQUESTED)
+  requestedById String?
+  approvedById  String? // whoever decided (approved or rejected)
+  decidedAt     DateTime?
+  decisionNote  String?
+  processedAt   DateTime?
+  reference     String? // provider refund id, or the bank/Wave reference of a manual payout
+  attempts      Int          @default(0) // provider refund attempts
+  lastError     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  items RefundItem[]
+
   @@index([paymentId])
+  @@index([orderId])
+  @@index([status, method])
   @@map("refunds")
+}
+
+// Money paid out to an organizer (docs/payouts.md). Every payout is asked
+// for by the organizer and approved by an admin; the account it goes to is
+// copied in at request time.
+model Payout {
+  id            String       @id @default(uuid())
+  organizerId   String
+  organizer     Organizer    @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  amount        Int // minor units
+  currency      String       @default("GMD")
+  status        PayoutStatus @default(REQUESTED)
+  method        PayoutMethod
+  accountName   String
+  accountNumber String
+  bankName      String?
+  note          String? // from the organizer
+  requestedById String
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String? // reason when rejected
+  paidAt        DateTime?
+  paidById      String?
+  reference     String? // Wave / bank transfer reference
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizerId, status])
+  @@index([status])
+  @@map("payouts")
+}
+
+model RefundItem {
+  id           String @id @default(uuid())
+  refundId     String
+  refund       Refund @relation(fields: [refundId], references: [id], onDelete: Cascade)
+  ticketId     String
+  ticket       Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  ticketTypeId String
+  amount       Int // this ticket's share, after any discount
+
+  @@unique([refundId, ticketId])
+  @@index([ticketId])
+  @@map("refund_items")
 }
 
 model PromoCode {
@@ -544,16 +767,22 @@ model NfcCredential {
 // ---------- Access control / check-in ----------
 
 model CheckIn {
-  id       String        @id @default(uuid())
-  ticketId String
-  ticket   Ticket        @relation(fields: [ticketId], references: [id], onDelete: Restrict)
-  gateId   String?
-  gate     Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
-  staffId  String?
-  result   CheckInResult
-  scannedAt DateTime     @default(now())
+  id        String        @id @default(uuid())
+  // Phase 10: the event being worked at the door when this scan happened.
+  // Usually the ticket's own event; differs on WRONG_EVENT, which must
+  // show up in the scanning event's log, not the other event's.
+  eventId   String
+  event     Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  ticketId  String
+  ticket    Ticket        @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  gateId    String?
+  gate      Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
+  staffId   String?
+  result    CheckInResult
+  scannedAt DateTime      @default(now())
 
   // Append-only: application code must never UPDATE or DELETE rows here.
+  @@index([eventId])
   @@index([ticketId])
   @@index([scannedAt])
   @@map("check_ins")
@@ -626,30 +855,38 @@ model WalletTransaction {
 
 // ---------- Transfers & resale ----------
 
+// Phase 13: a ticket offered to someone by email. They accept with the
+// link (signing in or creating an account with that email); the ticket
+// then gets a new QR code and the old one stops working.
 model TicketTransfer {
-  id           String         @id @default(uuid())
-  ticketId     String
-  ticket       Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  fromUserId   String
-  fromUser     User           @relation("TransferFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
-  toUserId     String
-  toUser       User           @relation("TransferTo", fields: [toUserId], references: [id], onDelete: Restrict)
-  status       TransferStatus @default(PENDING)
+  id         String         @id @default(uuid())
+  ticketId   String
+  ticket     Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromUserId String
+  fromUser   User           @relation("TransferFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
+  toEmail    String // lower-cased
+  toUserId   String? // set when accepted
+  toUser     User?          @relation("TransferTo", fields: [toUserId], references: [id], onDelete: Restrict)
+  status     TransferStatus @default(PENDING)
+  tokenHash  String         @unique // hash of the token in the emailed link
+  expiresAt  DateTime
 
   createdAt   DateTime  @default(now())
   respondedAt DateTime?
 
-  @@index([ticketId])
+  @@index([ticketId, status])
+  @@index([fromUserId])
+  @@index([toEmail, status])
   @@map("ticket_transfers")
 }
 
 model TicketResale {
-  id       String        @id @default(uuid())
-  ticketId String        @unique
-  ticket   Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id       String       @id @default(uuid())
+  ticketId String       @unique
+  ticket   Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   sellerId String
   price    Int
-  status   ResaleStatus  @default(LISTED)
+  status   ResaleStatus @default(LISTED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -659,31 +896,52 @@ model TicketResale {
 
 // ---------- Engagement ----------
 
+// Phase 12: the notification outbox. A row is written in the same
+// transaction as whatever caused it (an order being paid, an event being
+// changed...), and a background worker sends it — see docs/notifications.md.
+// The message itself is rendered at send time from current data, so the
+// table holds no copies of tickets or personal details beyond what's
+// needed to describe a change.
 model Notification {
   id      String              @id @default(uuid())
   userId  String
   user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   channel NotificationChannel
-  type    String // e.g. "ticket_purchase", "event_reminder"
+  type    String // order_confirmed, event_changed, event_reminder... (notifications/types.ts)
   payload Json?
   status  NotificationStatus  @default(PENDING)
   sentAt  DateTime?
 
+  // Same key twice = same message: makes enqueueing idempotent (a retried
+  // webhook can't send two confirmations).
+  dedupeKey   String?   @unique
+  eventId     String? // for finding/cancelling an event's pending messages
+  orderId     String?
+  sendAfter   DateTime  @default(now()) // not before this (delays, retry backoff)
+  attempts    Int       @default(0)
+  lockedUntil DateTime? // claimed by a worker until then
+  lastError   String?
+  toAddress   String? // where it was actually sent
+  subject     String?
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([status, sendAfter])
+  @@index([eventId, type, status])
   @@map("notifications")
 }
 
 model Review {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   eventId    String
-  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event      Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   rating     Int
   comment    String?
-  isVerified Boolean  @default(false) // true only for confirmed attendees (checked-in ticket holders)
+  isVerified Boolean @default(false) // true only for confirmed attendees (checked-in ticket holders)
 
   createdAt DateTime @default(now())
 
@@ -707,7 +965,7 @@ model FavoriteEvent {
 // ---------- Audit ----------
 
 model AuditLog {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   actorId    String?
   actorRole  String?
   action     String

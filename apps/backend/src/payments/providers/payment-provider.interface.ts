@@ -25,6 +25,14 @@ export interface WebhookEvent {
   raw: unknown;
 }
 
+// Phase 13: returning money through the provider's API.
+export interface RefundInput {
+  providerReference: string; // the original payment's reference
+  amount: number; // minor units
+  currency: string;
+  fullRefund: boolean; // amount equals the whole payment
+}
+
 export interface PaymentProvider {
   readonly name: string;
 
@@ -34,4 +42,10 @@ export interface PaymentProvider {
   // action instead) — these are optional so it can simply not implement them.
   verifyWebhookSignature?(rawBody: Buffer, signatureHeader: string | undefined): boolean;
   parseWebhookEvent?(rawBody: Buffer): WebhookEvent;
+
+  // Phase 13. Absent = this provider can't return money by API (bank
+  // transfer); such refunds are paid back by hand (RefundMethod.MANUAL).
+  // canRefund says whether a particular refund is possible by API.
+  canRefund?(input: Omit<RefundInput, 'providerReference'>): boolean;
+  refund?(input: RefundInput): Promise<{ reference: string }>;
 }

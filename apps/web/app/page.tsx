@@ -1,12 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-type HealthResponse = {
-  status: string;
-  database: string;
-  timestamp: string;
-};
+type HealthResponse = { status: string; database: string };
 
 export default function HomePage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
@@ -14,34 +11,25 @@ export default function HomePage() {
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-    fetch(`${apiUrl}/api/health`)
+    fetch(`${apiUrl}/api/v1/health`)
       .then((res) => res.json())
       .then(setHealth)
-      .catch(() => setError('Could not reach the backend. Is it running?'));
+      .catch(() => setError('Can’t reach the backend. Is it running?'));
   }, []);
 
   return (
-    <main style={{ maxWidth: 640, margin: '80px auto', padding: '0 24px' }}>
+    <main className="main stack" style={{ maxWidth: 640, margin: '64px auto' }}>
       <h1>Event Ticketing Platform</h1>
-      <p>Phase 1 — Project Foundation.</p>
-
-      <div
-        style={{
-          marginTop: 24,
-          padding: 16,
-          borderRadius: 8,
-          border: '1px solid #ddd',
-        }}
-      >
-        <strong>Backend status:</strong>{' '}
-        {error && <span style={{ color: '#c0392b' }}>{error}</span>}
-        {!error && !health && <span>Checking...</span>}
-        {health && (
-          <span style={{ color: '#2e7d32' }}>
-            {health.status} (database: {health.database})
-          </span>
-        )}
-      </div>
+      <p className="muted">The customer storefront arrives in a later phase. Organizers and gate staff can sign in now.</p>
+      <p>
+        <Link className="btn" href="/login">Sign in</Link>
+      </p>
+      <p className="small">
+        Backend:{' '}
+        {error && <span style={{ color: 'var(--red)' }}>{error}</span>}
+        {!error && !health && <span className="muted">checking…</span>}
+        {health && <span style={{ color: 'var(--green)' }}>{health.status} (database {health.database})</span>}
+      </p>
     </main>
   );
 }

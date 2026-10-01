@@ -11,16 +11,27 @@
 
 `POST /api/auth/forgot-password` always returns the same generic message regardless of whether the email is registered, so the endpoint can't be used to enumerate accounts. A real reset token is only generated and stored (hashed, same as refresh tokens) if the account exists.
 
-**Temporary, Phase-3-only shortcut:** since no email provider is wired up until Phase 12, the raw reset token is currently returned directly in the API response (`devOnlyResetToken`) instead of being emailed. This is clearly commented in `auth.service.ts` and **must be removed** once Phase 12 adds real email delivery — shipping it to production as-is would let anyone reset anyone's password.
+**Delivered by email (Phase 12).** The reset link is emailed (`docs/notifications.md`); the temporary `devOnlyResetToken` field that Phase 3 returned in the response is gone. The token travels in the link's `#fragment`, so it never reaches server logs; the email is sent without awaiting it, so the response time doesn't reveal whether the account exists; and at most 3 reset emails go to one account per 15 minutes. The web app has `/forgot-password` and `/reset-password` pages.
 
 Resetting a password revokes all of that user's existing refresh tokens, so every other logged-in session is forced to log in again.
 
 ## Roles
 
-Four roles exist (`UserRole` enum: `CUSTOMER`, `ORGANIZER`, `STAFF`, `ADMIN`). Only `CUSTOMER` and `ORGANIZER` are self-registerable via the public API (`/auth/register` and `/auth/register-organizer`). `STAFF` accounts are created by organizers for their events (Phase 10), and `ADMIN` accounts are not self-service at all — the only one that exists right now comes from the seed script, for local development.
+Four roles exist (`UserRole` enum: `CUSTOMER`, `ORGANIZER`, `STAFF`, `ADMIN`). Only `CUSTOMER` and `ORGANIZER` are self-registerable via the public API (`/auth/register` and `/auth/register-organizer`). `STAFF` accounts are created by organizers for their events (built in Phase 9 — see `docs/organizer-dashboard.md`, "Staff assignment"), and `ADMIN` accounts are not self-service at all — the only one that exists right now comes from the seed script, for local development.
 
 `@Roles(...)` + `RolesGuard` enforce role checks on the backend on every protected route — never inferred from anything the frontend sends. `RolesGuard` must always be paired with `JwtAuthGuard` listed first (`@UseGuards(JwtAuthGuard, RolesGuard)`), since it reads `request.user`, which only the auth guard populates.
 
 ## Why organizer verification isn't fully built yet
 
 `registerOrganizer` creates the `User` + `Organizer` row together (one transaction — you can't have one without the other), with `verificationStatus` defaulting to `PENDING`. The organizer can log in immediately, but nothing in Phase 3 actually checks that status before letting them do organizer things — that gate belongs to Phase 4 (event creation should probably require `APPROVED`) and the admin approval workflow itself is Phase 14. The database field and the registration flow exist now so those later phases have something to build on, per the Phase 0 plan's instruction to lay groundwork early without building the full feature ahead of its phase.
+
+## Mobile clients
+
+Native apps (`docs/mobile-apps.md`) use the same endpoints as the web, under `/api/v1/auth/…`. Tokens travel in request/response bodies, never cookies, so nothing server-side differs for mobile. The full flow (sign-in, refresh, stolen-token detection, logout) was tested against `/api/v1`. Rules every app must follow:
+
+- **Store the refresh token in secure storage:** the iOS Keychain or Android Keystore, never plain preferences or files. The access token can live in memory.
+- **One refresh at a time.** When several requests get a 401 together, they must share a single `POST /auth/refresh` and wait for it. Refresh tokens are single-use; if two refreshes race with the same token, the second looks like a stolen token and **every session for that user is ended**. The web client does this already (`apps/web/lib/api.ts`).
+- **Replace the stored refresh token with the new one from every refresh response,** before anything else can read the old one.
+- **On logout, call `POST /auth/logout` and delete the stored token immediately.** Presenting a logged-out token again is treated the same as presenting a stolen one: it's refused and all of the user's sessions end. This is the Phase 3 design, deliberately strict; it's why an app must never retry a refresh with a token it has already logged out or rotated.
+- **A 401 from `/auth/refresh` means "sign in again".** Clear the stored tokens and show the sign-in screen; don't retry.
+

@@ -9,6 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import { TicketTypeCategory } from '@prisma/client';
+import { ApiEnumOptional } from '../../common/api-enum';
 
 export class CreateTicketTypeDto {
   @IsUUID()
@@ -17,6 +18,7 @@ export class CreateTicketTypeDto {
   @IsString()
   name!: string;
 
+  @ApiEnumOptional(TicketTypeCategory, 'TicketTypeCategory')
   @IsOptional()
   @IsEnum(TicketTypeCategory)
   category?: TicketTypeCategory;
@@ -32,6 +34,13 @@ export class CreateTicketTypeDto {
   @IsOptional()
   @IsUUID()
   accessZoneId?: string;
+
+  // Phase 8: bind this ticket type to a venue section for reserved
+  // seating. Buyers then pick specific seats (checkout `seatIds`) instead
+  // of just a quantity. Fixed at creation — see UpdateTicketTypeDto.
+  @IsOptional()
+  @IsUUID()
+  sectionId?: string;
 
   @IsOptional()
   @IsDateString()

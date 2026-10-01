@@ -293,6 +293,456 @@ Expected: HTTP 503, a clear message about Wave not being configured. Then check 
 **Test D — order never becomes PAID without going through completeOrder**
 There's no endpoint that lets a customer or organizer directly set an order's status — the only ways to reach `PAID` are the two tested above. Worth a quick code-level sanity check rather than an API call: `grep -rn "status.*PAID" apps/backend/src` should only turn up `payments.service.ts`.
 
+## Phase 7 — QR Ticketing & Check-In
+
+**Read `docs/checkin.md` first** — general admission only this phase (seat-bound QR is Phase 8), and check-in authorization is deliberately coarse (STAFF/ADMIN can scan for any event; full per-event staff assignment is Phase 10).
+
+1. Apply the migration (adds `Ticket.qrCodeSvg`):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev --name add_qr_checkin
+   ```
+
+2. Add the new env var to `.env` (see updated `.env.example` — `CHECKIN_WINDOW_BEFORE_MINUTES`, default 180).
+
+3. Re-seed to get the new `staff@example.com` account:
+   ```bash
+   npx prisma db seed
+   ```
+
+4. Restart the backend.
+
+### Phase 7 test checklist
+
+**Important:** the seeded sample events (`sample-concert-night`, `sample-comedy-night`) are dated December 2026 — outside the check-in window right now. For these tests you need an event happening **now**. Create one as the organizer:
+
+```bash
+curl -X POST http://localhost:4000/api/events \
+  -H "Authorization: Bearer <organizer token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Phase 7 Test Event","categoryId":"<any category id>","venueId":"<the seeded venue id>","startDate":"<now, ISO>","endDate":"<a few hours from now, ISO>"}'
+```
+Then publish it, add a ticket type, and buy one ticket with `provider: "MOCK"` (see Phase 5/6 checklists) so you have an `ACTIVE` ticket and its `qrToken` to test with.
+
+> **Since Phase 10**, a STAFF account can only scan events it's assigned to. Before the check-in tests, assign the seeded staff account to your test event: `curl -X POST http://localhost:4000/api/events/<event id>/staff -H "Authorization: Bearer <organizer token>" -H "Content-Type: application/json" -d '{"email":"staff@example.com","role":"GATE_STAFF"}'` (or use the event's Staff tab in the dashboard). Do the same for `sample-concert-night` before Test G.
+
+**Test A — QR code is viewable**
+```bash
+curl http://localhost:4000/api/tickets/<ticket id>/qr -H "Authorization: Bearer <customer token>"
+```
+Expected: HTTP 200, `{ ticketId, svg: "<svg ...", status: "ACTIVE" }`. Paste the `svg` value into an `.svg` file and open it — it should render as a scannable-looking QR code.
+
+**Test B — valid check-in**
+```bash
+curl -X POST http://localhost:4000/api/check-ins \
+  -H "Authorization: Bearer <staff token>" \
+  -H "Content-Type: application/json" \
+  -d '{"qrToken":"<the raw qrToken from checkout, not the ticket id>","gateId":"<the seeded Gate 1 id>"}'
+```
+Expected: HTTP 201, `{ result: "VALID", ticket: { status: "ACTIVE", ... } }` — note `ticket.status` in the response reflects the status *before* this scan's own update; check `GET /tickets/mine` afterward to see it's now `USED`.
+
+**Test C — re-scanning the same ticket fails**
+Repeat the exact same request from Test B.
+Expected: HTTP 201 still (it's a resolved outcome, not an error), `{ result: "ALREADY_USED", ... }`.
+
+**Test D — a customer token cannot scan**
+Repeat Test B's request with a `CUSTOMER` token instead of `staff`.
+Expected: HTTP 403.
+
+**Test E — wrong gate is rejected**
+Buy a second ticket for the test event, then try to check it in with a `gateId` that belongs to a different venue (or a random UUID).
+Expected: HTTP 400, a message about the gate not belonging to this event's venue.
+
+**Test F — organizer can view the check-in log**
+```bash
+curl http://localhost:4000/api/events/<test event id>/check-ins -H "Authorization: Bearer <organizer token>"
+```
+Expected: an array with the `VALID` and `ALREADY_USED` scans from Tests B/C, newest first.
+
+**Test G — the date window actually works**
+Try checking in a ticket bought for one of the seeded December events (`sample-concert-night`).
+Expected: HTTP 201, `{ result: "WRONG_DATE" }` — confirming the window check isn't a no-op.
+
+## Phase 8 — Venues & Reserved Seating
+
+**Read `docs/seating.md` first** — it explains the new `event_seats` table (why seats are now tracked per event), how double-selling is prevented, seat holds during payment, and zone enforcement at gates. Venue layouts are **admin-managed**; organizers bind ticket types to a section. Backend only — the SVG seat picker is frontend work.
+
+1. Apply the migration (adds `event_seats`, `TicketType.sectionId`, `Gate.accessZoneId`):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+   The migration folder `20260930180337_add_seating` is included — no `--name` needed. Expected: `Your database is now in sync with your schema.`
+
+2. No new env vars.
+
+3. Re-seed:
+   ```bash
+   npx prisma db seed
+   ```
+   Adds (idempotently, safe on your existing data): Lower Bowl grown to rows A–C × 8 seats, a **VIP Box** section (rows A–B × 4), a **VIP** access zone (level 10), a **VIP Gate** assigned to it, and a published reserved-seating event **`sample-seated-show`** with two seated ticket types (Lower Bowl Reserved, VIP Box).
+
+4. Restart the backend.
+
+### Phase 8 test checklist
+
+Log in as admin, organizer, customer and staff first (all `SeedPassword123!`). Get the venue ID from `curl http://localhost:4000/api/events/sample-seated-show` (`venueId`) and the seated event's ID from the same response (`id`).
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Venue layout is readable | `curl http://localhost:4000/api/venues/<venue id>` | `sections` has Lower Bowl (`seatCount: 24`) and VIP Box (`8`); `gates` lists Gate 1 and VIP Gate (VIP Gate's `accessZone.name` is `"VIP"`) — this is also where you get gate IDs now |
+| 2 | Only admins edit layouts | `POST /api/venues/<venue id>/sections` with body `{"name":"Test Stand","rows":[{"label":"A","seats":3}]}` — once with the organizer token, once with admin | Organizer: **403**. Admin: **201**, `seatCount: 3` |
+| 3 | Seat map works | `curl http://localhost:4000/api/events/<seated event id>/seat-map` | Two sections; every seat `"status":"AVAILABLE"`; rows A, B, C in order, seats 1–8 in order. Note a Lower Bowl seat `id` and the Lower Bowl `ticketTypes[0].id` |
+| 4 | Customer buys specific seats | `curl -X POST http://localhost:4000/api/orders/checkout -H "Authorization: Bearer <customer token>" -H "Content-Type: application/json" -d '{"eventId":"<seated event id>","provider":"MOCK","items":[{"ticketTypeId":"<Lower Bowl type id>","quantity":1,"seatIds":["<seat id>"]}]}'` | **201**, order `PAID`, the ticket has `seatId` and `seat: { section, row, number }`. Re-fetch the seat map: that seat is now `SOLD` |
+| 5 | A sold seat can't be bought again | Repeat test 4 exactly | **409**, `"Seat(s) no longer available: …"` |
+| 6 | Seat rules are enforced | (a) test 4 without `seatIds`; (b) `quantity: 2` with one seat; (c) a VIP Box seat ID with the Lower Bowl type | All **400**, and `quantitySold` on the ticket type doesn't change |
+| 7 | Pending payment holds the seat | Test 4 with a new seat and `"provider":"BANK_TRANSFER"`, then check the seat map, then try buying the same seat as a different customer | Seat shows `HELD`; the second buyer gets **409** |
+| 8 | Seat-bound QR + zone check at gates | Create an event happening **now** at the same venue (see Phase 7 checklist), publish it, assign `staff@example.com` to it (required since Phase 10), add a seated ticket type for Lower Bowl with `"sectionId":"<Lower Bowl id>","accessZoneId":"<Main zone id>"`, buy one seat. Then `POST /api/check-ins` as staff with `gateId` = **VIP Gate**, then again with **Gate 1** | VIP Gate: **201**, `result: "NO_ACCESS"` (ticket stays `ACTIVE`). Gate 1: **201**, `result: "VALID"` with `ticket.seat` showing the seat |
+| 9 | QR endpoint shows the seat | `curl http://localhost:4000/api/tickets/<ticket id from test 4>/qr -H "Authorization: Bearer <customer token>"` | `seat: { section: "Lower Bowl", row, number }` alongside `svg` |
+
+Extra checks worth trying, not on the list:
+- Block a seat as admin: `POST /api/sections/<section id>/seats/blocked` with `{"seatIds":["<id>"],"isBlocked":true}` → seat map shows `BLOCKED`, checkout for it → **409**. Unblock with `"isBlocked":false`.
+- Try creating a seated ticket type with `quantityTotal` larger than the section's seats → **400**.
+- Try changing the venue of an event that has seated ticket types (`PUT /api/events/<id>` with a different `venueId`) → **400**.
+- Race condition: fire 10 simultaneous checkouts for the same seat from 10 different customer accounts — exactly one gets 201, nine get 409.
+
+## Phase 9 — Organizer Dashboard
+
+**Read `docs/organizer-dashboard.md` first** — it lists every screen and endpoint, defines each number the dashboard shows (tickets sold vs reserved, ticket revenue vs platform fees), and explains staff accounts. This is the first phase with real frontend screens.
+
+1. Apply the migration (adds `User.staffOrganizerId`):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+
+2. Re-seed (links `staff@example.com` to the seeded organizer so it can be assigned):
+   ```bash
+   npx prisma db seed
+   ```
+
+3. Restart the backend.
+
+4. Run the frontend. No new dependencies — if `apps/web/node_modules` already exists you can skip `npm install`:
+   ```bash
+   cd apps/web
+   npm run dev
+   ```
+   Open `http://localhost:3000/login` and sign in as `organizer@example.com` / `SeedPassword123!`.
+
+### Phase 9 test checklist
+
+Most of these are done in the browser at `http://localhost:3000`.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Organizer can sign in | `/login` as `organizer@example.com` | Lands on the overview: business name, revenue/tickets/check-in totals, "Coming up" list with sold bars, latest paid orders |
+| 2 | Other roles can't use the dashboard | Sign out, sign in as `customer@example.com`; then open `http://localhost:3000/organizer` in a signed-out tab | Customer: an error saying it isn't an organizer account. Signed out: redirected to `/login` |
+| 3 | Create and publish an event | Events → Create event → fill in → Create draft; in Ticket types add a GA type (price in dalasi) and a reserved type for "VIP Box" with the VIP zone; click Publish | Draft created; Publish is disabled until a ticket type exists; after publishing the badge says Published and a **Seats** tab appears |
+| 4 | Ticket type rules show in the UI | Try adding a reserved type for VIP Box with "How many" = 9 | Error: exceeds the 8 sellable seats |
+| 5 | Sales numbers are right | Buy 2 GA tickets for the new event with `provider: "MOCK"` (Phase 6 curl), refresh its Overview | Tickets sold 2, ticket revenue = 2 × price, platform fee shown separately, a bar on today in "Sales per day" |
+| 6 | Orders and attendees | Orders tab, then Attendees tab; type the buyer's email in each search box | The order/tickets appear; search narrows to them; status filter works |
+| 7 | Check-ins show up | Check one of those tickets in (Phase 7 curl with the staff token), open the Check-ins tab | A `Valid` row with time and gate; Attendees shows "Checked in" time for that ticket |
+| 8 | Assign staff | Staff tab: tick "doesn't have a staff account yet", enter a new email, name, 12+ char password, pick Gate 1 → Create account and assign. Then assign `staff@example.com` (no password). Then try `customer@example.com` | New account created and listed; seeded staff assigned; customer email refused with "not one of your staff". The new account can log in via `POST /api/auth/login` |
+| 9 | Staff roster | Sidebar → Staff | Both staff accounts listed with the event they're assigned to |
+| 10 | Other organizers can't see your data | Register a second organizer (`/api/auth/register-organizer`), then `curl http://localhost:4000/api/events/<your event id>/dashboard -H "Authorization: Bearer <second organizer token>"` | **404** |
+
+Extra checks worth trying, not on the list:
+- Pause sales on a ticket type, then try buying it via checkout → 400 "not currently on sale". Resume it.
+- Change a ticket type's price after selling some → past revenue on the Overview doesn't change (it uses the price each order actually paid).
+- Leave the Check-ins tab open and scan a ticket from a terminal — the row appears within 15 seconds.
+- Open the dashboard at phone width (browser dev tools) — sidebar becomes a top bar, the date stub folds under the header, tables scroll sideways.
+
+## Phase 10 — Staff Scanner App
+
+**Read `docs/scanner.md` first** — it covers the scanner screens, what changed in `POST /check-ins` (staff must now be assigned; `WRONG_EVENT`; assigned gates), the new `CheckIn.eventId` column, and how to scan from a phone.
+
+1. Apply the migration (adds `CheckIn.eventId`; hand-written to backfill your existing check-ins before making the column required):
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+
+2. Restart the backend. No seed changes.
+
+3. Install the one new frontend dependency (`jsqr`, the QR decoder) and restart the frontend:
+   ```bash
+   cd apps/web
+   npm install
+   npm run dev
+   ```
+
+4. Optional, for scanning from a phone on your Wi-Fi: see "Scanning from a phone" in `docs/scanner.md`.
+
+### Phase 10 test checklist
+
+You'll need an event happening **now** with a couple of tickets bought (create it from the dashboard or with the Phase 7 curl, then buy with `provider: "MOCK"` — the checkout response includes each ticket's `qrToken`, and the ticket's `qrCodeSvg`).
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Staff land on the scanner | In the dashboard, assign `staff@example.com` to the event (Staff tab). Sign out, sign in as `staff@example.com` | Lands on **/scan**, listing that event |
+| 2 | Unassigned staff can't scan | From the Staff tab, create a second staff account but assign it to a *different* event. Sign in as it: the live event isn't listed. Then `curl -X POST http://localhost:4000/api/check-ins -H "Authorization: Bearer <that staff token>" -H "Content-Type: application/json" -d '{"qrToken":"<a ticket token>","eventId":"<live event id>"}'` | Not listed; curl → **403** "You're not assigned to this event" |
+| 3 | Camera scan | As `staff@example.com`, open the event, tap **Start camera**, show it a ticket's QR (open the ticket's `qrCodeSvg` in a browser on another screen, or print it) | Green **Let in** with the ticket type; counter goes up by 1; the scan appears under "Your recent scans" |
+| 4 | Same ticket twice | Keep the QR in view for several seconds, then take it away and show it again | While it stays in view: nothing new. Shown again: amber **Already scanned** |
+| 5 | Manual entry | Paste another ticket's `qrToken` into the code box → Check; then type `hello` → Check | **Let in**; then **Not a valid ticket code** |
+| 6 | Wrong event | Buy a ticket for a *different* event, paste its token on this event's scanner | Red **Wrong event** naming the other event; the scan shows in *this* event's Check-ins tab, not the other event's |
+| 7 | Assigned gate | In the Staff tab set `staff@example.com`'s gate to **Gate 1**. Reload the scanner | Gate shows "Gate 1 (assigned)" with no picker; the next scan appears in Check-ins at Gate 1 |
+| 8 | Wrong gate | Assign a staff member to the **VIP Gate**, scan a regular (non-VIP) ticket with them | Red **Wrong gate**; the ticket still works afterwards at Gate 1 |
+| 9 | Organizer can scan their own door | As the organizer, click **Scanner** in the sidebar | Their own live events are listed and scanning works without an assignment |
+
+Extra checks worth trying:
+- Remove a staff member's assignment while they have the scanner open — their next scan is refused ("You're not assigned to this event").
+- Deny camera permission — the page says so and manual entry still works.
+- On a phone (see `docs/scanner.md`), check the verdict is readable at arm's length and the phone buzzes differently for success and refusal.
+
+## Mobile app prerequisites — API versioning & OpenAPI
+
+Groundwork for the organizer/staff mobile apps (`docs/mobile-apps.md`, Step 1). **Read `docs/api.md`** for the details.
+
+- Every route is now also at **`/api/v1/…`**. The old `/api/…` paths keep working as an alias (so all the curl commands above still work), until it's removed before launch.
+- **Interactive API docs** at `http://localhost:4000/api/docs` (development only), and the spec committed as `apps/backend/openapi.json`.
+- **`GET /api/v1/app-config`** tells mobile apps the minimum and latest supported versions.
+
+1. Install the new backend dependency (`@nestjs/swagger`):
+   ```bash
+   cd apps/backend
+   npm install
+   ```
+2. Optionally add the four `MOBILE_*_VERSION_*` variables from `.env.example` to `.env` (defaults are fine).
+3. Restart the backend (and the frontend, which now calls `/api/v1`). No migration, no seed changes.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Versioned routes | `curl http://localhost:4000/api/v1/health` and `curl http://localhost:4000/api/health` | Both 200, same response. `curl -i http://localhost:4000/api/v2/health` → 404 |
+| 2 | API docs | Open `http://localhost:4000/api/docs` in a browser | Swagger UI listing the API by area (Auth, Events, Scanner, …) |
+| 3 | Try a request from the docs | In the docs, run **Auth → POST /api/v1/auth/login** with `organizer@example.com` / `SeedPassword123!`, copy `accessToken`, click **Authorize** and paste it, then run **Scanner → GET /api/v1/scanner/events** | Login 200 with tokens; scanner events 200 with the organizer's live events |
+| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 88 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
+| 5 | App config | `curl http://localhost:4000/api/v1/app-config` | `apiVersion "1"`, versions `0.0.0`. Set `MOBILE_MIN_VERSION_IOS=1.2.0` in `.env`, restart → the iOS minimum shows `1.2.0` |
+| 6 | Web app still works | Sign in at `http://localhost:3000` and open an event | Works as before (requests now go to `/api/v1`, visible in the browser's network tab) |
+
+## Staff app (React Native) — performance bake-off
+
+The organizer/staff scanner as a phone app, for the bake-off in `docs/mobile-apps.md`. **Instructions are in `apps/mobile/README.md`**: running it on your phones with Expo Go, the timed ticket queue (`bench/make-tickets.mjs`), and what to measure.
+
+Quick start (backend running, phone on the same Wi-Fi as the Mac, Expo Go installed):
+
+```bash
+cd apps/mobile
+npm install
+npm run start:bench
+```
+
+Scan the terminal's QR code (Android: from inside Expo Go; iPhone: with the Camera app) and sign in as `staff@example.com`.
+
+## Edit event + banner and poster upload
+
+Organizers can now edit an event and give it a banner and a poster. **Read `docs/storage.md`** for how images are checked, cropped and stored.
+
+- **Event page → Edit event**: all the event details, plus a **Banner** (3:1) and **Poster** (2:3). Drag and zoom the picture inside the frame; what's in the frame is what's saved.
+- Images are checked and re-encoded by the backend (JPEG/PNG/WebP only, 10 MB, metadata such as GPS location removed) and stored under `apps/backend/uploads/` in development, or in S3/R2 in production.
+- `posterUrl` / `bannerUrl` can no longer be sent as text to `POST`/`PUT /events`; use the upload endpoints.
+
+1. Install the new backend dependencies (`sharp` for images, the S3 client, `express`):
+   ```bash
+   cd apps/backend
+   npm install
+   ```
+2. Nothing to add to `.env` for local development (the storage settings in `.env.example` are optional). No migration, no seed changes.
+3. Restart the backend and the frontend.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Open the editor | Sign in as `organizer@example.com`, open **Sample Seated Show** → **Edit event** | Form filled with the event's details; **Venue** is locked ("some ticket types use this venue's sections") |
+| 2 | Edit details | Change the description, add an Instagram link `https://instagram.com/test`, **Save changes** | Back on the event page; open Edit again → the changes are there. The web address (slug) hasn't changed |
+| 3 | Clear a field | Empty the description, save | Description is gone (not an empty string) |
+| 4 | Bad link | Type `javascript:alert(1)` as the Website link, save | Browser asks for a URL; with the check bypassed (e.g. in the API docs) the backend answers 400 |
+| 5 | Upload a banner | **Choose banner…**, pick a wide photo, drag it and use the zoom slider, **Save banner** | Banner appears in the Banner card and at the top of the event's Overview tab |
+| 5b | Fit a flyer | Choose a poster image that isn't 2:3 (e.g. a square flyer), click **Fit whole image**, try **Blurred** and **Plain colour**, then **Save poster** | The whole flyer is shown with nothing cut off, centred on a blurred or plain-colour background; the saved poster looks like the preview |
+| 6 | Stored file | Right-click the banner → Open image in new tab | URL is `http://localhost:4000/media/events/…/banner-….webp`; the image is 1920 × 640 and shows exactly what was in the frame |
+| 7 | Photo metadata removed | Upload a phone photo that has location info as the poster, then open the stored image's info (Preview → Tools → Show Inspector on the Mac) | No GPS or camera details in the stored WebP |
+| 8 | Replace and remove | **Replace…** the banner with another image, then **Remove** it | Old file URL returns 404 after replacing; after removing, the card shows "No banner yet" |
+| 9 | Wrong files | Try a GIF, an SVG, a file over 10 MB, and a tiny image (e.g. 400 × 150) as the banner | Each is refused with a clear message; nothing is saved. A smallish image (e.g. 857 × 360) shows a yellow "may look soft" warning but can be saved |
+| 10 | Venue change with sales | On an event with sold tickets, change the start time, save | A confirmation says buyers won't be told automatically; saving works after confirming |
+| 11 | Other organizer | In the API docs, sign in as a different organizer and call `POST /api/v1/events/{id}/images/banner` for this event | 403 |
+| 12 | Automated suite | With the backend running: `cd apps/backend && node edit-event-test.js` | `19/19 passed` (the file is in `apps/backend` but not committed: `*.js` files there are git-ignored, like the earlier phase tests) |
+
+## Phase 12 — Notifications (email)
+
+The platform now emails people: tickets with QR codes after payment, bank-transfer payment details, expired reservations, event time/venue changes, cancellations, a reminder the day before, "you're on the team" for staff, and password reset links. **Read `docs/notifications.md`** for what is sent when, and how.
+
+- Emails go through an **outbox** table, queued in the same transaction as the change that caused them, then sent by a worker in the backend with retries.
+- **Event changes are sent 5 minutes after saving**, combined into one email per person, and dropped if the change is undone.
+- **Password reset now works by email**, with new `/forgot-password` and `/reset-password` pages and a link on the sign-in page. The old `devOnlyResetToken` in the API response is **removed**.
+- **Expired reservations are now released every minute**, not only when someone else checks out.
+- **No email account is needed to develop.** Without `SMTP_HOST`, emails are written as HTML files to `apps/backend/mail-previews/`. For a real inbox, use **Mailpit** (step 4).
+
+1. Install the new backend dependency (`nodemailer`):
+   ```bash
+   cd apps/backend
+   npm install
+   ```
+2. Apply the migration (the notifications table becomes an outbox):
+   ```bash
+   npx prisma migrate dev
+   ```
+3. Optionally copy the Notifications block from `.env.example` into `.env`. The defaults work as they are.
+4. Optional, recommended: a local inbox. From the project root, `docker compose up -d mailpit`, then add to `apps/backend/.env`:
+   ```bash
+   SMTP_HOST=localhost
+   SMTP_PORT=1025
+   ```
+   Restart the backend, and the emails appear at http://localhost:8025.
+5. Restart the backend and the frontend. The backend log says either `Sending email via SMTP` or `via log files`.
+
+### Phase 12 test checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Tickets email | In the API docs (`/api/docs`), sign in as `customer@example.com`, then `POST /api/v1/orders/checkout` for a published event with `"provider": "MOCK"` and 2 tickets | Within ~5 s an email "Your 2 tickets for …" (Mailpit, or a new file in `mail-previews/`), with 2 QR codes, the event details and the amount paid |
+| 2 | QR from the email scans | Open that email on the Mac and scan a QR code with the staff app or `/scan` | **Let in**; scanning it again says **Already scanned** |
+| 3 | Bank transfer | Checkout with `"provider": "BANK_TRANSFER"` | "Complete your payment" email with the amount, deadline, bank details and reference. Confirm it as the organizer (`POST /payments/{id}/confirm-bank-transfer`) → the tickets email follows |
+| 4 | Event change | As the organizer, **Edit event** on an event with sold tickets: change the start time, save; then change the venue, save | The form says holders will be emailed. Nothing is sent for 5 minutes, then **one** email per holder showing both changes (old crossed out, new in bold) |
+| 5 | Change undone | Change an event's time, save, change it back within 5 minutes | No email is sent |
+| 6 | Cancellation | Cancel an event with sold tickets | Each ticket holder gets one "Cancelled: …" email |
+| 7 | Staff | In an event's **Staff** tab, add a new staff member | They get "You're on the team for …" with the role, gate and a link to the scanner |
+| 8 | Forgot password | On the sign-in page, click **Forgot your password?** and enter `staff@example.com` | "If an account exists…". The email has a **Choose a new password** button → set a new one → sign in with it. Using the same link again is refused |
+| 9 | No account leak | Request a reset for an address with no account | Exactly the same message, and no email |
+| 10 | Overview counts | Open an event's Overview | Under the tables: "Emails about this event: N sent" |
+| 11 | Failed emails | Stop Mailpit (`docker compose stop mailpit`), buy a ticket, wait 10 s, start it again | The log shows a retry; about a minute later the email arrives. As admin, `GET /api/v1/admin/notifications?status=PENDING` shows it in between with the error |
+| 12 | Automated suite | `cd apps/backend && node phase12-test.js` (backend running) | `14/14 passed`. With Mailpit on, the email-content checks are skipped; look at the emails in Mailpit instead |
+
+## Phase 13 — Refunds & ticket transfers
+
+**Read `docs/refunds-transfers.md`.**
+
+**Refunds**
+- **Refund policy per event**, set in Edit event: no refunds on request (default), until N days before, or any time before the start.
+- **Ticket holders request, the organizer decides** in the new **Refunds** tab. Holders can always ask if the date or venue changed after they bought.
+- **Organizers can refund tickets directly** from the Attendees tab.
+- **Approved refunds void the tickets straight away** and put them back on sale.
+- **Money goes back automatically** for Mock and whole Wave payments. Bank transfers and partial Wave refunds are paid back by hand, and an admin marks them paid.
+- **The booking fee is refunded only when the event is cancelled.**
+- **Cancelling an event now asks what happens to the money:** refund everyone automatically (default), or "I'll handle refunds myself", in which case holders can request a refund at any time.
+- **Dashboard revenue is now net of refunds.**
+
+**Transfers**
+- Ticket holders offer a ticket to an email address. The recipient accepts on a new `/transfer` page, signing in or creating an account.
+- The ticket gets a new QR code, so the old one stops working.
+- Organizers can turn transfers off per event.
+
+1. Apply the migration:
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+2. Restart the backend and the frontend. No new packages, no seed changes.
+
+Customers don't have screens for requesting refunds or sending transfers yet (that's the storefront). Use the API docs at `/api/docs`, signed in as a customer.
+
+### Phase 13 test checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Set a policy | Edit an event: Refunds on request → **Until a number of days before**, 3 days; save | Saved; the Refunds tab shows "Refunds on request until 3 days before the event" |
+| 2 | Customer asks | API docs, signed in as `customer@example.com`: buy 2 tickets for that event (MOCK), then `POST /api/v1/refunds` with the `orderId` and a reason | `REQUESTED` with the ticket price (no booking fee). The organizer gets a "Refund request" email; the event shows **Refunds (1)** |
+| 3 | Approve | Refunds tab → **Approve refund** | The request moves to All refunds, status **Processed** (Mock pays back instantly); the customer gets "Refund sent". Scanning that ticket says **Refunded**; tickets sold goes down by 2 |
+| 4 | Decline | Make another request; **Decline…** with a reason | Customer gets the reason by email; their tickets still work |
+| 5 | No-refund event | On an event with "No refunds on request", try `POST /refunds` | 400 "This event doesn't offer refunds" |
+| 6 | Date change | On that no-refund event, change the start time, then request again as the earlier buyer | Allowed (they bought before the change) |
+| 7 | Refund directly | Attendees tab → tick a ticket → **Refund selected…** | "Refunded 1 ticket (D…)"; it shows as Refunded |
+| 8 | Bank transfer refund | Buy with `BANK_TRANSFER`, confirm the payment as organizer, request and approve a refund | Status **Approved**, "to be paid back by hand". As admin: `GET /admin/refunds?status=APPROVED&method=MANUAL` lists it; `POST /admin/refunds/{id}/mark-paid` with a reference → Processed, customer emailed |
+| 9 | Cancel, automatic | **Cancel event** on an event with sales, keep **Refund everyone automatically** | Every order refunded in full **including the booking fee**; the cancellation email says "full refund of D…"; no ticket for it scans as valid |
+| 10 | Cancel, organizer handles | Cancel another event with **I'll handle refunds myself** | No refunds yet; the email says they can ask for a full refund any time; a holder's `POST /refunds` works even with a no-refund policy (fee included) |
+| 11 | Revenue | Overview of an event with refunds | Ticket revenue is net of refunds; "Refunded D…" line |
+| 12 | Transfer | Use an event starting within the next 3 hours (so the gate accepts scans). As a customer: `POST /api/v1/tickets/{ticketId}/transfer` with a new email address. Open the "sent you a ticket" email (Mailpit or `mail-previews/`) → **Accept the ticket** → create an account with that address | "The ticket is yours"; a "Your ticket for …" email with a **new** QR. Scanning the **old** QR → Invalid; the new one → Let in. The sender gets "accepted your ticket" |
+| 13 | Transfers off | Edit an event, untick "Ticket holders may send their tickets…", try a transfer | 400 "The organizer doesn't allow ticket transfers for this event" |
+| 14 | Automated suite | `cd apps/backend && node phase13-test.js` | `19/19 passed` (transfer acceptance checks need the default log mode, not Mailpit) |
+
+## Organizer trust levels (anti-fraud)
+
+Not every organizer gets every power. **Read `docs/organizer-trust.md`.**
+
+- **New organizers** (once approved) start with these limits:
+  - their events are **reviewed by an admin before going on sale**;
+  - **up to 300 tickets and D2,500 per ticket** per event;
+  - they **can't confirm bank transfers** (the platform does);
+  - **cancelling always refunds everyone**.
+- **Trusted organizers** have none of these limits. An admin sets the level, and can override single permissions or limits per organizer.
+- **Suspending** an organizer stops ticket sales for all their events at once.
+- **Organizers approved before this change** were made Trusted, so nothing changes for the sample organizer.
+
+1. Apply the migration:
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+2. Optionally set `NEW_ORGANIZER_MAX_TICKETS_PER_EVENT` / `NEW_ORGANIZER_MAX_TICKET_PRICE` in `.env` (defaults 300 and 250000 = D2,500).
+3. Restart the backend and the frontend.
+
+There's no admin screen yet (that's Phase 14): use the API docs at `/api/docs`, signed in as `admin@example.com`.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | New organizer waits | Sign up a new organizer (`POST /auth/register-organizer`), create an event with a ticket type, publish | 403 "not yet approved" |
+| 2 | Approve | Admin: `GET /admin/organizers?verificationStatus=PENDING`, then `PATCH /admin/organizers/{id}` with `{"verificationStatus":"APPROVED"}` | Response shows `trustLevel: NEW` and the restricted permissions; the organizer gets an "approved" email |
+| 3 | Limits shown | Sign in to the web app as the new organizer | Dashboard lists the new-account limits; Ticket types tab shows "Your account limits…" |
+| 4 | Limits enforced | Add ticket types totalling more than 300, or one over D2,500 | Refused with a clear message |
+| 5 | Review | Click **Submit for review** | Event says "Waiting for review"; admin gets a "Review needed" email; it can't be bought |
+| 6 | Send back | Admin: `POST /admin/events/{id}/reject` with `{"note":"Add the venue address"}` | Event back to Draft with "Changes requested: Add the venue address"; organizer emailed |
+| 7 | Approve event | Submit again; admin `POST /admin/events/{id}/approve` | Published and on sale; organizer emailed "is live" |
+| 8 | Bank transfers | Buy a ticket by bank transfer for that event; organizer `POST /payments/{id}/confirm-bank-transfer` | 403 "The platform confirms bank-transfer payments…"; as admin it works |
+| 9 | Cancel | As the new organizer, **Cancel event** | Only "Refund everyone automatically" is offered |
+| 10 | Trust | Admin `PATCH` with `{"trustLevel":"TRUSTED"}` | Organizer emailed; the limits panel disappears; publishing goes live straight away |
+| 11 | Suspend | Admin `PATCH` with `{"verificationStatus":"SUSPENDED"}`, then try to buy a ticket for their event | 403 "Ticket sales for this event are paused"; their dashboard shows the suspension. `{"verificationStatus":"APPROVED"}` resumes sales |
+| 12 | Automated suite | `cd apps/backend && node organizer-trust-test.js` | `10/10 passed` |
+
+## Payouts and the verified badge
+
+**Read `docs/payouts.md`.**
+
+- **Payouts:** organizers no longer have to be paid by hand outside the system. They ask for their money on the new **Payouts** page, and **an admin approves every payout** before sending it.
+  - **When money is available:** an event's money becomes available **2 days after it ends**. An admin can allow an advance (a % before the event) per organizer.
+  - **Payout details:** changing where money goes needs the organizer's **password**, emails everyone, and must be **confirmed by an admin** before the first payout.
+- **Verified badge:** admins can give official organizers (e.g. the GFA) a **blue tick**.
+  - **Impersonation:** copies of a verified organizer's name are refused at sign-up, and close names are flagged to admins.
+  - **Public event responses:** these now show only the organizer's name and badge. Previously they included the organizer's private trust settings and admin note.
+
+1. Apply the migration and restart:
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+   Then restart the backend and the frontend.
+2. Optionally set `PAYOUT_HOLD_DAYS` (default 2) and `PAYOUT_MIN_AMOUNT` (default 10000 = D100) in `.env`.
+
+Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@example.com`. The emails admins receive include the exact calls.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Payouts page | Sign in as `organizer@example.com`, open **Payouts** | Totals, "Add where we should send your money first", your events with when each becomes available |
+| 2 | Password needed | Fill in a Wave number with a wrong password | "That password isn’t right." |
+| 3 | Add details | Save with the right password | Shown as **Being checked**; the organizer and the admin get emails (Mailpit or `mail-previews`) |
+| 4 | Admin confirms | `GET /admin/organizers` → copy `payoutAccount.updatedAt` → `POST /admin/organizers/{id}/payout-account/verify` with `{"updatedAt": "…"}` | **Confirmed** on the Payouts page; organizer emailed |
+| 5 | Held until after the event | Look at **By event** | Upcoming events say "From <date>" (2 days after the end); **Available now** counts only ended events |
+| 6 | Too small | Request D50 (when more is available) | "The smallest payout is D100.00…" |
+| 7 | Request | Request an amount | **Payout in progress**, "Waiting for approval"; the **Change** button for payout details is disabled; admin emailed |
+| 8 | Cancel | **Cancel request** | Back in the balance; History shows "You cancelled it" |
+| 9 | Approve and pay | Request again; admin `POST /admin/payouts/{id}/approve`, then `…/mark-paid` with `{"reference":"WAVE-123"}` | Organizer gets "approved" then "on its way" emails; Paid out goes up; History shows the reference |
+| 10 | Reject | Request; admin `…/reject` with `{"note":"…"}` | Organizer emailed with the reason; amount back in the balance |
+| 11 | Advance | Admin `PATCH /admin/organizers/{id}` with `{"payoutAdvancePercent": 50}` | Upcoming events show "50% now"; Available goes up |
+| 12 | Verified badge | Admin `PATCH /admin/organizers/{id}` with `{"verifiedBadge": true}` | Blue tick next to the name on the organizer dashboard; organizer emailed; `GET /api/v1/events/{id}` shows `organizer: {id, businessName, verified: true}` and nothing else |
+| 13 | Name copies | Sign up an organizer called "The Sample Events Ltd Official" | 409 "That name belongs to a verified organizer…" |
+| 14 | Lookalikes | Sign up "Sample Eventz" | Allowed; `GET /admin/organizers/{id}` shows `lookalikeOf: Sample Events Ltd` |
+| 15 | Automated | `node payouts-badge-test.js` in `apps/backend` | `12/12 passed` |
+
 ## Project structure
 
 ```
@@ -306,24 +756,47 @@ event-ticketing-platform/
 │   │   │   ├── ticket-types/  # organizer-managed ticket types per event
 │   │   │   ├── payments/      # Wave/Bank/Mock providers, webhook, refund stub
 │   │   │   ├── orders/        # checkout, atomic inventory locking, order history
-│   │   │   ├── tickets/       # ticket listing (scanning/QR display is Phase 7)
-│   │   │   ├── common/        # shared token generation/hashing util
+│   │   │   ├── tickets/       # ticket listing, QR display (seat-bound since Phase 8)
+│   │   │   ├── check-ins/     # scan validation pipeline, check-in log
+│   │   │   ├── venues/        # venue layouts (admin), seat maps per event
+│   │   │   ├── dashboard/     # organizer overview, event stats, orders, attendees
+│   │   │   ├── event-staff/   # staff accounts and event assignments
+│   │   │   ├── scanner/       # scanner app reads: my events, door progress
+│   │   │   ├── app-config/    # mobile app version check
+│   │   │   ├── common/        # shared token/hashing/QR-rendering utils, OpenAPI enum helper
+│   │   │   ├── openapi.ts     # app setup (prefix, /v1 versioning, validation) + OpenAPI builder
 │   │   │   ├── health/       # /api/health endpoint
 │   │   │   ├── prisma/       # Prisma service (DB connection)
 │   │   │   ├── app.module.ts
 │   │   │   └── main.ts
+│   │   ├── openapi.json       # generated API spec (npm run openapi)
 │   │   └── prisma/
 │   │       ├── schema.prisma
 │   │       └── seed.ts
+│   ├── mobile/           # staff app, React Native (Expo) — bake-off build
+│   │   ├── src/app/           # screens: sign-in, event list, scanner
+│   │   ├── src/api/           # API client + types generated from openapi.json
+│   │   └── bench/             # timed ticket-queue tool for performance tests
 │   └── web/              # Next.js frontend
-│       └── app/
+│       ├── app/
+│       │   ├── login/                 # sign-in for organizers and staff
+│       │   ├── (organizer)/organizer/ # dashboard pages (Phase 9)
+│       │   └── (scanner)/scan/        # staff scanner (Phase 10)
+│       ├── components/        # UI pieces, event tabs, sales chart, seat map
+│       └── lib/               # API client + token refresh, hooks, QR camera scanner, formatting, types
 ├── docs/
 │   ├── architecture.md   # Phase 0 planning document
 │   ├── database.md       # Phase 2 schema decisions and constraint notes
 │   ├── auth.md            # Phase 3 token strategy and design decisions
 │   ├── events.md          # Phase 4 status lifecycle and visibility rules
 │   ├── ticketing.md       # Phase 5 checkout design, concurrency, temporary shortcuts
-│   └── payments.md        # Phase 6 provider design, Wave status, reservation expiry
+│   ├── payments.md        # Phase 6 provider design, Wave status, reservation expiry
+│   ├── checkin.md         # Phase 7 QR generation, check-in validation pipeline, staff auth
+│   ├── seating.md         # Phase 8 venue layouts, per-event seat holds, seat-bound QR, gate zones
+│   ├── organizer-dashboard.md # Phase 9 screens, dashboard numbers, staff accounts, frontend foundations
+│   ├── scanner.md         # Phase 10 scanner app, check-in enforcement, phone setup
+│   ├── api.md             # API versioning, OpenAPI spec, app config
+│   └── mobile-apps.md     # organizer/staff mobile apps plan (React Native → native fallback)
 ├── docker-compose.yml
 └── .github/workflows/    # CI, added properly from Phase 2 onward
 ```

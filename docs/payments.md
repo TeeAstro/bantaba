@@ -41,11 +41,11 @@ Two things exist specifically to make this phase fully testable anyway:
 
 A `PENDING` order holds its inventory reservation (the same `quantitySold` increment from Phase 5) for `RESERVATION_TTL_MINUTES` (default 15). If payment never completes, that hold needs releasing eventually or a customer who abandons checkout permanently locks tickets away from everyone else.
 
-**How this is actually triggered right now:** lazily, at the start of every `POST /orders/checkout` call, before that request's own availability check — `OrdersService.checkout` calls `PaymentsService.releaseExpiredReservations()` first. This is a real gap, not glossed over: it means an expired reservation isn't released until *someone else* happens to try to check out. A production deployment needs a real scheduled job for this — `docker-compose.yml` already runs Redis, and `docs/architecture.md`'s stack section already calls for BullMQ, so the natural fix is a BullMQ repeatable job calling `releaseExpiredReservations()` every minute or so. That wiring isn't built yet; it's not hard, it just wasn't this phase's job to also stand up a background-job system.
+**How this is triggered:** every minute by a timer in the backend (Phase 12, `RESERVATION_SWEEP_SECONDS`), and still at the start of every `POST /orders/checkout` before that request's availability check, so inventory is correct even between runs. Before Phase 12 only the checkout trigger existed, so an expired reservation wasn't released until someone else tried to check out. When a lapsed reservation was a bank transfer, the customer is emailed that it expired (`docs/notifications.md`).
 
-## Refund — architecture only
+## Refunds
 
-`POST /payments/:id/refund` (admin-only) exists to prove the state transition works: it marks the payment `REFUNDED`, the order `REFUNDED`, every ticket from that order `REFUNDED`, and creates a `Refund` row. What it does **not** do: partial refunds, actually calling Wave/the bank to move money back, or a customer-initiated request flow. That's Phase 13's job, building on this rather than redoing it.
+Built in Phase 13: customer requests, organizer decisions, refunds when an event is cancelled, refunds through Wave's API (whole payments) or paid back by hand (bank transfers, partial Wave refunds). See `docs/refunds-transfers.md`. `POST /payments/:id/refund` (admin) now does a real full refund of the payment, booking fee included.
 
 ## Known limitation: a rare orphaned-payment edge case
 
