@@ -91,7 +91,7 @@ Admins can mark an organizer as **verified**: the platform has confirmed it's th
 - **Setting it:** `PATCH /admin/organizers/:id` with `{"verifiedBadge": true}` (or `false`). It's only allowed for approved organizers, and the organizer gets an email when it's given.
 - **When it shows:** while the account is approved. Suspending hides it.
 - **Separate from trust:** the badge is about identity, not permissions. A verified organizer can still be NEW with all the limits, and a trusted one needn't be verified. In practice official bodies are usually both.
-- **What the public sees:** event responses (`GET /events`, `GET /events/:id`) now include only `organizer: { id, businessName, verified }`. Before, `GET /events/:id` returned the whole organizer record, including the trust settings and the admin's private note; that has been closed.
+- **What the public sees:** event responses (`GET /events`, `GET /events/:id`) now include only `organizer: { id, slug, businessName, logoUrl, verified }` (the slug and picture link to their profile, `docs/organizer-profiles.md`). Before, `GET /events/:id` returned the whole organizer record, including the trust settings and the admin's private note; that has been closed.
 - **On screen:** the organizer's own dashboard shows the tick next to their name. The customer storefront will show it on event pages (`components/VerifiedBadge.tsx` is ready for it).
 
 **Impersonation.** The badge is only useful if nobody else can look like the GFA:

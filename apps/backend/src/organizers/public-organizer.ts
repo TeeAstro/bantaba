@@ -6,19 +6,49 @@ import { Organizer, OrganizerVerificationStatus } from '@prisma/client';
 // suspended.
 export interface PublicOrganizer {
   id: string;
+  slug: string; // their profile: /o/<slug> (docs/organizer-profiles.md)
   businessName: string;
+  logoUrl: string | null;
   verified: boolean;
 }
 
-export function publicOrganizer(o: Pick<Organizer, 'id' | 'businessName' | 'verifiedBadge' | 'verificationStatus'>): PublicOrganizer {
+export function publicOrganizer(o: Pick<Organizer, 'id' | 'slug' | 'businessName' | 'logoUrl' | 'verifiedBadge' | 'verificationStatus'>): PublicOrganizer {
   return {
     id: o.id,
+    slug: o.slug,
     businessName: o.businessName,
+    logoUrl: o.logoUrl,
     verified: o.verifiedBadge && o.verificationStatus === OrganizerVerificationStatus.APPROVED,
   };
 }
 
-export const PUBLIC_ORGANIZER_SELECT = { id: true, businessName: true, verifiedBadge: true, verificationStatus: true } as const;
+export const PUBLIC_ORGANIZER_SELECT = { id: true, slug: true, businessName: true, logoUrl: true, verifiedBadge: true, verificationStatus: true } as const;
+
+// ---------- profile URL names ----------
+
+export function organizerSlugBase(name: string) {
+  return (
+    name
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 60)
+      .replace(/-$/, '') || 'organizer'
+  );
+}
+
+// "Sample Events Ltd" → "sample-events-ltd", then "-2", "-3"... if taken.
+// The unique index is the real guard against two sign-ups racing.
+export async function uniqueOrganizerSlug(db: { organizer: { findUnique: (a: { where: { slug: string }; select: { id: true } }) => Promise<unknown> } }, name: string) {
+  const base = organizerSlugBase(name);
+  for (let n = 1; n < 1000; n++) {
+    const candidate = n === 1 ? base : `${base}-${n}`;
+    if (!(await db.organizer.findUnique({ where: { slug: candidate }, select: { id: true } }))) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`;
+}
 
 // ---------- lookalike names ----------
 //

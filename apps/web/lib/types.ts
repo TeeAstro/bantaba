@@ -14,7 +14,7 @@ export interface OrganizerPermissions {
 }
 
 export interface Overview {
-  organizer: { id: string; businessName: string; verificationStatus: string; verified: boolean; permissions: OrganizerPermissions };
+  organizer: { id: string; businessName: string; slug: string; logoUrl: string | null; verificationStatus: string; verified: boolean; permissions: OrganizerPermissions };
   eventsByStatus: Record<string, number>;
   totals: {
     paidOrders: number;
@@ -323,4 +323,50 @@ export interface PayoutSummary {
   openPayout: Payout | null;
   cannotRequestReason: string | null;
   autoApprove: { max: number | null } | null; // payouts approved without waiting (up to max)
+}
+
+// ---------- organizer profiles (docs/organizer-profiles.md) ----------
+
+export type SocialPlatform = 'instagram' | 'facebook' | 'tiktok' | 'x' | 'youtube' | 'whatsapp';
+
+export interface OrganizerProfile {
+  id: string;
+  slug: string;
+  businessName: string;
+  verified: boolean;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  bio: string | null;
+  location: string | null;
+  website: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  socialLinks: Partial<Record<SocialPlatform, string>>;
+  memberSince: string;
+}
+
+export interface MyOrganizerProfile extends OrganizerProfile {
+  verificationStatus: string;
+  profileUpdatedAt: string | null;
+}
+
+export interface ProfileEventCard {
+  id: string;
+  slug: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  posterUrl: string | null;
+  bannerUrl: string | null;
+  soldOut: boolean;
+  venue: { name: string; city: string };
+  category: { name: string; slug: string };
+  priceFrom: number | null;
+}
+
+export interface PublicOrganizerProfile extends OrganizerProfile {
+  preview: boolean; // not public yet: only the organizer and admins see it
+  stats: { upcomingEvents: number; pastEvents: number };
+  upcoming: ProfileEventCard[];
+  past: ProfileEventCard[];
 }

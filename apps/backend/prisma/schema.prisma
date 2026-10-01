@@ -286,10 +286,22 @@ model User {
 }
 
 model Organizer {
-  id                 String                      @id @default(uuid())
-  userId             String                      @unique
-  user               User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessName       String
+  id           String @id @default(uuid())
+  userId       String @unique
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName String
+
+  // Public profile (docs/organizer-profiles.md): /o/<slug> in the web app.
+  slug               String                      @unique
+  logoUrl            String? // square profile picture / logo, 800×800
+  bannerUrl          String? // 3:1 cover, 1920×640
+  bio                String? // "About", up to 1,000 characters
+  location           String? // e.g. "Serrekunda"
+  website            String?
+  contactEmail       String?
+  contactPhone       String?
+  socialLinks        Json? // { facebook, instagram, tiktok, x, youtube, whatsapp }: full https URLs on each platform's own domain
+  profileUpdatedAt   DateTime?
   verificationStatus OrganizerVerificationStatus @default(PENDING)
   verifiedAt         DateTime?
 

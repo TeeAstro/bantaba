@@ -518,7 +518,7 @@ Groundwork for the organizer/staff mobile apps (`docs/mobile-apps.md`, Step 1). 
 | 1 | Versioned routes | `curl http://localhost:4000/api/v1/health` and `curl http://localhost:4000/api/health` | Both 200, same response. `curl -i http://localhost:4000/api/v2/health` → 404 |
 | 2 | API docs | Open `http://localhost:4000/api/docs` in a browser | Swagger UI listing the API by area (Auth, Events, Scanner, …) |
 | 3 | Try a request from the docs | In the docs, run **Auth → POST /api/v1/auth/login** with `organizer@example.com` / `SeedPassword123!`, copy `accessToken`, click **Authorize** and paste it, then run **Scanner → GET /api/v1/scanner/events** | Login 200 with tokens; scanner events 200 with the organizer's live events |
-| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 89 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
+| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 94 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
 | 5 | App config | `curl http://localhost:4000/api/v1/app-config` | `apiVersion "1"`, versions `0.0.0`. Set `MOBILE_MIN_VERSION_IOS=1.2.0` in `.env`, restart → the iOS minimum shows `1.2.0` |
 | 6 | Web app still works | Sign in at `http://localhost:3000` and open an event | Works as before (requests now go to `/api/v1`, visible in the browser's network tab) |
 
@@ -738,7 +738,7 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 9 | Approve and pay | Request again; admin `POST /admin/payouts/{id}/approve`, then `…/mark-paid` with `{"reference":"WAVE-123"}` | Organizer gets "approved" then "on its way" emails; Paid out goes up; History shows the reference |
 | 10 | Reject | Request; admin `…/reject` with `{"note":"…"}` | Organizer emailed with the reason; amount back in the balance |
 | 11 | Advance | Admin `PATCH /admin/organizers/{id}` with `{"payoutAdvancePercent": 50}` | Upcoming events show "50% now"; Available goes up |
-| 12 | Verified badge | Admin `PATCH /admin/organizers/{id}` with `{"verifiedBadge": true}` | Blue tick next to the name on the organizer dashboard; organizer emailed; `GET /api/v1/events/{id}` shows `organizer: {id, businessName, verified: true}` and nothing else |
+| 12 | Verified badge | Admin `PATCH /admin/organizers/{id}` with `{"verifiedBadge": true}` | Blue tick next to the name on the organizer dashboard; organizer emailed; `GET /api/v1/events/{id}` shows `organizer: {id, slug, businessName, logoUrl, verified: true}` and nothing else |
 | 13 | Name copies | Sign up an organizer called "The Sample Events Ltd Official" | 409 "That name belongs to a verified organizer…" |
 | 14 | Lookalikes | Sign up "Sample Eventz" | Allowed; `GET /admin/organizers/{id}` shows `lookalikeOf: Sample Events Ltd` |
 | 15 | Automated | `node payouts-badge-test.js` in `apps/backend` | `12/12 passed` |
@@ -774,6 +774,36 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 5 | Request under the limit | Request D1,500 | "Approved automatically, being sent"; admin gets a "Payout to send" email |
 | 6 | Over the limit | Admin records #5 paid (`…/mark-paid`); request more than D2,000 | Waits for approval as before |
 | 7 | Turn it off | `PATCH` with `{"payoutAutoApprove": false}` | Requests wait for approval again |
+
+## Organizer profiles
+
+**Read `docs/organizer-profiles.md`.**
+
+- **What it is:** every organizer now has a public page at `/o/<slug>` (e.g. http://localhost:3000/o/sample-events-ltd). It shows a **banner**, a round **profile picture**, the **blue tick** if verified, About, contact details, social links, and their upcoming and past events.
+- **Editing:** organizers set it up in the new **Profile** page of the organizer app. Pictures use the same crop tool as event images.
+- **Social links:** must be usernames or links on that platform's own site, so an "Instagram" button can't lead to a scam page.
+- **Visibility:** hidden until the organizer is approved, and while suspended. Admins can edit the text or remove pictures.
+
+1. Apply the migration (it also gives existing organizers their profile URL) and restart:
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+   Then restart the backend and the frontend.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Profile page | Sign in as `organizer@example.com` → **Profile** | Banner and profile picture slots, About, contact and social fields |
+| 2 | Pictures | Upload a banner and a profile picture (try "Fit whole image" with a wide logo) | Saved straight away; the picture shows as a circle |
+| 3 | Details | Fill in About, location, website `sample-events.gm`, Instagram `@sampleevents`, WhatsApp `301 2345`; **Save profile** | "Saved"; fields show `@sampleevents` and `301 2345` |
+| 4 | Wrong link | Set X to `https://example.com/me`, save | "X: use a link on x.com or just your username" |
+| 5 | Public page | **View your page** (or the dashboard's **Your public page**) | Banner with the round picture overlapping, name with blue tick if verified, About, Contact with working links, upcoming events with posters and "From D…" |
+| 6 | Phone | Same page in a narrow window (or phone on your network) | Picture and name stacked; About, then events two per row, then Contact; no sideways scrolling |
+| 7 | Not public yet | Sign up a new organizer, open `/o/<their-slug>` signed out, then signed in as them | 404 "Organizer not found" signed out; preview notice signed in as them |
+| 8 | Moderation | Admin: `PATCH /admin/organizers/{id}/profile` with `{"bio": null}` | About disappears from the page |
+| 9 | Automated | `node organizer-profile-test.js` in `apps/backend` | `7/7 passed` |
 
 ## Project structure
 

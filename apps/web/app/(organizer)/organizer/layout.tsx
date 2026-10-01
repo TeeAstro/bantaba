@@ -9,6 +9,7 @@ import { useSessionUser } from '@/lib/hooks';
 const NAV = [
   { href: '/organizer', label: 'Overview', exact: true },
   { href: '/organizer/events', label: 'Events' },
+  { href: '/organizer/profile', label: 'Profile' },
   { href: '/organizer/staff', label: 'Staff' },
   { href: '/organizer/payouts', label: 'Payouts' },
   { href: '/scan', label: 'Scanner' },

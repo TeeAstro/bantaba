@@ -48,7 +48,10 @@ export default function OverviewPage() {
             {published} published {published === 1 ? 'event' : 'events'}, {drafts} {drafts === 1 ? 'draft' : 'drafts'}
           </p>
         </div>
-        <Link className="btn" href="/organizer/events/new">Create event</Link>
+        <div className="row">
+          <Link className="btn btn-quiet" href={`/o/${data.organizer.slug}`} target="_blank">Your public page</Link>
+          <Link className="btn" href="/organizer/events/new">Create event</Link>
+        </div>
       </div>
 
       {data.organizer.verificationStatus === 'SUSPENDED' ? (

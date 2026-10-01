@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { normalizeName } from '../organizers/public-organizer';
+import { normalizeName, uniqueOrganizerSlug } from '../organizers/public-organizer';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -114,6 +114,7 @@ export class AuthService {
         data: {
           userId: user.id,
           businessName: dto.businessName,
+          slug: await uniqueOrganizerSlug(tx, dto.businessName),
           // Stays PENDING until an admin approves it (Phase 14). This
           // account can log in immediately but selling privileges are
           // gated elsewhere — see Section 24 of the Phase 0 plan.

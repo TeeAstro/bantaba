@@ -41,6 +41,9 @@ async function main() {
     create: {
       userId: organizerUser.id,
       businessName: 'Sample Events Ltd',
+      slug: 'sample-events-ltd', // public profile at /o/sample-events-ltd (docs/organizer-profiles.md)
+      bio: 'Concerts, comedy nights and festivals across the Greater Banjul Area since 2019.',
+      location: 'Serrekunda',
       verificationStatus: 'APPROVED',
       trustLevel: 'TRUSTED', // docs/organizer-trust.md: the sample organizer has every permission
     },

@@ -10,6 +10,6 @@ import { EventImagesService } from './event-images.service';
   imports: [RefundsModule],
   controllers: [EventsController, EventImagesController, CategoriesController],
   providers: [EventsService, EventImagesService],
-  exports: [EventsService],
+  exports: [EventsService, EventImagesService],
 })
 export class EventsModule {}

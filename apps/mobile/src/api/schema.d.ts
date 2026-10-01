@@ -657,6 +657,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizers/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description An organizer's public profile: picture, banner, about, contact, social links, upcoming and recent events. By URL name (slug) or id. */
+        get: operations["OrganizerProfile_publicProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizer/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Your profile, as you'd edit it.
+         *
+         *     **Roles:** ORGANIZER
+         */
+        get: operations["OrganizerProfile_getMine"];
+        /**
+         * @description Update your about, location, website, contact details and social links.
+         *
+         *     **Roles:** ORGANIZER
+         */
+        put: operations["OrganizerProfile_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizer/profile/images/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Upload your profile picture (logo: 1:1, stored 800×800) or banner
+         *     (3:1, stored 1920×640). JPEG, PNG or WebP up to 10 MB; crop or fit as
+         *     for event images.
+         *
+         *     **Roles:** ORGANIZER
+         */
+        post: operations["OrganizerProfile_uploadImage"];
+        /** @description **Roles:** ORGANIZER */
+        delete: operations["OrganizerProfile_removeImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/organizers/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Admin moderation: edit or clear an organizer's profile text.
+         *
+         *     **Roles:** ADMIN
+         */
+        patch: operations["OrganizerProfile_adminUpdate"];
+        trace?: never;
+    };
+    "/api/v1/admin/organizers/{id}/images/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Admin moderation: remove an organizer's profile picture or banner.
+         *
+         *     **Roles:** ADMIN
+         */
+        delete: operations["OrganizerProfile_adminRemoveImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events": {
         parameters: {
             query?: never;
@@ -1704,6 +1813,28 @@ export interface components {
         ReviewDecisionDto: {
             /** @description Required when sending back: what the organizer should change */
             note?: string;
+        };
+        SocialLinksDto: {
+            facebook?: string | null;
+            instagram?: string | null;
+            tiktok?: string | null;
+            x?: string | null;
+            youtube?: string | null;
+            /** @description A phone number (7 digits for Gambian numbers, or international) or a wa.me link */
+            whatsapp?: string | null;
+        };
+        UpdateOrganizerProfileDto: {
+            /** @description "About": shown on your public profile. Up to 1,000 characters. */
+            bio?: string | null;
+            /** @description Town or area, e.g. "Serrekunda" */
+            location?: string | null;
+            /** @description Your website, starting with https:// */
+            website?: string | null;
+            /** @description Public contact email (can differ from your sign-in email) */
+            contactEmail?: string | null;
+            /** @description Public contact phone */
+            contactPhone?: string | null;
+            socialLinks?: components["schemas"]["SocialLinksDto"];
         };
         /**
          * @description When ticket holders may ask for a refund. Default NONE.
@@ -3157,6 +3288,249 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizerProfile_publicProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizerProfile_getMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizerProfile_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrganizerProfileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizerProfile_uploadImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "logo" | "banner";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    cropX?: number;
+                    cropY?: number;
+                    cropWidth?: number;
+                    cropHeight?: number;
+                    /**
+                     * @default fill
+                     * @enum {string}
+                     */
+                    mode?: "fill" | "fit";
+                    /**
+                     * @default blur
+                     * @enum {string}
+                     */
+                    background?: "blur" | "color";
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizerProfile_removeImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "logo" | "banner";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizerProfile_adminUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOrganizerProfileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OrganizerProfile_adminRemoveImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                kind: "logo" | "banner";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

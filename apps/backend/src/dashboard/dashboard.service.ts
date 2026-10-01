@@ -88,6 +88,8 @@ export class DashboardService {
       organizer: {
         id: organizer.id,
         businessName: organizer.businessName,
+        slug: organizer.slug, // public profile: /o/<slug>
+        logoUrl: organizer.logoUrl,
         verificationStatus: organizer.verificationStatus,
         verified: organizer.verifiedBadge && organizer.verificationStatus === 'APPROVED',
         // docs/organizer-trust.md: what this account may do, shown on the dashboard

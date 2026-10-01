@@ -1360,6 +1360,325 @@
         ]
       }
     },
+    "/api/v1/organizers/{slug}": {
+      "get": {
+        "operationId": "OrganizerProfile_publicProfile",
+        "summary": "",
+        "description": "An organizer's public profile: picture, banner, about, contact, social links, upcoming and recent events. By URL name (slug) or id.",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Organizer Profile"
+        ],
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/organizer/profile": {
+      "get": {
+        "operationId": "OrganizerProfile_getMine",
+        "summary": "",
+        "description": "Your profile, as you'd edit it.\n\n**Roles:** ORGANIZER",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Organizer Profile"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "OrganizerProfile_update",
+        "summary": "",
+        "description": "Update your about, location, website, contact details and social links.\n\n**Roles:** ORGANIZER",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizerProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Organizer Profile"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/organizer/profile/images/{kind}": {
+      "post": {
+        "operationId": "OrganizerProfile_uploadImage",
+        "summary": "",
+        "description": "Upload your profile picture (logo: 1:1, stored 800×800) or banner\n(3:1, stored 1920×640). JPEG, PNG or WebP up to 10 MB; crop or fit as\nfor event images.\n\n**Roles:** ORGANIZER",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "logo",
+                "banner"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "cropX": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "cropY": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "cropWidth": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "cropHeight": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "fill",
+                      "fit"
+                    ],
+                    "default": "fill"
+                  },
+                  "background": {
+                    "type": "string",
+                    "enum": [
+                      "blur",
+                      "color"
+                    ],
+                    "default": "blur"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Organizer Profile"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "OrganizerProfile_removeImage",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "logo",
+                "banner"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Organizer Profile"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ORGANIZER"
+      }
+    },
+    "/api/v1/admin/organizers/{id}/profile": {
+      "patch": {
+        "operationId": "OrganizerProfile_adminUpdate",
+        "summary": "",
+        "description": "Admin moderation: edit or clear an organizer's profile text.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizerProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Organizer Profile"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/organizers/{id}/images/{kind}": {
+      "delete": {
+        "operationId": "OrganizerProfile_adminRemoveImage",
+        "summary": "",
+        "description": "Admin moderation: remove an organizer's profile picture or banner.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "logo",
+                "banner"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Organizer Profile"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/events": {
       "post": {
         "operationId": "Events_create",
@@ -4045,6 +4364,80 @@
             "type": "string",
             "description": "Required when sending back: what the organizer should change",
             "maxLength": 1000
+          }
+        }
+      },
+      "SocialLinksDto": {
+        "type": "object",
+        "properties": {
+          "facebook": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200
+          },
+          "instagram": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200
+          },
+          "tiktok": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200
+          },
+          "x": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200
+          },
+          "youtube": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200
+          },
+          "whatsapp": {
+            "type": "string",
+            "nullable": true,
+            "description": "A phone number (7 digits for Gambian numbers, or international) or a wa.me link",
+            "maxLength": 200
+          }
+        }
+      },
+      "UpdateOrganizerProfileDto": {
+        "type": "object",
+        "properties": {
+          "bio": {
+            "type": "string",
+            "nullable": true,
+            "description": "\"About\": shown on your public profile. Up to 1,000 characters.",
+            "maxLength": 1000
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Town or area, e.g. \"Serrekunda\"",
+            "maxLength": 80
+          },
+          "website": {
+            "type": "string",
+            "nullable": true,
+            "description": "Your website, starting with https://",
+            "maxLength": 200
+          },
+          "contactEmail": {
+            "type": "string",
+            "nullable": true,
+            "description": "Public contact email (can differ from your sign-in email)",
+            "maxLength": 200
+          },
+          "contactPhone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Public contact phone",
+            "pattern": "/^\\+?[0-9 ()-]{7,20}$/"
+          },
+          "socialLinks": {
+            "$ref": "#/components/schemas/SocialLinksDto"
           }
         }
       },

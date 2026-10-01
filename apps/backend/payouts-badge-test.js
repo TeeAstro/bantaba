@@ -172,9 +172,9 @@ const DAY = 86400e3;
   await run();
   const kMail = await prisma.notification.findFirst({ where: { userId: kRow.userId, type: 'organizer_status', payload: { path: ['change'], equals: 'verified_badge' } } });
   const kOv = await api('GET', '/organizer/overview', kReg.data.accessToken);
-  check('K', 'Badge: pending organizer 400; approved 200 + email; public event shows {id, businessName, verified} only; listed events too; dashboard knows',
+  check('K', 'Badge: pending organizer 400; approved 200 + email; public event shows {id, slug, businessName, logoUrl, verified} only; listed events too; dashboard knows',
     k1.status === 400 && k2.status === 200 && k2.data.verifiedBadge === true && kMail?.status === 'SENT' &&
-      JSON.stringify(Object.keys(k3.data.organizer).sort()) === JSON.stringify(['businessName', 'id', 'verified']) && k3.data.organizer.verified === true &&
+      JSON.stringify(Object.keys(k3.data.organizer).sort()) === JSON.stringify(['businessName', 'id', 'logoUrl', 'slug', 'verified']) && k3.data.organizer.verified === true &&
       k4.data.items.find((e) => e.id === kEv.id)?.organizer?.verified === true && kOv.data.organizer.verified === true,
     `pending ${k1.status}; approved ${k2.status}; email ${kMail?.status}; public organizer ${JSON.stringify(k3.data?.organizer)}; list ${k4.data?.items?.find((e) => e.id === kEv.id)?.organizer?.verified}; overview ${kOv.data?.organizer?.verified}`);
 

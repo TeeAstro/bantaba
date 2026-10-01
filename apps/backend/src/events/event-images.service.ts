@@ -22,15 +22,20 @@ import { CropDto } from './dto/event-image.dto';
 
 export type EventImageKind = 'banner' | 'poster';
 export const EVENT_IMAGE_KINDS: EventImageKind[] = ['banner', 'poster'];
+// Organizer profiles (docs/organizer-profiles.md) use 'banner' and 'logo'.
+export type ImageKind = EventImageKind | 'logo';
+const EVENT_FIELD: Record<EventImageKind, 'bannerUrl' | 'posterUrl'> = { banner: 'bannerUrl', poster: 'posterUrl' };
 
-export const IMAGE_SPECS: Record<EventImageKind, { width: number; height: number; minWidth: number; minHeight: number; shape: string; field: 'bannerUrl' | 'posterUrl' }> = {
+export const IMAGE_SPECS: Record<ImageKind, { width: number; height: number; minWidth: number; minHeight: number; shape: string }> = {
   // 3:1, the wide strip across the top of the event page.
   // min = refused below this (smaller would be scaled up 4× or more and
   // look clearly blurry); the editor warns below 960 × 320 but allows it.
-  banner: { width: 1920, height: 640, minWidth: 480, minHeight: 160, shape: '3:1 (wide)', field: 'bannerUrl' },
+  banner: { width: 1920, height: 640, minWidth: 480, minHeight: 160, shape: '3:1 (wide)' },
   // 2:3, portrait, like a printed poster; used in listings and on tickets.
   // The editor warns below 500 × 750.
-  poster: { width: 1000, height: 1500, minWidth: 300, minHeight: 450, shape: '2:3 (portrait)', field: 'posterUrl' },
+  poster: { width: 1000, height: 1500, minWidth: 300, minHeight: 450, shape: '2:3 (portrait)' },
+  // 1:1, an organizer's profile picture or logo. The editor warns below 400 × 400.
+  logo: { width: 800, height: 800, minWidth: 200, minHeight: 200, shape: '1:1 (square)' },
 };
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB upload
@@ -48,7 +53,7 @@ export class EventImagesService {
 
   async upload(user: AuthenticatedUser, eventId: string, kind: EventImageKind, file: Express.Multer.File | undefined, crop: CropDto) {
     if (!file?.buffer?.length) throw new BadRequestException('Attach the image as the "file" field');
-    const spec = IMAGE_SPECS[kind];
+    const spec = { field: EVENT_FIELD[kind] };
     const event = await this.events.getEditableEvent(user, eventId);
 
     const output = await this.process(file.buffer, kind, crop);
@@ -73,7 +78,7 @@ export class EventImagesService {
   }
 
   async remove(user: AuthenticatedUser, eventId: string, kind: EventImageKind) {
-    const spec = IMAGE_SPECS[kind];
+    const spec = { field: EVENT_FIELD[kind] };
     const event = await this.events.getEditableEvent(user, eventId);
     const previous = event[spec.field];
     if (previous) {
@@ -84,7 +89,7 @@ export class EventImagesService {
   }
 
   // Exposed for tests and for any future image kinds.
-  async process(input: Buffer, kind: EventImageKind, crop: CropDto): Promise<Buffer> {
+  async process(input: Buffer, kind: ImageKind, crop: CropDto): Promise<Buffer> {
     const spec = IMAGE_SPECS[kind];
     let meta: sharp.Metadata;
     try {
@@ -135,7 +140,7 @@ export class EventImagesService {
   // heavily blurred, enlarged copy of it (like Instagram/Spotify) or its
   // average colour. For flyers whose shape isn't 3:1 or 2:3, where a crop
   // would cut off text such as the date.
-  private async fit(input: Buffer, W: number, H: number, kind: EventImageKind, crop: CropDto) {
+  private async fit(input: Buffer, W: number, H: number, kind: ImageKind, crop: CropDto) {
     const spec = IMAGE_SPECS[kind];
     if ([crop.cropX, crop.cropY, crop.cropWidth, crop.cropHeight].some((v) => v !== undefined)) {
       throw new BadRequestException('Crop fields don\'t apply with mode=fit (the whole picture is kept)');
@@ -182,7 +187,7 @@ export class EventImagesService {
   // Crop comes as fractions (0–1) of the image as displayed, so the browser
   // doesn't need to know the file's exact pixel size. No crop = the largest
   // centred area with the right shape.
-  private cropRegion(W: number, H: number, kind: EventImageKind, crop: CropDto) {
+  private cropRegion(W: number, H: number, kind: ImageKind, crop: CropDto) {
     const spec = IMAGE_SPECS[kind];
     const aspect = spec.width / spec.height;
     const given = [crop.cropX, crop.cropY, crop.cropWidth, crop.cropHeight];
