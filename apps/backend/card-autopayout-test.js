@@ -152,7 +152,7 @@ async function webhook(event, payload, secret = SECRET) {
   await api('PATCH', `/admin/organizers/${orgRow.id}`, admin, { payoutAutoApprove: false });
   const i2 = await api('POST', '/payouts', org, { amount: 10000 });
   check('I', 'Auto-approval keeps the safety checks (changed payout details block requests until confirmed); switched off → back to admin approval',
-    i1.status === 403 && /checking your payout details/.test(JSON.stringify(i1.data)) && i2.status === 201 && i2.data.status === 'REQUESTED',
+    i1.status === 403 && /checking your (payout|withdrawal) details/.test(JSON.stringify(i1.data)) && i2.status === 201 && i2.data.status === 'REQUESTED',
     `after details change ${i1.status}; auto off → ${i2.data?.status}`);
 
   const passed = results.filter((r) => r.pass).length;

@@ -1,5 +1,7 @@
 # Organizer payouts and the verified badge
 
+**Naming:** organizers see this as **Withdraw** (menu, page, buttons and their emails, since 2 Oct 2026). Admins and the code still call it a payout (`/payouts` API, `Payout` table, admin Payouts page).
+
 ## Payouts
 
 Ticket buyers pay the platform's Wave and bank accounts, never the organizer directly. Organizers get their money by **asking for a payout**, and **an admin approves every payout** before any money is sent. This applies to every organizer, trusted or not.

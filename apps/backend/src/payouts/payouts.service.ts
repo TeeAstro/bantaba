@@ -144,13 +144,13 @@ export class PayoutsService {
 
   // Why this organizer can't ask for a payout right now (null: they can).
   private blocker(o: Organizer, b: Balance, open: Payout | null): string | null {
-    if (o.verificationStatus === OrganizerVerificationStatus.SUSPENDED) return 'Payouts are paused while your account is suspended. Please contact the platform team.';
-    if (o.verificationStatus !== OrganizerVerificationStatus.APPROVED) return 'Payouts open once your organizer account is approved.';
+    if (o.verificationStatus === OrganizerVerificationStatus.SUSPENDED) return 'Withdrawals are paused while your account is suspended. Please contact the platform team.';
+    if (o.verificationStatus !== OrganizerVerificationStatus.APPROVED) return 'You can withdraw once your organizer account is approved.';
     if (!o.payoutMethod) return 'Add where we should send your money first.';
-    if (!o.payoutDetailsVerifiedAt) return 'The platform team is checking your payout details. This usually takes a working day.';
-    if (open) return 'You already have a payout in progress. You can ask for the next one once it’s paid.';
-    if (b.totals.available < 0) return `Refunds after your last payout mean ${money(-b.totals.available)} is owed to the platform. It’s taken from your next earnings.`;
-    if (b.totals.available === 0) return 'Nothing to pay out yet. Money from an event becomes available ' + (b.holdDays ? `${b.holdDays} day${b.holdDays === 1 ? '' : 's'} after it ends.` : 'once it ends.');
+    if (!o.payoutDetailsVerifiedAt) return 'The platform team is checking your withdrawal details. This usually takes a working day.';
+    if (open) return 'You already have a withdrawal in progress. You can make the next one once it’s paid.';
+    if (b.totals.available < 0) return `Refunds after your last withdrawal mean ${money(-b.totals.available)} is owed to the platform. It’s taken from your next earnings.`;
+    if (b.totals.available === 0) return 'Nothing to withdraw yet. Money from an event becomes available ' + (b.holdDays ? `${b.holdDays} day${b.holdDays === 1 ? '' : 's'} after it ends.` : 'once it ends.');
     return null;
   }
 
@@ -194,7 +194,7 @@ export class PayoutsService {
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM organizers WHERE id = ${o.id} FOR UPDATE`;
       const open = await tx.payout.findFirst({ where: { organizerId: o.id, status: { in: OPEN } } });
-      if (open) throw new ConflictException('You have a payout in progress. Wait until it’s paid, or cancel it, before changing where money is sent.');
+      if (open) throw new ConflictException('You have a withdrawal in progress. Wait until it’s paid, or cancel it, before changing where money is sent.');
       const after = await tx.organizer.update({
         where: { id: o.id },
         data: {
@@ -251,7 +251,7 @@ export class PayoutsService {
     const o = await this.organizerFor(user);
     const p = await this.prisma.payout.findFirst({ where: { id, organizerId: o.id } });
     if (!p) throw new NotFoundException('Payout not found');
-    if (p.status !== PayoutStatus.REQUESTED) throw new ConflictException(p.status === PayoutStatus.APPROVED ? 'This payout is already approved and being sent. Contact the platform team.' : 'This payout is already closed.');
+    if (p.status !== PayoutStatus.REQUESTED) throw new ConflictException(p.status === PayoutStatus.APPROVED ? 'This withdrawal is already approved and being sent. Contact the platform team.' : 'This withdrawal is already closed.');
     const res = await this.prisma.payout.updateMany({ where: { id, status: PayoutStatus.REQUESTED }, data: { status: PayoutStatus.CANCELLED, decidedAt: new Date() } });
     if (res.count === 0) throw new ConflictException('This payout was just decided. Refresh to see it.');
     await this.prisma.auditLog.create({ data: { actorId: user.id, actorRole: user.role, action: 'payout_cancelled', entityType: 'Payout', entityId: id, metadata: {} } });

@@ -32,10 +32,10 @@ function checklist(d: EventDashboard): Check[] {
       ? { key: 'phones', state: 'done', title: 'Scanner phones', sub: `${r.staffPhones} ${r.staffPhones === 1 ? 'phone is' : 'phones are'} signed in`, action: 'Open', href: `/scan/${e.id}` }
       : { key: 'phones', state: 'info', title: 'Test the scanner', sub: 'Sign in on the phones you’ll use at the gate', action: 'Open', href: `/scan/${e.id}` },
     !r.payoutMethod
-      ? { key: 'payout', state: 'todo', title: 'Payout details', sub: 'Add where your money is sent', action: 'Add', href: '/organizer/payouts' }
+      ? { key: 'payout', state: 'todo', title: 'Withdrawal details', sub: 'Add where your money is sent', action: 'Add', href: '/organizer/payouts' }
       : r.payoutDetailsVerified
-        ? { key: 'payout', state: 'done', title: 'Payout details', sub: 'Checked by Bantaba', action: 'View', href: '/organizer/payouts' }
-        : { key: 'payout', state: 'wait', title: 'Payout details', sub: 'Being checked by Bantaba', action: 'View', href: '/organizer/payouts' },
+        ? { key: 'payout', state: 'done', title: 'Withdrawal details', sub: 'Checked by Bantaba', action: 'View', href: '/organizer/payouts' }
+        : { key: 'payout', state: 'wait', title: 'Withdrawal details', sub: 'Being checked by Bantaba', action: 'View', href: '/organizer/payouts' },
   ];
 }
 

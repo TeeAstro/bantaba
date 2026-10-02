@@ -90,10 +90,10 @@ function todos(d: Overview): Todo[] {
   const acct = t.payoutAccount;
   out.push(
     !acct.method
-      ? { key: 'payout', tone: 'red', mark: '!', title: 'Add your payout details', sub: 'Where we send your money: Wave or bank', href: '/organizer/payouts' }
+      ? { key: 'payout', tone: 'red', mark: '!', title: 'Add your withdrawal details', sub: 'Where we send your money: Wave or bank', href: '/organizer/payouts' }
       : !acct.verified
-        ? { key: 'payout', tone: 'gold', mark: '…', title: 'Payout details being checked', sub: `${acct.method === 'WAVE' ? 'Wave' : 'Bank'} · ${acct.account ?? ''}`, href: '/organizer/payouts' }
-        : { key: 'payout', tone: 'green', mark: <Icon name="check" size={14} />, title: 'Payout details checked', sub: `${acct.method === 'WAVE' ? 'Wave' : 'Bank'} · ${acct.account ?? ''}`, href: '/organizer/payouts' },
+        ? { key: 'payout', tone: 'gold', mark: '…', title: 'Withdrawal details being checked', sub: `${acct.method === 'WAVE' ? 'Wave' : 'Bank'} · ${acct.account ?? ''}`, href: '/organizer/payouts' }
+        : { key: 'payout', tone: 'green', mark: <Icon name="check" size={14} />, title: 'Withdrawal details checked', sub: `${acct.method === 'WAVE' ? 'Wave' : 'Bank'} · ${acct.account ?? ''}`, href: '/organizer/payouts' },
   );
   return out;
 }
@@ -186,12 +186,12 @@ export default function OverviewPage() {
         side={[
           { label: 'Tickets this week', value: data.thisWeek.tickets.toLocaleString(), note: <Delta value={data.thisWeek.tickets} previous={data.lastWeek.tickets} /> },
           {
-            label: 'Available to pay out',
+            label: 'Available to withdraw',
             value: dalasi(data.payouts.available),
             note: data.payouts.inProgress > 0
               ? `${dalasi(data.payouts.inProgress)} on its way`
               : data.payouts.available > 0
-                ? <Link href="/organizer/payouts">Ask for a payout →</Link>
+                ? <Link href="/organizer/payouts">Withdraw →</Link>
                 : data.payouts.held > 0 ? `${dalasi(data.payouts.held)} after your events` : <Link href="/organizer/payouts">Payouts</Link>,
           },
           data.lastEvent && data.lastEvent.ticketsSold > 0

@@ -63,7 +63,7 @@ const DAY = 86400e3;
   const c1 = await api('POST', `/admin/organizers/${orgRow.id}/payout-account/verify`, admin, { updatedAt: new Date(Date.now() - 60000).toISOString() });
   const c2 = await api('POST', `/admin/organizers/${orgRow.id}/payout-account/verify`, admin, { updatedAt: b4.data.updatedAt });
   check('C', 'Unverified account blocks requests (403); verify with stale details 409, current 201',
-    c0.status === 403 && /checking your payout details/.test(msg(c0)) && c1.status === 409 && c2.status === 201 && c2.data.verified === true,
+    c0.status === 403 && /checking your (payout|withdrawal) details/.test(msg(c0)) && c1.status === 409 && c2.status === 201 && c2.data.verified === true,
     `request ${c0.status}; stale ${c1.status}; verify ${c2.status} ${c2.data?.verified}`);
 
   // D — before the event: nothing to pay out; an admin-set 50% advance releases half

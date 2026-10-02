@@ -456,7 +456,7 @@ const STATUS_TEXT: Record<string, { subject: string; body: string; tone: 'teal' 
   reinstated: { subject: 'Your organizer account is active again', body: 'Ticket sales for your events have resumed and you can publish events again.', tone: 'teal' },
   rejected: { subject: 'Your organizer application wasn’t approved', body: 'You can’t publish events with this account. Contact the platform team if you think this is a mistake.', tone: 'red' },
   verified_badge: { subject: 'Your organizer account is verified', body: 'Your events now show a verified badge next to your name, so ticket buyers know they’re buying from the official organizer.', tone: 'teal' },
-  payout_account_verified: { subject: 'Your payout details are confirmed', body: 'The platform team has checked where your money is sent. You can now ask for payouts from your dashboard.', tone: 'teal' },
+  payout_account_verified: { subject: 'Your withdrawal details are confirmed', body: 'The platform team has checked where your money is sent. You can now withdraw from your dashboard.', tone: 'teal' },
 };
 
 export function organizerStatus(d: { name: string | null; change: string; dashboardUrl: string }): Rendered {
@@ -509,16 +509,16 @@ export function payoutRequested(d: { name: string | null; organizer: string; pay
 export function payoutDecided(d: { name: string | null; type: 'payout_approved' | 'payout_rejected' | 'payout_paid'; payout: PayoutInfo; decisionNote: string | null; autoApproved?: boolean; payoutsUrl: string }): Rendered {
   const amt = money(d.payout.amount, d.payout.currency);
   const t = {
-    payout_approved: { subject: `Your payout of ${amt} is approved`, line: (d.autoApproved ? 'Your payout was approved automatically.' : 'Your payout has been approved.') + ' We’ll send the money shortly and email you when it’s on its way.', tone: 'teal' as const },
-    payout_paid: { subject: `${amt} is on its way to you`, line: d.payout.method === 'WAVE' ? 'We’ve sent your payout to your Wave account.' : 'We’ve sent your payout by bank transfer. It may take a working day or two to appear.', tone: 'teal' as const },
-    payout_rejected: { subject: `Your payout of ${amt} wasn’t approved`, line: 'Your payout request wasn’t approved. The money stays in your balance.', tone: 'red' as const },
+    payout_approved: { subject: `Your withdrawal of ${amt} is approved`, line: (d.autoApproved ? 'Your withdrawal was approved automatically.' : 'Your withdrawal has been approved.') + ' We’ll send the money shortly and email you when it’s on its way.', tone: 'teal' as const },
+    payout_paid: { subject: `${amt} is on its way to you`, line: d.payout.method === 'WAVE' ? 'We’ve sent your money to your Wave account.' : 'We’ve sent your money by bank transfer. It may take a working day or two to appear.', tone: 'teal' as const },
+    payout_rejected: { subject: `Your withdrawal of ${amt} wasn’t approved`, line: 'Your withdrawal wasn’t approved. The money stays in your balance.', tone: 'red' as const },
   }[d.type];
   const body =
     p(greet(d.name)) +
     p(h(t.line)) +
     (d.type === 'payout_rejected' && d.decisionNote ? `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px"><b>Reason:</b> ${h(d.decisionNote)}</div>` : '') +
     payoutTable(d.payout) +
-    button(d.payoutsUrl, 'Open payouts');
+    button(d.payoutsUrl, 'Open Withdraw');
   const text = [greet(d.name), '', t.line, d.type === 'payout_rejected' && d.decisionNote ? `Reason: ${d.decisionNote}` : '', '', payoutText(d.payout), '', d.payoutsUrl].join('\n');
   return { subject: t.subject, html: layout({ preheader: t.line, title: t.subject, body, tone: t.tone }), text };
 }
@@ -536,14 +536,14 @@ export function payoutAccountChanged(d: { name: string | null; forAdmin: boolean
     const text = [greet(d.name), '', `${d.organizer} ${d.first ? 'added' : 'changed'} their payout details:`, `  ${where}`, `  Name: ${d.accountName}`, '', `Mark them as checked: ${d.adminUrl}`].join('\n');
     return { subject, html: layout({ preheader: `${d.organizer} · ${where}`, title: subject, body, tone: 'marigold' }), text };
   }
-  const subject = d.first ? 'Your payout details were added' : 'Your payout details were changed';
+  const subject = d.first ? 'Your withdrawal details were added' : 'Your withdrawal details were changed';
   const body =
     p(greet(d.name)) +
-    p(`Payouts for <b>${h(d.organizer)}</b> will now go to:`) +
+    p(`Withdrawals for <b>${h(d.organizer)}</b> will now go to:`) +
     `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px">${h(where)}<br>Name: ${h(d.accountName)}</div>` +
-    p('The platform team checks new payout details before the first payout, usually within a working day.') +
+    p('The platform team checks new withdrawal details before the first withdrawal, usually within a working day.') +
     p(`<b>If you didn’t make this change</b>, contact the platform team straight away and change your password.`) +
-    button(d.url, 'Open payouts');
-  const text = [greet(d.name), '', `Payouts for ${d.organizer} will now go to: ${where} (${d.accountName}).`, 'The platform team checks new payout details before the first payout.', '', 'If you didn’t make this change, contact the platform team straight away and change your password.', '', d.url].join('\n');
+    button(d.url, 'Open Withdraw');
+  const text = [greet(d.name), '', `Withdrawals for ${d.organizer} will now go to: ${where} (${d.accountName}).`, 'The platform team checks new withdrawal details before the first withdrawal.', '', 'If you didn’t make this change, contact the platform team straight away and change your password.', '', d.url].join('\n');
   return { subject, html: layout({ preheader: where, title: subject, body, tone: 'marigold' }), text };
 }

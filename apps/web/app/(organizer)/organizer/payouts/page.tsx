@@ -65,7 +65,7 @@ function AccountForm({ current, onSaved, onCancel }: { current: PayoutAccount | 
   }
 
   return (
-    <form onSubmit={submit} className="stack-s" aria-label="Payout details">
+    <form onSubmit={submit} className="stack-s" aria-label="Withdrawal details">
       <div className="segmented" role="group" aria-label="How to be paid">
         <button type="button" aria-pressed={method === 'WAVE'} onClick={() => setMethod('WAVE')}>Wave</button>
         <button type="button" aria-pressed={method === 'BANK'} onClick={() => setMethod('BANK')}>Bank transfer</button>
@@ -92,10 +92,10 @@ function AccountForm({ current, onSaved, onCancel }: { current: PayoutAccount | 
           <span className="hint">Needed to change where money goes.</span>
         </div>
       </div>
-      <p className="small muted">The platform team checks new payout details before the first payout to them, usually within a working day. You’ll get an email when they’re confirmed, and another whenever they change.</p>
+      <p className="small muted">The platform team checks new withdrawal details before the first withdrawal to them, usually within a working day. You’ll get an email when they’re confirmed, and another whenever they change.</p>
       {error && <div className="notice notice-error" role="alert">{error}</div>}
       <div className="row">
-        <button className="btn" disabled={busy}>{busy ? 'Saving…' : 'Save payout details'}</button>
+        <button className="btn" disabled={busy}>{busy ? 'Saving…' : 'Save withdrawal details'}</button>
         {onCancel && <button type="button" className="btn btn-quiet" onClick={onCancel}>Cancel</button>}
       </div>
     </form>
@@ -109,7 +109,7 @@ function AccountPanel({ account, locked, onSaved }: { account: PayoutAccount | n
       <div className="spread">
         <h2>Where we send your money</h2>
         {account && !editing && (
-          <button className="btn btn-quiet btn-small" onClick={() => setEditing(true)} disabled={locked} title={locked ? 'Wait until your payout in progress is paid' : undefined}>
+          <button className="btn btn-quiet btn-small" onClick={() => setEditing(true)} disabled={locked} title={locked ? 'Wait until your withdrawal in progress is paid' : undefined}>
             Change
           </button>
         )}
@@ -131,7 +131,7 @@ function AccountPanel({ account, locked, onSaved }: { account: PayoutAccount | n
           </span>
         </div>
       )}
-      {locked && account && !editing && <p className="small faint">You can change these once your payout in progress has been paid.</p>}
+      {locked && account && !editing && <p className="small faint">You can change these once your withdrawal in progress has been paid.</p>}
     </section>
   );
 }
@@ -159,7 +159,7 @@ function RequestPanel({ s, onDone }: { s: PayoutSummary; onDone: () => void }) {
     e.preventDefault();
     if (!Number.isFinite(minor) || minor <= 0) return setError('Enter an amount.');
     if (minor > avail) return setError(`You can ask for up to ${money(avail)}.`);
-    if (tooSmall) return setError(`The smallest payout is ${money(s.balance.minAmount)}, or everything that’s available.`);
+    if (tooSmall) return setError(`The smallest withdrawal is ${money(s.balance.minAmount)}, or everything that’s available.`);
     setBusy(true);
     setError(null);
     try {
@@ -173,7 +173,7 @@ function RequestPanel({ s, onDone }: { s: PayoutSummary; onDone: () => void }) {
 
   return (
     <section className="panel panel-pad stack-s">
-      <h2>Ask for a payout</h2>
+      <h2>Withdraw money</h2>
       <form onSubmit={submit} className="stack-s">
         <div className="form-grid">
           <div className="field">
@@ -197,7 +197,7 @@ function RequestPanel({ s, onDone }: { s: PayoutSummary; onDone: () => void }) {
         </p>
         {error && <div className="notice notice-error" role="alert">{error}</div>}
         <div>
-          <button className="btn" disabled={busy}>{busy ? 'Sending…' : `Request ${Number.isFinite(minor) && minor > 0 ? money(minor) : 'payout'}`}</button>
+          <button className="btn" disabled={busy}>{busy ? 'Sending…' : `Withdraw ${Number.isFinite(minor) && minor > 0 ? money(minor) : ''}`.trim()}</button>
         </div>
       </form>
     </section>
@@ -222,7 +222,7 @@ function OpenPayout({ p, onDone }: { p: Payout; onDone: () => void }) {
     <section className="panel panel-pad stack-s">
       <div className="spread" style={{ alignItems: 'flex-start' }}>
         <div>
-          <h2 style={{ marginBottom: 4 }}>Payout in progress</h2>
+          <h2 style={{ marginBottom: 4 }}>Withdrawal in progress</h2>
           <p className="small muted">Asked {dateTime(p.requestedAt)} · to {where(p)}</p>
         </div>
         <div className="num" style={{ fontWeight: 700, fontSize: 22 }}>{money(p.amount, p.currency)}</div>
@@ -273,13 +273,13 @@ export default function PayoutsPage() {
     <div className="stack-l">
       <div className="page-head">
         <div>
-          <h1>Payouts</h1>
+          <h1>Withdraw</h1>
           <p className="muted">
-            Ticket buyers pay the platform. Money from an event can be paid out {hold ? `${hold} day${hold === 1 ? '' : 's'} after it ends` : 'once it ends'}
+            Ticket buyers pay the platform. Money from an event can be withdrawn {hold ? `${hold} day${hold === 1 ? '' : 's'} after it ends` : 'once it ends'}
             {s.balance.advancePercent > 0 ? `, and up to ${s.balance.advancePercent}% of an upcoming event’s sales before it` : ''}.{' '}
             {s.autoApprove
-              ? `Your payouts${s.autoApprove.max !== null ? ` up to ${money(s.autoApprove.max)}` : ''} are approved automatically${s.autoApprove.max !== null ? '; larger ones by the platform team' : ''}.`
-              : 'Every payout is approved by the platform team.'}
+              ? `Your withdrawals${s.autoApprove.max !== null ? ` up to ${money(s.autoApprove.max)}` : ''} are approved automatically${s.autoApprove.max !== null ? '; larger ones by the platform team' : ''}.`
+              : 'Every withdrawal is approved by the platform team.'}
           </p>
         </div>
       </div>
@@ -288,7 +288,7 @@ export default function PayoutsPage() {
         <div className={`stat${t.available < 0 ? ' stat-negative' : ''}`}>
           <dt>{t.available < 0 ? 'Owed to the platform' : 'Available now'}</dt>
           <dd className="num">{money(Math.abs(t.available), s.balance.currency)}</dd>
-          <p className="sub">{t.available < 0 ? 'refunds after your last payout; taken from your next earnings' : 'can be requested'}</p>
+          <p className="sub">{t.available < 0 ? 'refunds after your last withdrawal; taken from your next earnings' : 'can be withdrawn'}</p>
         </div>
         <div className="stat">
           <dt>Not available yet</dt>
@@ -354,7 +354,7 @@ export default function PayoutsPage() {
         ) : !history.data ? (
           <Loading />
         ) : history.data.length === 0 ? (
-          <div className="empty"><p>No payouts yet.</p></div>
+          <div className="empty"><p>No withdrawals yet.</p></div>
         ) : (
           <div className="table-wrap">
             <table>

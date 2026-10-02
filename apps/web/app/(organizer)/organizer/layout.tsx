@@ -11,7 +11,7 @@ import { Icon, IconName } from '@/components/Icon';
 const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
   { href: '/organizer', label: 'Overview', icon: 'dashboard', exact: true },
   { href: '/organizer/events', label: 'Events', icon: 'events' },
-  { href: '/organizer/payouts', label: 'Payouts', icon: 'payouts' },
+  { href: '/organizer/payouts', label: 'Withdraw', icon: 'payouts' },
   { href: '/organizer/staff', label: 'Staff', icon: 'staff' },
   { href: '/organizer/profile', label: 'Profile', icon: 'profile' },
   { href: '/scan', label: 'Scanner', icon: 'scanner' },
