@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { api, ApiError, loadSession, login, logout, register, SessionUser } from '@/lib/api';
 import { dateTime } from '@/lib/format';
+import { Logo } from '@/components/Logo';
 
 // Phase 13: someone sent you a ticket. Opened from the email link
 // (/transfer#token=…). The token sits in the #fragment, so it never reaches
@@ -103,6 +104,7 @@ export default function TransferPage() {
   return (
     <main className="login-page">
       <div className="login-card form" style={{ maxWidth: 460 }}>
+        <Logo onDark={false} host={false} />
         <div>
           <h1>A ticket for you</h1>
         </div>

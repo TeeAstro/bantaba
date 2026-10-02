@@ -1810,17 +1810,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           },
           "401": {
             "description": "Missing or expired access token"
@@ -1892,7 +1882,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           },
           "401": {
             "description": "Missing or expired access token"
@@ -2199,6 +2196,161 @@
         },
         "tags": [
           "Categories"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/changes": {
+      "delete": {
+        "operationId": "EventChanges_withdraw",
+        "summary": "",
+        "description": "Organizer: take back changes still waiting for review (the event keeps its approved details).\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Event Changes"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/events/changes": {
+      "get": {
+        "operationId": "EventChanges_list",
+        "summary": "",
+        "description": "Admin: changes to approved events waiting for review, oldest first, each field as from → to.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Event Changes"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/events/{id}/changes/approve": {
+      "post": {
+        "operationId": "EventChanges_approve",
+        "summary": "",
+        "description": "Admin: apply the changes. Ticket holders are emailed about a new date or venue.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideEventChangesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Event Changes"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/events/{id}/changes/reject": {
+      "post": {
+        "operationId": "EventChanges_reject",
+        "summary": "",
+        "description": "Admin: turn the changes down with a reason; the event keeps its approved details.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectEventChangesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Event Changes"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
         ]
       }
     },
@@ -4409,7 +4561,7 @@
     }
   },
   "info": {
-    "title": "Event Ticketing Platform API",
+    "title": "Bantaba API",
     "description": "REST API shared by the web app and the organizer/staff mobile apps. Amounts are integer minor units (butut, GMD). Sign in with POST /api/v1/auth/login, then send the access token as `Authorization: Bearer <token>`. See docs/api.md.",
     "version": "1",
     "contact": {}
@@ -4847,6 +4999,47 @@
             "$ref": "#/components/schemas/CancellationRefundMode"
           }
         }
+      },
+      "DecideEventChangesDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "The change request's id, from GET /admin/events/changes"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The request's updatedAt as you saw it: if the organizer edited it since, the decision is refused"
+          }
+        },
+        "required": [
+          "requestId",
+          "updatedAt"
+        ]
+      },
+      "RejectEventChangesDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "The change request's id, from GET /admin/events/changes"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The request's updatedAt as you saw it: if the organizer edited it since, the decision is refused"
+          },
+          "note": {
+            "type": "string",
+            "description": "Why, shown to the organizer",
+            "minLength": 2,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "requestId",
+          "updatedAt",
+          "note"
+        ]
       },
       "PayoutAccountDto": {
         "type": "object",

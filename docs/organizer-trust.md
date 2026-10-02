@@ -49,6 +49,8 @@ For organizers who need it:
 
 `GET /api/v1/admin/events/review` lists what's waiting, oldest first. An admin publishing an event directly counts as approving it.
 
+Once approved, a NEW organizer's changes to the event's name, description, pictures, date or venue wait for an admin too: see docs/event-change-review.md.
+
 ## Admin API
 
 The admin dashboard (`/admin/organizers`, `/admin/events`; docs/admin-dashboard.md) puts screens on these. The API, for scripts or `/api/docs`:

@@ -69,7 +69,7 @@ export class CardProvider implements PaymentProvider {
           amount: this.toProviderAmount(input.amount),
           currency: input.currency,
           payment_methods: ['card'],
-          title: process.env.APP_NAME ?? 'Event Ticketing',
+          title: process.env.APP_NAME ?? 'Bantaba',
           description: `Tickets, order ${input.orderId.slice(0, 8).toUpperCase()}`,
           metadata: { reference, orderId: input.orderId },
           return_url: process.env.CARD_RETURN_URL ?? `${frontend}/checkout/success?order=${input.orderId}`,

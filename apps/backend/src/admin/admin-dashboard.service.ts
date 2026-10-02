@@ -27,6 +27,7 @@ export class AdminDashboardService {
     };
     const [
       eventsInReview, eventsOldest,
+      eventChangesInReview, eventChangesOldest,
       payoutRequests, payoutRequestsOldest,
       payoutsToSend, payoutsToSendAuto, payoutsToSendOldest,
       payoutAccountsToCheck,
@@ -39,6 +40,8 @@ export class AdminDashboardService {
     ] = await Promise.all([
       this.prisma.event.count({ where: { status: 'PENDING_APPROVAL' } }),
       oldest(this.prisma.event.aggregate({ where: { status: 'PENDING_APPROVAL' }, _min: { submittedForReviewAt: true } })),
+      this.prisma.eventChangeRequest.count({ where: { status: 'PENDING' } }),
+      this.prisma.eventChangeRequest.aggregate({ where: { status: 'PENDING' }, _min: { submittedAt: true } }).then((r) => r._min.submittedAt),
       this.prisma.payout.count({ where: { status: 'REQUESTED' } }),
       oldest(this.prisma.payout.aggregate({ where: { status: 'REQUESTED' }, _min: { createdAt: true } })),
       this.prisma.payout.count({ where: { status: 'APPROVED' } }),
@@ -55,13 +58,13 @@ export class AdminDashboardService {
       this.lookalikeIds().then((ids) => ids.length),
     ]);
     const counts = {
-      eventsInReview, payoutRequests, payoutsToSend, payoutsToSendAuto, payoutAccountsToCheck, manualRefundsToPay,
+      eventsInReview, eventChangesInReview, payoutRequests, payoutsToSend, payoutsToSendAuto, payoutAccountsToCheck, manualRefundsToPay,
       failedProviderRefunds, failedEmails, cardPaymentsFlagged, organizersPending, lookalikeWarnings,
     };
     const { payoutsToSendAuto: _auto, ...open } = counts;
     return {
       counts,
-      oldest: { eventsInReview: eventsOldest, payoutRequests: payoutRequestsOldest, payoutsToSend: payoutsToSendOldest, manualRefundsToPay: manualRefundsOldest, organizersPending: organizersPendingOldest },
+      oldest: { eventsInReview: eventsOldest, eventChangesInReview: eventChangesOldest, payoutRequests: payoutRequestsOldest, payoutsToSend: payoutsToSendOldest, manualRefundsToPay: manualRefundsOldest, organizersPending: organizersPendingOldest },
       total: Object.values(open).reduce((a, b) => a + b, 0),
     };
   }

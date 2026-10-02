@@ -54,6 +54,7 @@ export interface EventSummary {
   endDate: string;
   venue: { id: string; name: string };
   category: { name: string };
+  changesInReview?: boolean; // docs/event-change-review.md
 }
 
 export interface TicketTypeStat {
@@ -237,6 +238,21 @@ export interface EventRecord {
   refundPolicy: RefundPolicy;
   refundDaysBefore: number | null;
   transfersEnabled: boolean;
+  // Owner/admin view only (docs/event-change-review.md)
+  changeRequest?: EventChangeRequest | null;
+  editsNeedReview?: boolean;
+}
+
+// Changes to an approved event waiting for (or after) an admin's review.
+export type ReviewedField = 'name' | 'description' | 'startDate' | 'endDate' | 'venueId' | 'posterUrl' | 'bannerUrl';
+export interface EventChangeRequest {
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  changes: Partial<Record<ReviewedField, string | null>>;
+  submittedAt: string;
+  updatedAt: string;
+  decidedAt: string | null;
+  decisionNote: string | null;
 }
 
 export type RefundPolicy = 'NONE' | 'UNTIL_DAYS_BEFORE' | 'ANYTIME';

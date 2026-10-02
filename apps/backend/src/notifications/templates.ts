@@ -35,8 +35,10 @@ export interface TicketInfo {
 }
 
 const TZ = 'Africa/Banjul';
-const APP = () => process.env.APP_NAME ?? 'Event Ticketing';
-const COLORS = { ink: '#1b2a2f', soft: '#52636a', faint: '#8a999e', line: '#dde4e2', teal: '#0b6e69', paper: '#f5f7f6', red: '#c0392b', marigold: '#d99a12' };
+const APP = () => process.env.APP_NAME ?? 'Bantaba';
+// Bantaba's buyer-side colours (docs/brand.md): most emails go to ticket buyers.
+// `teal` is the old name of the main colour, now Bantaba plum.
+const COLORS = { ink: '#18181b', soft: '#52525b', faint: '#71717a', line: '#e9d5ff', teal: '#3b0764', paper: '#faf5ff', red: '#ce1126', marigold: '#d99a12' };
 
 export function when(d: Date) {
   return d.toLocaleString('en-GB', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -64,7 +66,7 @@ function layout(opts: { preheader: string; title: string; body: string; tone?: '
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COLORS.paper}"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid ${COLORS.line};border-radius:8px">
 <tr><td style="height:6px;background:${bar};border-radius:8px 8px 0 0;font-size:0;line-height:0">&nbsp;</td></tr>
-<tr><td style="padding:22px 28px 6px;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:${COLORS.teal}">${h(APP())}</td></tr>
+<tr><td style="padding:22px 28px 6px;font-size:22px;font-weight:800;letter-spacing:-.02em;font-family:'Bricolage Grotesque',Arial,sans-serif;color:${COLORS.teal}">${h(APP().toLowerCase())}</td></tr>
 <tr><td style="padding:0 28px 28px;font-size:15px;line-height:1.55">
 <h1 style="margin:6px 0 14px;font-size:22px;line-height:1.25">${h(opts.title)}</h1>
 ${opts.body}
@@ -412,6 +414,39 @@ export function eventReviewed(d: { name: string | null; event: EventInfo; approv
     button(d.eventUrl, d.approved ? 'Open the event' : 'Edit the event');
   const text = [greet(d.name), '', d.approved ? 'Your event has been approved and is now on sale.' : `Your event wasn't approved yet. Please change: ${d.note ?? ''}`, '', eventText(d.event), '', d.eventUrl].join('\n');
   return { subject, html: layout({ preheader: d.approved ? 'Approved and on sale' : 'Changes requested', title: subject, body, tone: d.approved ? 'teal' : 'marigold' }), text };
+}
+
+// "name, date and poster"
+const joinList = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
+// Changes to an approved event (docs/event-change-review.md).
+export function eventChangesRequested(d: { name: string | null; event: EventInfo; organizer: string; fields: string[]; adminUrl: string }): Rendered {
+  const subject = `Changes to review: ${d.event.name}`;
+  const list = joinList(d.fields);
+  const body =
+    p(greet(d.name)) +
+    p(`<b>${h(d.organizer)}</b> changed an event that's already on sale: <b>${h(list)}</b>. Ticket buyers keep seeing the approved version until you approve the changes.`) +
+    eventCard(d.event) +
+    muted('Check nothing new asks people to pay outside the platform, and that any new date or venue is genuine.') +
+    button(d.adminUrl, 'Review the changes');
+  const text = [greet(d.name), '', `${d.organizer} changed ${d.event.name} (${list}). Buyers see the approved version until you approve.`, '', d.adminUrl].join('\n');
+  return { subject, html: layout({ preheader: `${d.organizer} · ${list}`, title: subject, body, tone: 'marigold' }), text };
+}
+
+export function eventChangesReviewed(d: { name: string | null; event: EventInfo; approved: boolean; fields: string[]; note: string | null; eventUrl: string }): Rendered {
+  const list = joinList(d.fields);
+  const subject = d.approved ? `Your changes to ${d.event.name} are live` : `Your changes to ${d.event.name} weren’t approved`;
+  const body =
+    p(greet(d.name)) +
+    (d.approved
+      ? p(`Your changes (${h(list)}) have been approved and are now on the event page.`)
+      : p(`Your changes (${h(list)}) weren’t approved, so the event still shows its earlier details. Here’s why:`) +
+        `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px">${h(d.note ?? '')}</div>` +
+        p('Ticket sales are not affected.')) +
+    eventCard(d.event) +
+    button(d.eventUrl, 'Open the event');
+  const text = [greet(d.name), '', d.approved ? `Your changes (${list}) are live.` : `Your changes (${list}) weren't approved: ${d.note ?? ''}`, '', d.eventUrl].join('\n');
+  return { subject, html: layout({ preheader: d.approved ? 'Changes approved' : 'Changes not approved', title: subject, body, tone: d.approved ? 'teal' : 'marigold' }), text };
 }
 
 const STATUS_TEXT: Record<string, { subject: string; body: string; tone: 'teal' | 'red' | 'marigold' }> = {

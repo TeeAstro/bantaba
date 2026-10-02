@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Logo } from '@/components/Logo';
 
 type HealthResponse = { status: string; database: string };
 
@@ -19,7 +20,8 @@ export default function HomePage() {
 
   return (
     <main className="main stack" style={{ maxWidth: 640, margin: '64px auto' }}>
-      <h1>Event Ticketing Platform</h1>
+      <Logo onDark={false} size={30} />
+      <h1>Organizer, staff and admin sign-in</h1>
       <p className="muted">The customer storefront arrives in a later phase. Organizers, gate staff and admins can sign in now.</p>
       <p>
         <Link className="btn" href="/login">Sign in</Link>

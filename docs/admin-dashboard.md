@@ -13,7 +13,7 @@ Screens for the work admins used to do through the raw API. Web app, admin role 
 | Screen | Path | Uses | What an admin does there |
 |---|---|---|---|
 | Needs attention | `/admin` | `GET /admin/attention` | See everything waiting, most urgent first, with how long the oldest item has waited. Each row links to the screen that deals with it. |
-| Event review | `/admin/events` | `GET /admin/events/review`, `POST /admin/events/{id}/approve`, `POST /admin/events/{id}/reject` | Read the event (poster, description, tickets and prices, organizer). Approve, or send back with a required note. Shows a lookalike-name warning. |
+| Event review | `/admin/events` | `GET /admin/events/review`, `POST /admin/events/{id}/approve`, `POST /admin/events/{id}/reject`, `GET /admin/events/changes` | Read the event (poster, description, tickets and prices, organizer). Approve, or send back with a required note. Shows a lookalike-name warning. Below: changes to approved events, Now → Proposed (docs/event-change-review.md). |
 | Organizers | `/admin/organizers` | `GET /admin/organizers?verificationStatus=&q=&needs=` | Search by name or email. Quick filters: waiting for approval, payout details to check, lookalike names, suspended. |
 | Organizer | `/admin/organizers/{id}` | `GET`/`PATCH /admin/organizers/{id}`, `GET /admin/organizers/{id}/payouts`, `POST …/payout-account/verify`, `PATCH …/profile`, `DELETE …/images/{logo\|banner}`, `GET /organizers/{id}` | See details below. |
 | Payouts | `/admin/payouts?status=` | `GET /admin/payouts`, `POST /admin/payouts/{id}/approve\|reject\|mark-paid` | Tabs: Requests, To send, Paid, Declined, All. Approve, decline (reason required), record as sent (reference required). |
@@ -62,6 +62,7 @@ Counts of everything waiting:
 | Count | Meaning |
 |---|---|
 | `eventsInReview` | Events with status `PENDING_APPROVAL` |
+| `eventChangesInReview` | Changes to approved events waiting for review (docs/event-change-review.md) |
 | `payoutRequests` | Payouts `REQUESTED` |
 | `payoutsToSend` | Payouts `APPROVED`, money not sent yet. `payoutsToSendAuto` is the part that was approved automatically; it's not added to `total` separately. |
 | `payoutAccountsToCheck` | Organizers with payout details that no admin has verified |

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Logo } from '@/components/Logo';
 import { FormEvent, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 
@@ -42,6 +43,7 @@ export default function ResetPasswordPage() {
   return (
     <main className="login-page">
       <form className="login-card form" onSubmit={onSubmit} aria-labelledby="rp-title">
+        <Logo onDark={false} />
         <div>
           <h1 id="rp-title">Choose a new password</h1>
         </div>

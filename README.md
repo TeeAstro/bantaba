@@ -1,4 +1,4 @@
-# Event Ticketing Platform
+# Bantaba (event ticketing platform)
 
 Phased build of a multi-event ticketing platform (concerts, movies, football, festivals, theatre, conferences) with reserved seating, QR/NFC check-in, and organizer/admin dashboards.
 
@@ -518,7 +518,7 @@ Groundwork for the organizer/staff mobile apps (`docs/mobile-apps.md`, Step 1). 
 | 1 | Versioned routes | `curl http://localhost:4000/api/v1/health` and `curl http://localhost:4000/api/health` | Both 200, same response. `curl -i http://localhost:4000/api/v2/health` → 404 |
 | 2 | API docs | Open `http://localhost:4000/api/docs` in a browser | Swagger UI listing the API by area (Auth, Events, Scanner, …) |
 | 3 | Try a request from the docs | In the docs, run **Auth → POST /api/v1/auth/login** with `organizer@example.com` / `SeedPassword123!`, copy `accessToken`, click **Authorize** and paste it, then run **Scanner → GET /api/v1/scanner/events** | Login 200 with tokens; scanner events 200 with the organizer's live events |
-| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 99 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
+| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 103 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
 | 5 | App config | `curl http://localhost:4000/api/v1/app-config` | `apiVersion "1"`, versions `0.0.0`. Set `MOBILE_MIN_VERSION_IOS=1.2.0` in `.env`, restart → the iOS minimum shows `1.2.0` |
 | 6 | Web app still works | Sign in at `http://localhost:3000` and open an event | Works as before (requests now go to `/api/v1`, visible in the browser's network tab) |
 
@@ -857,6 +857,78 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 14 | Phone | Any admin page in a narrow window | Menu wraps at the top; tables scroll sideways inside their panel; no page-wide sideways scrolling |
 | 15 | Automated | `node admin-dashboard-test.js` in `apps/backend` | `6/6 passed` |
 
+## Review of changes to approved events
+
+**Read `docs/event-change-review.md`.**
+
+- **The gap it closes:** new organizers' events are checked before going on sale, but afterwards they could change anything unseen.
+- **What happens now:** for those organizers, changes to an event that's already on sale wait for an admin. That covers the **name, description, poster, banner, date and venue**. The event keeps selling with its approved details until an admin approves.
+- **Applies straight away:** contact details, links, prices and the other settings, as before.
+- **Not affected:** trusted organizers, drafts and admins' own edits.
+- **Organizers** see what's waiting on the event page and the Edit event page, and can withdraw it. If an admin turns the changes down, they're emailed the reason.
+- **Admins:**
+  - review the changes on **Event review → Changes to approved events**, with the current and proposed versions side by side;
+  - the count appears on **Needs attention**;
+  - approving a new date or venue emails ticket holders, as a direct edit does.
+
+1. Apply the migration and restart:
+   ```bash
+   cd apps/backend
+   npx prisma migrate dev
+   ```
+   Then restart the backend and the frontend.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Set up | Sign up a new organizer; as admin approve them (**Organizers**); as them create an event with a ticket type and **Submit for review**; as admin approve it on **Event review** | Event on sale; organizer is "New" |
+| 2 | Edit is held | As the organizer, **Edit event**: change the name and description, and add a contact email; save | Event page says "Waiting for review: name and description" with **Withdraw changes**; the public event (`GET /api/v1/events/<slug>` signed out) still has the old name but the new contact email |
+| 3 | Edit page | Open **Edit event** again | The header explains which changes are checked; the form shows your new name; the notice is at the top |
+| 4 | Picture | Upload a new poster | "Each image is sent for review…"; the public event still has the old poster |
+| 5 | Admin sees it | As admin, **Needs attention** | "Changes to approved events: 1"; **Event review** shows Name, Description and Poster as Now → Proposed, with both pictures |
+| 6 | Approve | **Approve changes** | "The changes … are live"; the public event shows the new name and poster; the organizer gets "Your changes … are live" |
+| 7 | Turn down | Edit the name again; as admin **Turn down…** with "Use the official name." | The organizer's event page shows "weren't approved" with the reason; the name is unchanged; they're emailed |
+| 8 | Withdraw | Edit the description again, then **Withdraw changes** | Notice gone; the description is unchanged |
+| 9 | Date change with sales | Buy a ticket (MOCK), then move the start time; approve as admin | Ticket holder emailed about the new time only after approval |
+| 10 | Trusted organizer | As `organizer@example.com` (trusted), rename a live event | Applies at once; no review |
+| 11 | Phone | **Event review** in a narrow window with a change waiting | Each field stacked, Now above Proposed; no sideways scrolling |
+| 12 | Automated | `node event-change-review-test.js` in `apps/backend` (needs a second venue: see Phase 8) | `8/8 passed` |
+
+## Bantaba Host look
+
+**Read `docs/brand.md`.**
+
+- **What it is:** the platform is now called **Bantaba**.
+  - **Bantaba Host:** the organizer, staff and admin side, which this web app is. River blue and ink, with the new logo and fonts (Bricolage Grotesque for headings, Figtree for text).
+  - **Bantaba:** the buyer side (plum and coral pink). It shows up in emails now, and will be used for the storefront next.
+- **What changed:**
+  - colours and fonts across `/organizer`, `/admin`, `/scan` and the sign-in pages;
+  - the logo in every sidebar and on sign-in;
+  - email header and buttons;
+  - the default sender name ("Bantaba");
+  - the staff app's display name ("Bantaba Host").
+- **No behaviour changes and no migration.**
+- **If you set these in `apps/backend/.env`,** change them to Bantaba:
+  ```
+  MAIL_FROM="Bantaba <tickets@yourdomain>"
+  APP_NAME="Bantaba"
+  ```
+
+1. Restart the frontend (and the backend for the email changes).
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Sign-in | http://localhost:3000/login | Card shows the **bantaba host** logo; blue Sign in button; headings in the new font |
+| 2 | Organizer | Sign in as `organizer@example.com` | Ink sidebar with the logo and "Organizer"; current page highlighted blue; blue buttons and links |
+| 3 | Admin | Sign in as `admin@example.com` | Same look, "Admin" under the logo; waiting counts still show |
+| 4 | Scanner on a phone | `/scan` in a narrow window | Logo, Scanner, Dashboard and Sign out fit on one line; no sideways scrolling |
+| 5 | Email | Buy a ticket, open the newest file in `apps/backend/mail-previews` (or Mailpit) | Purple **bantaba** header and strip; purple buttons |
+| 6 | Offline | Turn off Wi-Fi and reload a page | Pages still work, in the system font |
+| 7 | Automated | All suites in `apps/backend` | Same results as before (nothing functional changed) |
+
 ## Project structure
 
 ```
@@ -912,6 +984,8 @@ event-ticketing-platform/
 │   ├── scanner.md         # Phase 10 scanner app, check-in enforcement, phone setup
 │   ├── api.md             # API versioning, OpenAPI spec, app config
 │   ├── admin-dashboard.md # Phase 14 admin screens and API
+│   ├── event-change-review.md # review of edits to approved events
+│   ├── brand.md           # Bantaba name, colours, fonts and logo rules
 │   └── mobile-apps.md     # organizer/staff mobile apps plan (React Native → native fallback)
 ├── docker-compose.yml
 └── .github/workflows/    # CI, added properly from Phase 2 onward

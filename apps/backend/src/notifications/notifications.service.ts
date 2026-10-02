@@ -36,6 +36,9 @@ export const NotificationType = {
   EVENT_REVIEW_REQUESTED: 'event_review_requested', // to admins
   EVENT_REVIEWED: 'event_reviewed', // to the organizer: live, or sent back
   ORGANIZER_STATUS: 'organizer_status', // to the organizer: approved, suspended...
+  // Changes to approved events (docs/event-change-review.md)
+  EVENT_CHANGES_REQUESTED: 'event_changes_requested', // to admins
+  EVENT_CHANGES_REVIEWED: 'event_changes_reviewed', // to the organizer: applied, or not
   // Payouts (docs/payouts.md)
   PAYOUT_REQUESTED: 'payout_requested', // to admins
   PAYOUT_APPROVED: 'payout_approved', // to the organizer
@@ -277,6 +280,18 @@ export class NotificationsService {
   async eventReviewed(db: Db, r: { eventId: string; organizerUserId: string; approved: boolean }) {
     await this.queue(db, [
       { userId: r.organizerUserId, type: NotificationType.EVENT_REVIEWED, dedupeKey: `event_reviewed:${r.eventId}:${Date.now()}`, eventId: r.eventId, payload: { approved: r.approved } },
+    ]);
+  }
+
+  async eventChangesRequested(db: Db, eventId: string) {
+    const admins = await db.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+    const stamp = Date.now();
+    await this.queue(db, admins.map((a) => ({ userId: a.id, type: NotificationType.EVENT_CHANGES_REQUESTED, dedupeKey: `event_changes_requested:${eventId}:${a.id}:${stamp}`, eventId })));
+  }
+
+  async eventChangesReviewed(db: Db, r: { eventId: string; requestId: string; organizerUserId: string; approved: boolean }) {
+    await this.queue(db, [
+      { userId: r.organizerUserId, type: NotificationType.EVENT_CHANGES_REVIEWED, dedupeKey: `event_changes_reviewed:${r.requestId}`, eventId: r.eventId, payload: { requestId: r.requestId, approved: r.approved } },
     ]);
   }
 

@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MailAttachment, MailTransport } from './mail.transport';
 import { NotificationsService, NotificationType } from './notifications.service';
 import * as T from './templates';
+import { describeFields } from '../events/event-rules';
 import { refundEligibility } from '../refunds/refund-rules';
 import { lookalikeOf } from '../organizers/public-organizer';
 
@@ -326,6 +327,23 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
             adminUrl: `${this.notifications.frontendUrl}/admin/events`,
           }),
         };
+      }
+      case NotificationType.EVENT_CHANGES_REQUESTED: {
+        const ev = await this.eventInfo(n.eventId!);
+        if (!ev) return { skip: 'event no longer exists' };
+        const r = await this.prisma.eventChangeRequest.findFirst({ where: { eventId: ev.e.id, status: 'PENDING' } });
+        if (!r) return { skip: 'no changes waiting any more' };
+        const org = await this.prisma.organizer.findUniqueOrThrow({ where: { id: ev.e.organizerId } });
+        const fields = describeFields(Object.keys(r.changes as object));
+        return { send: T.eventChangesRequested({ name, event: ev.info, organizer: org.businessName, fields, adminUrl: `${this.notifications.frontendUrl}/admin/events` }) };
+      }
+      case NotificationType.EVENT_CHANGES_REVIEWED: {
+        const ev = await this.eventInfo(n.eventId!);
+        if (!ev) return { skip: 'event no longer exists' };
+        const r = await this.prisma.eventChangeRequest.findUnique({ where: { id: String(payload.requestId) } });
+        if (!r) return { skip: 'request no longer exists' };
+        const fields = describeFields(Object.keys(r.changes as object));
+        return { send: T.eventChangesReviewed({ name, event: ev.info, approved: !!payload.approved, fields, note: r.decisionNote, eventUrl: `${this.notifications.frontendUrl}/organizer/events/${ev.e.id}` }) };
       }
       case NotificationType.EVENT_REVIEWED: {
         const ev = await this.eventInfo(n.eventId!);

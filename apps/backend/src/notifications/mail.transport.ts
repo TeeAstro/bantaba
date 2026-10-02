@@ -42,7 +42,7 @@ export class MailTransport {
     const host = config.get<string>('SMTP_HOST');
     const explicit = config.get<string>('MAIL_TRANSPORT');
     this.mode = explicit === 'smtp' || (explicit !== 'log' && !!host) ? 'smtp' : 'log';
-    this.from = config.get<string>('MAIL_FROM') ?? 'Event Ticketing <tickets@localhost>';
+    this.from = config.get<string>('MAIL_FROM') ?? 'Bantaba <tickets@localhost>';
     this.previewDir = resolve(config.get<string>('MAIL_PREVIEW_DIR') ?? join(process.cwd(), 'mail-previews'));
     if (this.mode === 'smtp') {
       if (!host) throw new Error('MAIL_TRANSPORT=smtp needs SMTP_HOST (see docs/notifications.md)');

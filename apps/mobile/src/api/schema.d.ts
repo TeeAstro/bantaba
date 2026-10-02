@@ -899,6 +899,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{id}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Organizer: take back changes still waiting for review (the event keeps its approved details).
+         *
+         *     **Roles:** ORGANIZER, ADMIN
+         */
+        delete: operations["EventChanges_withdraw"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/events/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Admin: changes to approved events waiting for review, oldest first, each field as from → to.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["EventChanges_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/events/{id}/changes/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Admin: apply the changes. Ticket holders are emailed about a new date or venue.
+         *
+         *     **Roles:** ADMIN
+         */
+        post: operations["EventChanges_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/events/{id}/changes/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Admin: turn the changes down with a reason; the event keeps its approved details.
+         *
+         *     **Roles:** ADMIN
+         */
+        post: operations["EventChanges_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payouts/summary": {
         parameters: {
             query?: never;
@@ -2003,6 +2087,20 @@ export interface components {
         CancellationRefundMode: "AUTOMATIC" | "ORGANIZER";
         CancelEventDto: {
             refundMode?: components["schemas"]["CancellationRefundMode"];
+        };
+        DecideEventChangesDto: {
+            /** @description The change request's id, from GET /admin/events/changes */
+            requestId: string;
+            /** @description The request's updatedAt as you saw it: if the organizer edited it since, the decision is refused */
+            updatedAt: string;
+        };
+        RejectEventChangesDto: {
+            /** @description The change request's id, from GET /admin/events/changes */
+            requestId: string;
+            /** @description The request's updatedAt as you saw it: if the organizer edited it since, the decision is refused */
+            updatedAt: string;
+            /** @description Why, shown to the organizer */
+            note: string;
         };
         PayoutAccountDto: {
             /** @enum {string} */
@@ -3738,9 +3836,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": Record<string, never>[];
-                };
+                content?: never;
             };
             /** @description Missing or expired access token */
             401: {
@@ -3796,7 +3892,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
             /** @description Missing or expired access token */
             401: {
@@ -4020,6 +4118,144 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EventChanges_withdraw: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EventChanges_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EventChanges_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideEventChangesDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    EventChanges_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectEventChangesDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

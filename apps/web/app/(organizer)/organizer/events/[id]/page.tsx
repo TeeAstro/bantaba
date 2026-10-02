@@ -5,7 +5,8 @@ import { Suspense, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { useApi } from '@/lib/hooks';
-import { EventDashboard, SeatMap } from '@/lib/types';
+import { EventDashboard, EventRecord, SeatMap } from '@/lib/types';
+import { PendingChanges } from '@/components/event/PendingChanges';
 import { dateTime, dayParts } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
 import { SeatMapView } from '@/components/SeatMapView';
@@ -29,6 +30,8 @@ function EventDetail() {
   const params = useSearchParams();
   const tab = params.get('tab') ?? 'overview';
   const { data, error, loading, reload } = useApi<EventDashboard>(`/events/${id}/dashboard`);
+  // Changes waiting for review (docs/event-change-review.md)
+  const record = useApi<EventRecord>(`/events/${id}`);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
@@ -100,6 +103,9 @@ function EventDetail() {
             <div className="notice notice-warn" style={{ marginTop: 14 }}>
               <b>Changes requested:</b> {event.reviewNote} Make the changes, then submit it again.
             </div>
+          )}
+          {record.data && (
+            <div style={{ marginTop: 14 }}><PendingChanges event={record.data} onWithdrawn={record.reload} /></div>
           )}
           {!data.permissions.canSell && (
             <div className="notice notice-error" style={{ marginTop: 14 }}>Ticket sales are paused: your account is suspended.</div>

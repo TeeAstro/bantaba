@@ -30,6 +30,8 @@ const ITEMS: Item[] = [
     what: () => 'Possible impersonation. Check who they are before approving or letting them sell.' },
   { key: 'eventsInReview', title: 'Events waiting for review', tone: 'review', href: '/admin/events',
     what: () => 'From new organizers. Approve to put them on sale, or send back with a note.' },
+  { key: 'eventChangesInReview', title: 'Changes to approved events', tone: 'review', href: '/admin/events#changes',
+    what: () => 'New organizers editing events already on sale. Buyers see the approved version until you decide.' },
   { key: 'organizersPending', title: 'Organizers waiting for approval', tone: 'review', href: '/admin/organizers?status=PENDING',
     what: () => 'New sign-ups. They can build events but can’t publish until approved.' },
   { key: 'failedEmails', title: 'Emails that failed', tone: 'ops', href: '/admin/emails',

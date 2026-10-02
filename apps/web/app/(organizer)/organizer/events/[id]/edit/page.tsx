@@ -9,6 +9,8 @@ import { EventDashboard, EventRecord, RefundPolicy } from '@/lib/types';
 import { isoToLocalInput, localInputToIso } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
 import { EventImages } from '@/components/event/EventImages';
+import { PendingChanges } from '@/components/event/PendingChanges';
+import { withPending } from '@/lib/eventChanges';
 
 interface Option { id: string; name: string; city?: string }
 
@@ -71,18 +73,22 @@ export default function EditEventPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    // Changes waiting for review are part of what the organizer edits
+    // (docs/event-change-review.md).
     if (loaded.data && !event) {
       setEvent(loaded.data);
-      setForm(toForm(loaded.data));
+      setForm(toForm(withPending(loaded.data)));
     }
   }, [loaded.data, event]);
 
-  const original = useMemo(() => (event ? toForm(event) : null), [event]);
+  const original = useMemo(() => (event ? toForm(withPending(event)) : null), [event]);
 
   if (loaded.error) return <ErrorNotice message={loaded.error} onRetry={loaded.reload} />;
   if (!event || !form || !original) return <Loading />;
 
   const editable = event.status !== 'CANCELLED' && event.status !== 'COMPLETED';
+  const reviewed = !!event.editsNeedReview;
+  const reload = () => { setEvent(null); setForm(null); loaded.reload(); };
   const sold = dash.data?.summary.ticketsSold ?? 0;
   const venueLocked = !!dash.data?.ticketTypes.some((t) => t.section || t.accessZone);
   const datesChanged = form.start !== original.start || form.end !== original.end;
@@ -139,7 +145,9 @@ export default function EditEventPage() {
     }
     if (sold > 0 && (datesChanged || venueChanged)) {
       const what = [datesChanged && 'time', venueChanged && 'venue'].filter(Boolean).join(' and ');
-      if (!window.confirm(`${sold} ${sold === 1 ? 'ticket has' : 'tickets have'} been sold. Change the ${what}? Ticket holders will be emailed about it in a few minutes.`)) return;
+      if (!window.confirm(reviewed
+        ? `${sold} ${sold === 1 ? 'ticket has' : 'tickets have'} been sold. Change the ${what}? The platform team checks it first; once it’s approved, ticket holders are emailed.`
+        : `${sold} ${sold === 1 ? 'ticket has' : 'tickets have'} been sold. Change the ${what}? Ticket holders will be emailed about it in a few minutes.`)) return;
     }
     setBusy(true);
     try {
@@ -161,18 +169,26 @@ export default function EditEventPage() {
           <h1>Edit event</h1>
           <p className="muted">
             <StatusBadge status={event.status} />{' '}
-            {event.status === 'DRAFT' ? 'Not visible to the public yet.' : 'Changes show on the public event page straight away.'}
+            {event.status === 'DRAFT'
+              ? 'Not visible to the public yet.'
+              : reviewed
+                ? 'Changes to the name, description, images, date or venue are checked by the platform team before buyers see them. Everything else shows straight away.'
+                : 'Changes show on the public event page straight away.'}
           </p>
         </div>
       </div>
+
+      <div style={{ marginBottom: 16 }}><PendingChanges event={event} onWithdrawn={reload} /></div>
 
       {!editable && <div className="notice notice-info" style={{ marginBottom: 16 }}>This event is {event.status.toLowerCase()}, so it can’t be edited any more.</div>}
 
       <div className="stack-l">
         <section>
           <h2 style={{ marginBottom: 6 }}>Images</h2>
-          <p className="small muted" style={{ marginBottom: 14 }}>Each image is saved as soon as you upload it.</p>
-          <EventImages event={event} disabled={!editable} onSaved={(e) => setEvent({ ...event, posterUrl: e.posterUrl, bannerUrl: e.bannerUrl })} />
+          <p className="small muted" style={{ marginBottom: 14 }}>
+            {reviewed ? 'Each image is sent for review as soon as you upload it; buyers keep seeing the current one until it’s approved.' : 'Each image is saved as soon as you upload it.'}
+          </p>
+          <EventImages event={withPending(event)} disabled={!editable} onSaved={(e) => setEvent({ ...event, posterUrl: e.posterUrl, bannerUrl: e.bannerUrl, changeRequest: e.changeRequest })} />
         </section>
 
         <section>
@@ -213,7 +229,7 @@ export default function EditEventPage() {
               </div>
               {sold > 0 && (datesChanged || venueChanged) && (
                 <div className="notice notice-info">
-                  {sold} {sold === 1 ? 'ticket has' : 'tickets have'} been sold. Ticket holders are emailed about the new {[datesChanged && 'time', venueChanged && 'venue'].filter(Boolean).join(' and ')} automatically, a few minutes after you save, so you can still correct a mistake. Their tickets stay valid.
+                  {sold} {sold === 1 ? 'ticket has' : 'tickets have'} been sold. Ticket holders are emailed about the new {[datesChanged && 'time', venueChanged && 'venue'].filter(Boolean).join(' and ')} automatically, {reviewed ? 'once the platform team approves it' : 'a few minutes after you save, so you can still correct a mistake'}. Their tickets stay valid.
                 </div>
               )}
               <div className="field">

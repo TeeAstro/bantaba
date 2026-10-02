@@ -8,6 +8,7 @@ import type { OrganizerPermissions, Payout, PayoutAccount } from './types';
 
 export interface AttentionCounts {
   eventsInReview: number;
+  eventChangesInReview: number;
   payoutRequests: number;
   payoutsToSend: number;
   payoutsToSendAuto: number;
@@ -80,6 +81,16 @@ export interface ReviewEvent {
   bannerUrl: string | null;
   ticketTypes: { name: string; price: number; quantityTotal: number }[];
   contactEmail: string | null;
+}
+
+// GET /admin/events/changes (docs/event-change-review.md)
+export interface EventChangeItem {
+  id: string;
+  updatedAt: string;
+  submittedAt: string;
+  event: { id: string; name: string; slug: string; status: string; startDate: string; ticketsSold: number };
+  organizer: { id: string; businessName: string; trustLevel: TrustLevel; verifiedBadge: boolean; user: { email: string }; lookalikeOf: { id: string; businessName: string } | null };
+  fields: { field: 'name' | 'description' | 'startDate' | 'endDate' | 'venueId' | 'posterUrl' | 'bannerUrl'; label: string; from: string | null; to: string | null }[];
 }
 
 export interface AdminPayout extends Payout {

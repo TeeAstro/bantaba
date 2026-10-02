@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { logout } from '@/lib/api';
 import { useSessionUser } from '@/lib/hooks';
+import { Logo } from '@/components/Logo';
 
 const NAV = [
   { href: '/organizer', label: 'Overview', exact: true },
@@ -37,8 +38,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          Event Ticketing
-          <span>Organizer</span>
+          <Link href="/organizer"><Logo /></Link>
+          <span className="brand-sub">Organizer</span>
         </div>
         <nav className="nav" aria-label="Organizer">
           {NAV.map((item) => {

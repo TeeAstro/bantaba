@@ -82,7 +82,7 @@ export default function EventsPage() {
                         </td>
                         <td className="num">{d.weekday} {d.day} {d.month}<span className="cell-sub">{d.time}</span></td>
                         <td>{e.venue.name}</td>
-                        <td><StatusBadge status={e.status} /></td>
+                        <td><StatusBadge status={e.status} />{e.changesInReview && <span className="cell-sub">changes in review</span>}</td>
                       </tr>
                     );
                   })}

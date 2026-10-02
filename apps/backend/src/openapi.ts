@@ -68,7 +68,7 @@ const controllerTag = (name: string) =>
 // controller needs extra decorators.
 export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
   const config = new DocumentBuilder()
-    .setTitle('Event Ticketing Platform API')
+    .setTitle('Bantaba API')
     .setDescription(
       'REST API shared by the web app and the organizer/staff mobile apps. ' +
         'Amounts are integer minor units (butut, GMD). Sign in with POST /api/v1/auth/login, ' +

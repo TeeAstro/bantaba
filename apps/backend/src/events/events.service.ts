@@ -4,7 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { CancellationRefundMode, EventStatus, Prisma, RefundPolicy, UserRole } from '@prisma/client';
+import { CancellationRefundMode, Event, EventStatus, Prisma, RefundPolicy, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -13,6 +13,8 @@ import { assertWithinLimits, organizerPermissions } from '../organizers/organize
 import { PUBLIC_ORGANIZER_SELECT, publicOrganizer } from '../organizers/public-organizer';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { EventChangesService } from './event-changes.service';
+import { assertDates, assertVenueChangeAllowed, ChangeSet, scheduleChanged } from './event-rules';
 import { QueryEventsDto } from './dto/query-events.dto';
 
 export interface AuthenticatedUser {
@@ -63,6 +65,7 @@ export class EventsService {
     private readonly storage: StorageService,
     private readonly notifications: NotificationsService,
     private readonly refunds: RefundsService,
+    private readonly changes: EventChangesService,
   ) {}
 
   // The event, if this user may edit it right now: the owning organizer or
@@ -84,8 +87,15 @@ export class EventsService {
     return event;
   }
 
-  findEditable(eventId: string) {
-    return this.prisma.event.findUnique({ where: { id: eventId } });
+  async findEditable(eventId: string, user: AuthenticatedUser) {
+    return this.ownerView(await this.prisma.event.findUniqueOrThrow({ where: { id: eventId } }), user);
+  }
+
+  // What the owner (or an admin) sees besides the event itself: changes
+  // waiting for review, and whether their edits need review at all
+  // (docs/event-change-review.md).
+  private async ownerView<E extends Event>(event: E, user: AuthenticatedUser) {
+    return { ...event, changeRequest: await this.changes.forOrganizer(event.id), editsNeedReview: await this.changes.holds(user, event) };
   }
 
   private async getOrganizerForUser(userId: string) {
@@ -194,87 +204,72 @@ export class EventsService {
       if (!category) throw new BadRequestException('categoryId does not exist');
     }
 
-    if (dto.startDate || dto.endDate) {
-      const newStart = new Date(dto.startDate ?? event.startDate);
-      const newEnd = new Date(dto.endDate ?? event.endDate);
-      if (newEnd <= newStart) {
-        throw new BadRequestException('endDate must be after startDate');
+    // An approved, on-sale event of an organizer whose events need review:
+    // name, description, dates and venue wait for an admin, and buyers keep
+    // seeing the approved details meanwhile (docs/event-change-review.md).
+    // Everything else applies straight away.
+    const hold = await this.changes.holds(user, event);
+    const proposed: ChangeSet = {};
+    const immediate: UpdateEventDto = { ...dto };
+    if (hold) {
+      if (dto.name !== undefined) proposed.name = dto.name.trim();
+      if (dto.description !== undefined) proposed.description = dto.description ?? null;
+      if (dto.startDate) proposed.startDate = new Date(dto.startDate).toISOString();
+      if (dto.endDate) proposed.endDate = new Date(dto.endDate).toISOString();
+      if (dto.venueId) proposed.venueId = dto.venueId;
+      for (const k of ['name', 'description', 'startDate', 'endDate', 'venueId'] as const) delete immediate[k];
+    } else {
+      if (dto.startDate || dto.endDate) {
+        assertDates(new Date(dto.startDate ?? event.startDate), new Date(dto.endDate ?? event.endDate));
       }
-    }
-
-    // Sections and access zones belong to a venue. Moving an event to a
-    // different venue would leave its seated/zoned ticket types pointing
-    // at the old venue's seats and zones (Phase 8), so that's refused
-    // until those ticket types are gone.
-    if (dto.venueId && dto.venueId !== event.venueId) {
-      const venueBound = await this.prisma.ticketType.count({
-        where: {
-          eventId,
-          OR: [{ sectionId: { not: null } }, { accessZoneId: { not: null } }],
-        },
-      });
-      if (venueBound > 0) {
-        throw new BadRequestException(
-          "Can't change the venue: this event has ticket types tied to the current venue's sections or access zones",
-        );
-      }
-      // Gates belong to a venue too: staff assigned to one of the old
-      // venue's gates would be enforced at a gate that no longer exists.
-      const gated = await this.prisma.eventStaff.count({
-        where: { eventId, assignedGateId: { not: null } },
-      });
-      if (gated > 0) {
-        throw new BadRequestException(
-          "Can't change the venue: staff are assigned to gates at the current venue. Clear their gates in the Staff tab first",
-        );
-      }
-      const venue = await this.prisma.venue.findUnique({ where: { id: dto.venueId } });
-      if (!venue) throw new BadRequestException('venueId does not exist');
+      if (dto.venueId && dto.venueId !== event.venueId) await assertVenueChangeAllowed(this.prisma, eventId, dto.venueId);
     }
 
     // Deliberately do not regenerate the slug when `name` changes — the
     // slug is part of the event's public URL, and changing it silently
     // out from under anyone who already bookmarked/shared it is worse
     // than the name and slug drifting apart.
-    const live = event.status === EventStatus.PUBLISHED || event.status === EventStatus.SOLD_OUT;
-    const scheduleChanged =
-      live &&
-      ((dto.startDate && new Date(dto.startDate).getTime() !== event.startDate.getTime()) ||
-        (dto.endDate && new Date(dto.endDate).getTime() !== event.endDate.getTime()) ||
-        (dto.venueId && dto.venueId !== event.venueId));
+    const moved = scheduleChanged(event, {
+      startDate: immediate.startDate ? new Date(immediate.startDate) : undefined,
+      endDate: immediate.endDate ? new Date(immediate.endDate) : undefined,
+      venueId: immediate.venueId ?? undefined,
+    });
 
     // The update and the "event changed" emails to ticket holders are one
     // transaction (Phase 12): no change goes unannounced, no email for a
     // change that didn't happen.
-    return this.prisma.$transaction(async (tx) => {
-    const updated = await tx.event.update({
-      where: { id: eventId },
-      data: {
-        name: dto.name?.trim(),
-        categoryId: dto.categoryId,
-        venueId: dto.venueId,
-        description: dto.description,
-        // posterUrl / bannerUrl are set only by the image upload endpoints
-        // (EventImagesService), never as free text.
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-        ageRestriction: dto.ageRestriction,
-        rules: dto.rules,
-        contactEmail: dto.contactEmail,
-        contactPhone: dto.contactPhone,
-        // A JSON column is cleared with DbNull, not a plain null.
-        socialLinks: dto.socialLinks === null ? Prisma.DbNull : dto.socialLinks,
-        refundPolicy: dto.refundPolicy,
-        refundDaysBefore: policy === RefundPolicy.UNTIL_DAYS_BEFORE ? dto.refundDaysBefore : dto.refundPolicy ? null : undefined,
-        transfersEnabled: dto.transfersEnabled,
-        // Phase 13: buyers from before a date/venue change on a live event
-        // may then always ask for a refund (refunds/refund-rules.ts).
-        scheduleChangedAt: scheduleChanged ? new Date() : undefined,
-      },
+    const { updated, orphans } = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.event.update({
+        where: { id: eventId },
+        data: {
+          name: immediate.name?.trim(),
+          categoryId: immediate.categoryId,
+          venueId: immediate.venueId,
+          description: immediate.description,
+          // posterUrl / bannerUrl are set only by the image upload endpoints
+          // (EventImagesService), never as free text.
+          startDate: immediate.startDate ? new Date(immediate.startDate) : undefined,
+          endDate: immediate.endDate ? new Date(immediate.endDate) : undefined,
+          ageRestriction: immediate.ageRestriction,
+          rules: immediate.rules,
+          contactEmail: immediate.contactEmail,
+          contactPhone: immediate.contactPhone,
+          // A JSON column is cleared with DbNull, not a plain null.
+          socialLinks: immediate.socialLinks === null ? Prisma.DbNull : immediate.socialLinks,
+          refundPolicy: immediate.refundPolicy,
+          refundDaysBefore: policy === RefundPolicy.UNTIL_DAYS_BEFORE ? immediate.refundDaysBefore : immediate.refundPolicy ? null : undefined,
+          transfersEnabled: immediate.transfersEnabled,
+          // Phase 13: buyers from before a date/venue change on a live event
+          // may then always ask for a refund (refunds/refund-rules.ts).
+          scheduleChangedAt: moved ? new Date() : undefined,
+        },
+      });
+      await this.notifications.eventChanged(tx, eventId, event, updated);
+      const orphans = Object.keys(proposed).length ? (await this.changes.propose(tx, user, eventId, proposed)).orphans : [];
+      return { updated, orphans };
     });
-    await this.notifications.eventChanged(tx, eventId, event, updated);
-    return updated;
-    });
+    await this.changes.deleteFiles(orphans);
+    return this.ownerView(updated, user);
   }
 
   async publish(user: AuthenticatedUser, eventId: string) {
@@ -413,6 +408,11 @@ export class EventsService {
       if (refundMode === CancellationRefundMode.AUTOMATIC) await this.refunds.refundCancelledEvent(tx, eventId, user.id);
       // Pending ticket transfers for the event end here.
       await tx.ticketTransfer.updateMany({ where: { status: 'PENDING', ticket: { ticketType: { eventId } } }, data: { status: 'CANCELLED', respondedAt: new Date() } });
+      // Changes waiting for review end with the event (docs/event-change-review.md).
+      const files = await this.changes.withdrawForCancel(tx, eventId);
+      return { cancelled, files };
+    }).then(async ({ cancelled, files }) => {
+      await this.changes.deleteFiles(files);
       return cancelled;
     });
   }
@@ -479,11 +479,12 @@ export class EventsService {
 
   async findMine(user: AuthenticatedUser) {
     const organizer = await this.getOrganizerForUser(user.id);
-    return this.prisma.event.findMany({
+    const events = await this.prisma.event.findMany({
       where: { organizerId: organizer.id },
-      include: { category: true, venue: true },
+      include: { category: true, venue: true, changeRequests: { where: { status: 'PENDING' }, select: { id: true } } },
       orderBy: { createdAt: 'desc' },
     });
+    return events.map(({ changeRequests, ...e }) => ({ ...e, changesInReview: changeRequests.length > 0 }));
   }
 
   async findOne(idOrSlug: string, viewer: AuthenticatedUser | null) {
@@ -498,6 +499,11 @@ export class EventsService {
     // the admin's note or payout details (docs/payouts.md).
     const shown = { ...event, organizer: publicOrganizer(event.organizer) };
 
+    // The owner and admins also see changes waiting for review (never the public).
+    const isOwner = !!viewer && event.organizer.userId === viewer.id;
+    const isAdmin = viewer?.role === UserRole.ADMIN;
+    if (isOwner || isAdmin) return { ...(await this.ownerView(event, viewer!)), organizer: shown.organizer };
+
     if (event.status === EventStatus.PUBLISHED) {
       return shown;
     }
@@ -505,12 +511,6 @@ export class EventsService {
     // Not published: only visible to the owning organizer or an admin.
     // A 404, not a 403, on denial — so an unpublished event's existence
     // isn't distinguishable from it simply not existing at all.
-    const isOwner = viewer && event.organizer.userId === viewer.id;
-    const isAdmin = viewer?.role === UserRole.ADMIN;
-    if (!isOwner && !isAdmin) {
-      throw new NotFoundException('Event not found');
-    }
-
-    return shown;
+    throw new NotFoundException('Event not found');
   }
 }

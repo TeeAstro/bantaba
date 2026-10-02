@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, Suspense, useState } from 'react';
+import { Logo } from '@/components/Logo';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ApiError, login } from '@/lib/api';
@@ -40,6 +41,7 @@ function LoginForm() {
   return (
     <main className="login-page">
       <form className="login-card form" onSubmit={onSubmit} aria-labelledby="login-title">
+        <Logo onDark={false} />
         <div>
           <h1 id="login-title">Sign in</h1>
           <p className="muted">For event organizers, gate staff and platform admins.</p>

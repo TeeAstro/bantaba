@@ -4,6 +4,7 @@ import sharp = require('sharp');
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { EventsService, AuthenticatedUser } from './events.service';
+import { EventChangesService } from './event-changes.service';
 import { CropDto } from './dto/event-image.dto';
 
 // Event posters and banners (docs/storage.md → "Event images").
@@ -49,6 +50,7 @@ export class EventImagesService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly events: EventsService,
+    private readonly changes: EventChangesService,
   ) {}
 
   async upload(user: AuthenticatedUser, eventId: string, kind: EventImageKind, file: Express.Multer.File | undefined, crop: CropDto) {
@@ -60,6 +62,20 @@ export class EventImagesService {
 
     const key = `events/${event.id}/${kind}-${randomBytes(12).toString('hex')}.webp`;
     const url = await this.storage.put(key, output, 'image/webp');
+
+    // On an approved event that needs review, the new image waits for an
+    // admin; buyers keep seeing the current one (docs/event-change-review.md).
+    if (await this.changes.holds(user, event)) {
+      let orphans: string[];
+      try {
+        ({ orphans } = await this.prisma.$transaction((tx) => this.changes.propose(tx, user, event.id, { [spec.field]: url })));
+      } catch (e) {
+        await this.storage.delete(key);
+        throw e;
+      }
+      await this.changes.deleteFiles(orphans);
+      return this.events.findEditable(event.id, user);
+    }
 
     // Switch the event to the new file only if nobody else changed it in
     // the meantime; otherwise the other upload's file would be orphaned or
@@ -74,18 +90,23 @@ export class EventImagesService {
       throw new ConflictException(`The ${kind} was changed at the same time by someone else. Reload and try again.`);
     }
     await this.storage.deleteUrl(previous);
-    return this.events.findEditable(event.id);
+    return this.events.findEditable(event.id, user);
   }
 
   async remove(user: AuthenticatedUser, eventId: string, kind: EventImageKind) {
     const spec = { field: EVENT_FIELD[kind] };
     const event = await this.events.getEditableEvent(user, eventId);
+    if (await this.changes.holds(user, event)) {
+      const { orphans } = await this.prisma.$transaction((tx) => this.changes.propose(tx, user, event.id, { [spec.field]: null }));
+      await this.changes.deleteFiles(orphans);
+      return this.events.findEditable(event.id, user);
+    }
     const previous = event[spec.field];
     if (previous) {
       await this.prisma.event.updateMany({ where: { id: event.id, [spec.field]: previous }, data: { [spec.field]: null } });
       await this.storage.deleteUrl(previous);
     }
-    return this.events.findEditable(event.id);
+    return this.events.findEditable(event.id, user);
   }
 
   // Exposed for tests and for any future image kinds.

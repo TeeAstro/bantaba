@@ -491,12 +491,47 @@ model Event {
   favorites   FavoriteEvent[]
   eventSeats  EventSeat[]
   checkIns    CheckIn[]
+  changeRequests EventChangeRequest[]
 
   @@index([organizerId])
   @@index([categoryId])
   @@index([venueId])
   @@index([status])
   @@map("events")
+}
+
+enum EventChangeStatus {
+  PENDING // waiting for an admin; the event keeps its approved details meanwhile
+  APPROVED // applied to the event
+  REJECTED // not applied; decisionNote tells the organizer why
+  WITHDRAWN // the organizer took it back, or the event was cancelled
+}
+
+// Edits to an approved, on-sale event by an organizer whose events need
+// review (docs/event-change-review.md). Held here, not on the event, so
+// buyers never see unreviewed details. At most one PENDING per event;
+// later edits are merged into it.
+model EventChangeRequest {
+  id      String            @id @default(uuid())
+  eventId String
+  event   Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  status  EventChangeStatus @default(PENDING)
+  // Proposed values, only for fields that differ from the event:
+  // name, description, startDate, endDate, venueId, posterUrl, bannerUrl.
+  changes Json
+
+  submittedById String
+  submittedAt   DateTime  @default(now())
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventId, status])
+  @@index([status])
+  @@map("event_change_requests")
 }
 
 // ---------- Ticketing ----------

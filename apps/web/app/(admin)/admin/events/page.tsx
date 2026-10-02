@@ -9,6 +9,7 @@ import { dateTime, money } from '@/lib/format';
 import { ErrorNotice, Loading } from '@/components/ui';
 import { ActionModal } from '@/components/admin/ActionModal';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
+import { EventChanges } from '@/components/admin/EventChanges';
 
 export default function EventReviewPage() {
   const { data, error, loading, reload } = useApi<ReviewEvent[]>('/admin/events/review');
@@ -27,7 +28,7 @@ export default function EventReviewPage() {
       <div className="page-head">
         <div>
           <h1>Event review</h1>
-          <p className="muted">Events from organizers whose events are checked before going on sale. Oldest first.</p>
+          <p className="muted">New events, and changes to events already on sale, from organizers whose events are checked. Oldest first.</p>
         </div>
       </div>
 
@@ -35,6 +36,7 @@ export default function EventReviewPage() {
       {error && <ErrorNotice message={error} onRetry={reload} />}
       {loading && !data && <Loading />}
 
+      <h2>New events</h2>
       {data && data.length === 0 && (
         <section className="panel"><div className="empty"><p>No events are waiting for review.</p></div></section>
       )}
@@ -98,6 +100,8 @@ export default function EventReviewPage() {
           </article>
         );
       })}
+
+      <EventChanges />
 
       {action?.kind === 'approve' && (
         <ActionModal

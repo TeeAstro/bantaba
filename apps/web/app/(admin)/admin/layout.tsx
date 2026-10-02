@@ -5,13 +5,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, logout } from '@/lib/api';
 import { useSessionUser } from '@/lib/hooks';
+import { Logo } from '@/components/Logo';
 import { Attention, AttentionContext, AttentionCounts } from '@/lib/admin';
 
 type Count = (c: AttentionCounts) => number;
 
 const NAV: { href: string; label: string; exact?: boolean; count?: Count }[] = [
   { href: '/admin', label: 'Needs attention', exact: true },
-  { href: '/admin/events', label: 'Event review', count: (c) => c.eventsInReview },
+  { href: '/admin/events', label: 'Event review', count: (c) => c.eventsInReview + c.eventChangesInReview },
   { href: '/admin/organizers', label: 'Organizers', count: (c) => c.organizersPending + c.payoutAccountsToCheck + c.lookalikeWarnings },
   { href: '/admin/payouts', label: 'Payouts', count: (c) => c.payoutRequests + c.payoutsToSend },
   { href: '/admin/refunds', label: 'Refunds', count: (c) => c.manualRefundsToPay + c.failedProviderRefunds },
@@ -61,8 +62,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="shell shell-admin">
         <aside className="sidebar">
           <div className="brand">
-            Event Ticketing
-            <span>Admin</span>
+            <Link href="/admin"><Logo /></Link>
+            <span className="brand-sub">Admin</span>
           </div>
           <nav className="nav" aria-label="Admin">
             {NAV.map((item) => {
