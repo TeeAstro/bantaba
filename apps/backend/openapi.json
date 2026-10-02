@@ -1149,6 +1149,29 @@
             "schema": {
               "$ref": "#/components/schemas/OrganizerTrustLevel"
             }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Search: part of the business name, contact email or contact name",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "needs",
+            "required": false,
+            "in": "query",
+            "description": "payout_account: payout details waiting to be checked; lookalike: name resembles a verified organizer's",
+            "schema": {
+              "enum": [
+                "payout_account",
+                "lookalike"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2874,6 +2897,232 @@
           }
         ],
         "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/admin/attention": {
+      "get": {
+        "operationId": "AdminDashboard_attention",
+        "summary": "",
+        "description": "Counts of everything waiting for an admin (the \"Needs attention\" home).\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Dashboard"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/card-flags": {
+      "get": {
+        "operationId": "AdminDashboard_cardFlags",
+        "summary": "",
+        "description": "Card payments that succeeded after their order closed: the customer was charged but has no tickets.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "description": "open (default): still to refund; resolved: refunded by hand; all",
+            "schema": {
+              "enum": [
+                "open",
+                "resolved",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Dashboard"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/card-flags/{paymentId}/resolve": {
+      "post": {
+        "operationId": "AdminDashboard_resolveCardFlag",
+        "summary": "",
+        "description": "Record that a flagged card payment was refunded by hand in the Modem Pay dashboard.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "paymentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveCardFlagDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Dashboard"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/audit-log": {
+      "get": {
+        "operationId": "AdminDashboard_auditLog",
+        "summary": "",
+        "description": "Audit log, newest first, filterable by action, entity and actor.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "description": "e.g. organizer_trust_updated, payout_approved, card_paid_after_order_closed",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityType",
+            "required": false,
+            "in": "query",
+            "description": "e.g. Organizer, Event, Payout, Refund, Payment",
+            "schema": {
+              "maxLength": 50,
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "actorId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Dashboard"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/audit-log/facets": {
+      "get": {
+        "operationId": "AdminDashboard_auditLogFacets",
+        "summary": "",
+        "description": "Actions and entity types that appear in the audit log, with counts.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Dashboard"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
       }
     },
     "/api/v1/ticket-types": {
@@ -4913,6 +5162,24 @@
           "role",
           "id",
           "email"
+        ]
+      },
+      "ResolveCardFlagDto": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Reference of the refund made in the Modem Pay dashboard",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reference"
         ]
       },
       "TicketTypeCategory": {

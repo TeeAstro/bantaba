@@ -1259,6 +1259,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Counts of everything waiting for an admin (the "Needs attention" home).
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["AdminDashboard_attention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/card-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Card payments that succeeded after their order closed: the customer was charged but has no tickets.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["AdminDashboard_cardFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/card-flags/{paymentId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Record that a flagged card payment was refunded by hand in the Modem Pay dashboard.
+         *
+         *     **Roles:** ADMIN
+         */
+        post: operations["AdminDashboard_resolveCardFlag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Audit log, newest first, filterable by action, entity and actor.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["AdminDashboard_auditLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/audit-log/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Actions and entity types that appear in the audit log, with counts.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["AdminDashboard_auditLogFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ticket-types": {
         parameters: {
             query?: never;
@@ -1987,6 +2092,11 @@ export interface components {
             role: components["schemas"]["UserRole"];
             id: string;
             email: string;
+        };
+        ResolveCardFlagDto: {
+            /** @description Reference of the refund made in the Modem Pay dashboard */
+            reference: string;
+            note?: string;
         };
         /** @enum {string} */
         TicketTypeCategory: "REGULAR" | "VIP" | "VVIP" | "EARLY_BIRD" | "STUDENT" | "GROUP" | "FAMILY" | "GENERAL_ADMISSION" | "BACKSTAGE" | "MEET_AND_GREET" | "SEASON_PASS" | "DAY_PASS";
@@ -3109,6 +3219,10 @@ export interface operations {
             query?: {
                 verificationStatus?: components["schemas"]["OrganizerVerificationStatus"];
                 trustLevel?: components["schemas"]["OrganizerTrustLevel"];
+                /** @description Search: part of the business name, contact email or contact name */
+                q?: string;
+                /** @description payout_account: payout details waiting to be checked; lookalike: name resembles a verified organizer's */
+                needs?: "payout_account" | "lookalike";
             };
             header?: never;
             path?: never;
@@ -4494,6 +4608,179 @@ export interface operations {
         };
     };
     Admin_ping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminDashboard_attention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminDashboard_cardFlags: {
+        parameters: {
+            query?: {
+                /** @description open (default): still to refund; resolved: refunded by hand; all */
+                state?: "open" | "resolved" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminDashboard_resolveCardFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveCardFlagDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminDashboard_auditLog: {
+        parameters: {
+            query?: {
+                /** @description e.g. organizer_trust_updated, payout_approved, card_paid_after_order_closed */
+                action?: string;
+                /** @description e.g. Organizer, Event, Payout, Refund, Payment */
+                entityType?: string;
+                entityId?: string;
+                actorId?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminDashboard_auditLogFacets: {
         parameters: {
             query?: never;
             header?: never;

@@ -323,6 +323,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
             name, event: ev.info, organizer: org.businessName, organizerTrust: org.trustLevel === 'TRUSTED' ? 'trusted organizer' : 'new organizer',
             lookalike: lookalikeOf(org, verified)?.businessName ?? null,
             ticketTypes: types.map((t) => ({ name: t.name, price: t.price, quantity: t.quantityTotal })), eventId: ev.e.id, description: ev.e.description,
+            adminUrl: `${this.notifications.frontendUrl}/admin/events`,
           }),
         };
       }
@@ -350,6 +351,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
             // Organizers see only the end of the number (the email could be read by whoever changed it); admins need all of it to check.
             accountNumber: forAdmin ? (o.payoutAccountNumber ?? '') : `•••• ${(o.payoutAccountNumber ?? '').slice(-4)}`,
             bankName: o.payoutBankName, organizerId: o.id, updatedAt: o.payoutDetailsUpdatedAt, url: `${this.notifications.frontendUrl}/organizer/payouts`,
+            adminUrl: `${this.notifications.frontendUrl}/admin/organizers/${o.id}`,
           }),
         };
       }
@@ -374,7 +376,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
       if (!waiting) return { skip: `payout is ${p.status.toLowerCase()}` };
       const o = p.organizer;
       const accountWarning = !o.payoutDetailsVerifiedAt ? 'Their payout details aren’t verified yet.' : o.payoutAccountNumber !== p.accountNumber ? 'Their payout details changed after asking.' : null;
-      return { send: T.payoutRequested({ name, organizer: o.businessName, payout: info, accountWarning, payoutId: p.id, organizerId: o.id, autoApproved: p.status === 'APPROVED' }) };
+      return { send: T.payoutRequested({ name, organizer: o.businessName, payout: info, accountWarning, payoutId: p.id, organizerId: o.id, autoApproved: p.status === 'APPROVED', adminUrl: `${this.notifications.frontendUrl}/admin/payouts?status=${p.status === 'APPROVED' ? 'APPROVED' : 'REQUESTED'}` }) };
     }
     const expected = { payout_approved: 'APPROVED', payout_paid: 'PAID', payout_rejected: 'REJECTED' }[type as 'payout_approved'];
     // An approval overtaken by "paid" before sending: just send the paid email.

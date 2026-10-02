@@ -24,3 +24,9 @@ apps/backend/prisma/migrations/dev.db
 # IDE
 .vscode/
 .idea/
+
+# Uploaded files in development (docs/storage.md)
+apps/backend/uploads/
+
+# Email previews in development (docs/notifications.md)
+apps/backend/mail-previews/

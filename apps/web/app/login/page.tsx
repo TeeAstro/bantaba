@@ -23,10 +23,12 @@ function LoginForm() {
       const next = params.get('next') ?? '';
       if (user.role === 'ORGANIZER') {
         router.replace(next.startsWith('/organizer') || next.startsWith('/scan') ? next : '/organizer');
+      } else if (user.role === 'ADMIN') {
+        router.replace(next.startsWith('/admin') ? next : '/admin');
       } else if (user.role === 'STAFF') {
         router.replace(next.startsWith('/scan') ? next : '/scan');
       } else {
-        setError('This sign-in is for event organizers and their staff. Customer accounts will use the storefront, coming in a later phase.');
+        setError('This sign-in is for event organizers, their staff and platform admins. Customer accounts will use the storefront, coming in a later phase.');
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Sign-in failed');
@@ -40,7 +42,7 @@ function LoginForm() {
       <form className="login-card form" onSubmit={onSubmit} aria-labelledby="login-title">
         <div>
           <h1 id="login-title">Sign in</h1>
-          <p className="muted">For event organizers and gate staff.</p>
+          <p className="muted">For event organizers, gate staff and platform admins.</p>
         </div>
         {error && <div className="notice notice-error" role="alert">{error}</div>}
         <div className="field">

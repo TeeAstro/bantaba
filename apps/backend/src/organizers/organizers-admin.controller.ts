@@ -1,10 +1,11 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { IsEnum, IsOptional } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { OrganizerTrustLevel, OrganizerVerificationStatus, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ApiEnumOptional } from '../common/api-enum';
 import { EventsService } from '../events/events.service';
 import { OrganizersAdminService } from './organizers-admin.service';
@@ -20,10 +21,18 @@ class ListOrganizersQuery {
   @ApiEnumOptional(OrganizerTrustLevel, 'OrganizerTrustLevel')
   @IsOptional() @IsEnum(OrganizerTrustLevel)
   trustLevel?: OrganizerTrustLevel;
+
+  @ApiPropertyOptional({ description: 'Search: part of the business name, contact email or contact name', maxLength: 100 })
+  @IsOptional() @IsString() @MaxLength(100)
+  q?: string;
+
+  @ApiPropertyOptional({ enum: ['payout_account', 'lookalike'], description: "payout_account: payout details waiting to be checked; lookalike: name resembles a verified organizer's" })
+  @IsOptional() @IsIn(['payout_account', 'lookalike'])
+  needs?: 'payout_account' | 'lookalike';
 }
 
 // Admin: organizer approval, trust levels and event review
-// (docs/organizer-trust.md). The admin dashboard (Phase 14) puts screens on these.
+// (docs/organizer-trust.md). Screens: /admin/organizers and /admin/events (docs/admin-dashboard.md).
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)

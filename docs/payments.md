@@ -57,7 +57,7 @@ Customers can pay by **debit or credit card** (`provider: "CARD"` at checkout), 
 
 **Paid after the order closed.** A customer can finish paying after the reservation lapsed. They're charged, but there are no tickets.
 - **How it's recorded:** the payment is marked `SUCCESSFUL` with `paidAfterOrderClosed: true`, and an audit entry `card_paid_after_order_closed` is written.
-- **What to do:** refund them from the Modem Pay dashboard.
+- **What to do:** refund them from the Modem Pay dashboard, then record the refund reference on the admin dashboard's **Card payments** screen (`POST /admin/card-flags/{paymentId}/resolve`; docs/admin-dashboard.md). They're counted on **Needs attention** until then.
 - **Making it rarer:** confirm with Modem Pay whether checkout links can expire with the reservation.
 
 **Refunds.** Modem Pay doesn't document a refund API, so card refunds are **paid back by hand** (`RefundMethod.MANUAL`): an admin refunds in the Modem Pay dashboard, then records it (`POST /admin/refunds/:id/mark-paid`).

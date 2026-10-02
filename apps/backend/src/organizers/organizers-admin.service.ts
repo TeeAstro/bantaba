@@ -16,15 +16,30 @@ export class OrganizersAdminService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async list(q: { verificationStatus?: OrganizerVerificationStatus; trustLevel?: OrganizerTrustLevel }) {
+  async list(q: { verificationStatus?: OrganizerVerificationStatus; trustLevel?: OrganizerTrustLevel; q?: string; needs?: 'payout_account' | 'lookalike' }) {
+    const term = q.q?.trim();
+    const where: Prisma.OrganizerWhereInput = {
+      verificationStatus: q.verificationStatus,
+      trustLevel: q.trustLevel,
+      ...(term
+        ? { OR: [
+            { businessName: { contains: term, mode: 'insensitive' } },
+            { user: { email: { contains: term, mode: 'insensitive' } } },
+            { user: { fullName: { contains: term, mode: 'insensitive' } } },
+          ] }
+        : {}),
+      ...(q.needs === 'payout_account' ? { payoutMethod: { not: null }, payoutDetailsVerifiedAt: null } : {}),
+      ...(q.needs === 'lookalike' ? { verifiedBadge: false, verificationStatus: q.verificationStatus ?? { not: OrganizerVerificationStatus.REJECTED } } : {}),
+    };
     const orgs = await this.prisma.organizer.findMany({
-      where: { verificationStatus: q.verificationStatus, trustLevel: q.trustLevel },
+      where,
       orderBy: { createdAt: 'desc' },
       include: { user: { select: { email: true, fullName: true, createdAt: true } }, _count: { select: { events: true } } },
       take: 200,
     });
     const verified = await this.verifiedNames();
-    return orgs.map((o) => this.present(o, verified));
+    const rows = orgs.map((o) => this.present(o, verified));
+    return q.needs === 'lookalike' ? rows.filter((o) => o.lookalikeOf) : rows;
   }
 
   // Verified organizers' names, to flag lookalikes (public-organizer.ts).

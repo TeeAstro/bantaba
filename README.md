@@ -518,7 +518,7 @@ Groundwork for the organizer/staff mobile apps (`docs/mobile-apps.md`, Step 1). 
 | 1 | Versioned routes | `curl http://localhost:4000/api/v1/health` and `curl http://localhost:4000/api/health` | Both 200, same response. `curl -i http://localhost:4000/api/v2/health` → 404 |
 | 2 | API docs | Open `http://localhost:4000/api/docs` in a browser | Swagger UI listing the API by area (Auth, Events, Scanner, …) |
 | 3 | Try a request from the docs | In the docs, run **Auth → POST /api/v1/auth/login** with `organizer@example.com` / `SeedPassword123!`, copy `accessToken`, click **Authorize** and paste it, then run **Scanner → GET /api/v1/scanner/events** | Login 200 with tokens; scanner events 200 with the organizer's live events |
-| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 94 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
+| 4 | Spec export | `npm run openapi` in `apps/backend` | Prints `Wrote 99 paths to …/openapi.json`; `git diff openapi.json` shows no changes (the committed file is current) |
 | 5 | App config | `curl http://localhost:4000/api/v1/app-config` | `apiVersion "1"`, versions `0.0.0`. Set `MOBILE_MIN_VERSION_IOS=1.2.0` in `.env`, restart → the iOS minimum shows `1.2.0` |
 | 6 | Web app still works | Sign in at `http://localhost:3000` and open an event | Works as before (requests now go to `/api/v1`, visible in the browser's network tab) |
 
@@ -805,6 +805,58 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 8 | Moderation | Admin: `PATCH /admin/organizers/{id}/profile` with `{"bio": null}` | About disappears from the page |
 | 9 | Automated | `node organizer-profile-test.js` in `apps/backend` | `7/7 passed` |
 
+## Admin dashboard (Phase 14)
+
+**Read `docs/admin-dashboard.md`.**
+
+- **What it is:** a web area for admins at http://localhost:3000/admin. It covers everything admins did through the raw API before. Sign in as `admin@example.com` / `SeedPassword123!`; admins now land there after signing in.
+- **Needs attention:** the home page. It lists what's waiting, most urgent first, with how long the oldest item has waited:
+  - card payments with no tickets;
+  - refunds to pay by hand, and failed refunds;
+  - payouts to send, and payout requests;
+  - payout details to check;
+  - names that look like a verified organizer's;
+  - events to review;
+  - organizers to approve;
+  - failed emails.
+- **Screens:**
+  - Event review
+  - Organizers, with search, and an organizer page for status, trust, limits, badge, payout settings, payout details and profile moderation
+  - Payouts
+  - Refunds
+  - Card payments
+  - Emails
+  - Audit log
+- **The sidebar** shows how many things are waiting in each area.
+- **New API:**
+  - `GET /admin/attention`;
+  - flagged card payments (`GET /admin/card-flags`, `POST /admin/card-flags/{paymentId}/resolve`);
+  - the audit log (`GET /admin/audit-log`, `…/facets`);
+  - `q` and `needs` filters on `GET /admin/organizers`.
+- **No migration** this time.
+
+1. Restart the backend and the frontend.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Admin sign-in | Sign in at http://localhost:3000/login as `admin@example.com` | Lands on **Needs attention**; sidebar says "Admin" |
+| 2 | Not for organizers | Signed in as `organizer@example.com`, open http://localhost:3000/admin | Sent back to sign-in; `GET /api/v1/admin/attention` with their token is 403 |
+| 3 | Organizer to approve | Sign up a new organizer (`POST /auth/register-organizer`), reload **Needs attention** | "Organizers waiting for approval: 1" with "oldest waiting …"; **Organizers** shows a count in the sidebar |
+| 4 | Approve | Click the row → the organizer → **Approve…** → confirm | "… approved. They've been emailed."; status badge Approved; count gone from the home page |
+| 5 | Event review | As that organizer, create an event with a ticket type and publish it; as admin open **Event review** | Poster, date, venue, ticket table; **Send back…** needs a note; **Approve and put on sale** → event on sale, organizer emailed |
+| 6 | Payout details | As the organizer, add Wave payout details on **Payouts**; as admin open **Needs attention** | "Payout details to check: 1" → organizer page shows the number and **Mark as checked…** → "Checked" |
+| 7 | Trust form | On the organizer page set **Paid in advance** to 50, tick **Approve payouts automatically** up to 2000, **Save changes** | "Saved."; the organizer's **Payouts** page says payouts up to D2,000.00 are approved automatically |
+| 8 | Badge and lookalikes | Register an organizer named "Sample Events Ltd Gambia", then on `Sample Events Ltd`'s page tick **Verified badge** and save (sign-up refuses such names once the badge exists, so register first) | **Names like a verified organizer: 1**; **Organizers → Lookalike names** lists it with "Looks like Sample Events Ltd" |
+| 9 | Payouts | **Payouts → Requests**: **Approve**; then **To send** → **Record as sent** with a reference | Moves from Requests to To send to Paid, with the reference shown |
+| 10 | Refunds by hand | Make a bank-transfer refund (Phase 13 checklist #8); open **Refunds → To pay by hand** | Listed with customer, event and amount; **Record as paid** with a reference → gone; customer emailed |
+| 11 | Card payments | `node card-autopayout-test.js` with the card settings (it creates a late payment), then **Card payments** | The late payment is listed with its charge id; **Record refund** with a reference → moves to **Refunded** |
+| 12 | Emails | Stop Mailpit (or set a wrong `SMTP_HOST`) and buy a ticket; open **Emails** | Failed email with the error; after fixing the mail settings, **Retry** → sent with the next run |
+| 13 | Audit log | **Audit log**, choose action "Organizer trust updated" | Your changes from steps 4 and 7, with your email; **Details** shows what changed |
+| 14 | Phone | Any admin page in a narrow window | Menu wraps at the top; tables scroll sideways inside their panel; no page-wide sideways scrolling |
+| 15 | Automated | `node admin-dashboard-test.js` in `apps/backend` | `6/6 passed` |
+
 ## Project structure
 
 ```
@@ -813,7 +865,7 @@ event-ticketing-platform/
 │   ├── backend/         # NestJS API
 │   │   ├── src/
 │   │   │   ├── auth/          # registration, login, JWT, refresh rotation, RBAC guards
-│   │   │   ├── admin/         # RBAC smoke-test route (full dashboard is Phase 14)
+│   │   │   ├── admin/         # admin dashboard API: attention counts, flagged card payments, audit log (Phase 14)
 │   │   │   ├── events/        # create/edit/publish/cancel/search events
 │   │   │   ├── ticket-types/  # organizer-managed ticket types per event
 │   │   │   ├── payments/      # Wave/Bank/Mock providers, webhook, refund stub
@@ -841,7 +893,8 @@ event-ticketing-platform/
 │   │   └── bench/             # timed ticket-queue tool for performance tests
 │   └── web/              # Next.js frontend
 │       ├── app/
-│       │   ├── login/                 # sign-in for organizers and staff
+│       │   ├── login/                 # sign-in for organizers, staff and admins
+│       │   ├── (admin)/admin/         # admin dashboard (Phase 14)
 │       │   ├── (organizer)/organizer/ # dashboard pages (Phase 9)
 │       │   └── (scanner)/scan/        # staff scanner (Phase 10)
 │       ├── components/        # UI pieces, event tabs, sales chart, seat map
@@ -858,6 +911,7 @@ event-ticketing-platform/
 │   ├── organizer-dashboard.md # Phase 9 screens, dashboard numbers, staff accounts, frontend foundations
 │   ├── scanner.md         # Phase 10 scanner app, check-in enforcement, phone setup
 │   ├── api.md             # API versioning, OpenAPI spec, app config
+│   ├── admin-dashboard.md # Phase 14 admin screens and API
 │   └── mobile-apps.md     # organizer/staff mobile apps plan (React Native → native fallback)
 ├── docker-compose.yml
 └── .github/workflows/    # CI, added properly from Phase 2 onward

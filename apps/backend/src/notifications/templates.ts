@@ -383,7 +383,7 @@ export function ticketReceived(d: { name: string | null; fromName: string | null
 
 // ---------- organizer trust (docs/organizer-trust.md) ----------
 
-export function eventReviewRequested(d: { name: string | null; event: EventInfo; organizer: string; organizerTrust: string; lookalike?: string | null; ticketTypes: { name: string; price: number; quantity: number }[]; eventId: string; description: string | null }): Rendered {
+export function eventReviewRequested(d: { name: string | null; event: EventInfo; organizer: string; organizerTrust: string; lookalike?: string | null; ticketTypes: { name: string; price: number; quantity: number }[]; eventId: string; description: string | null; adminUrl: string }): Rendered {
   const subject = `Review needed: ${d.event.name}`;
   const rows = d.ticketTypes.map((t) => `<tr><td style="padding:3px 0;font-size:14px">${h(t.name)}</td><td align="right" style="padding:3px 0;font-size:14px">${t.quantity} × ${h(money(t.price))}</td></tr>`).join('');
   const body =
@@ -394,8 +394,8 @@ export function eventReviewRequested(d: { name: string | null; event: EventInfo;
     (d.description ? `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px;white-space:pre-line">${h(d.description.slice(0, 1500))}</div>` : '') +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px">${rows || '<tr><td style="font-size:14px">No ticket types</td></tr>'}</table>` +
     muted('Check that the event is real: the venue and date make sense, the organizer is who they say they are, the prices are plausible, and nothing in the text or images asks people to pay outside the platform.') +
-    muted(`Approve: <code>POST /api/v1/admin/events/${h(d.eventId)}/approve</code> · Send back: <code>POST /api/v1/admin/events/${h(d.eventId)}/reject</code> with a note. (The admin dashboard gets buttons for this in Phase 14.)`);
-  const text = [greet(d.name), '', `${d.organizer} (${d.organizerTrust}) wants to publish an event:`, d.lookalike ? `CAREFUL: the name looks like the verified organizer "${d.lookalike}".` : '', '', eventText(d.event), '', ...d.ticketTypes.map((t) => `  ${t.name}: ${t.quantity} × ${money(t.price)}`), '', `Approve: POST /api/v1/admin/events/${d.eventId}/approve`, `Send back: POST /api/v1/admin/events/${d.eventId}/reject {note}`].join('\n');
+    button(d.adminUrl, 'Review it');
+  const text = [greet(d.name), '', `${d.organizer} (${d.organizerTrust}) wants to publish an event:`, d.lookalike ? `CAREFUL: the name looks like the verified organizer "${d.lookalike}".` : '', '', eventText(d.event), '', ...d.ticketTypes.map((t) => `  ${t.name}: ${t.quantity} × ${money(t.price)}`), '', `Approve or send back: ${d.adminUrl}`].join('\n');
   return { subject, html: layout({ preheader: `${d.organizer} · ${eventWhen(d.event)}`, title: subject, body, tone: 'marigold' }), text };
 }
 
@@ -453,7 +453,7 @@ function payoutTable(x: PayoutInfo) {
 }
 const payoutText = (x: PayoutInfo) => [`  Amount: ${money(x.amount, x.currency)}`, `  To: ${dest(x)}`, `  Requested: ${when(x.requestedAt)}`, x.reference ? `  Reference: ${x.reference}` : ''].filter(Boolean).join('\n');
 
-export function payoutRequested(d: { name: string | null; organizer: string; payout: PayoutInfo; accountWarning: string | null; payoutId: string; organizerId: string; autoApproved?: boolean }): Rendered {
+export function payoutRequested(d: { name: string | null; organizer: string; payout: PayoutInfo; accountWarning: string | null; payoutId: string; organizerId: string; autoApproved?: boolean; adminUrl: string }): Rendered {
   const subject = d.autoApproved
     ? `Payout to send: ${d.organizer}, ${money(d.payout.amount, d.payout.currency)}`
     : `Payout request: ${d.organizer}, ${money(d.payout.amount, d.payout.currency)}`;
@@ -465,8 +465,9 @@ export function payoutRequested(d: { name: string | null; organizer: string; pay
     payoutTable(d.payout) +
     (d.payout.note ? `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px"><b>Their note:</b> ${h(d.payout.note)}</div>` : '') +
     (d.accountWarning ? p(`<b style="color:${COLORS.red}">${h(d.accountWarning)}</b>`) : '') +
-    muted(`Their balance is checked again when you approve. Details and per-event breakdown: <code>GET /api/v1/admin/organizers/${h(d.organizerId)}/payouts</code>. Approve: <code>POST /api/v1/admin/payouts/${h(d.payoutId)}/approve</code>; after sending the money, <code>…/mark-paid</code> with the reference; or <code>…/reject</code> with a note.`);
-  const text = [greet(d.name), '', d.autoApproved ? `${d.organizer}'s payout was approved automatically. Please send it:` : `${d.organizer} is asking to be paid:`, payoutText(d.payout), d.payout.note ? `  Note: ${d.payout.note}` : '', d.accountWarning ?? '', '', `Approve: POST /api/v1/admin/payouts/${d.payoutId}/approve`, `Paid: POST /api/v1/admin/payouts/${d.payoutId}/mark-paid {reference}`, `Reject: POST /api/v1/admin/payouts/${d.payoutId}/reject {note}`].join('\n');
+    (d.autoApproved ? '' : muted('Their balance is checked again when you approve.')) +
+    button(d.adminUrl, d.autoApproved ? 'Record it as sent' : 'Review the request');
+  const text = [greet(d.name), '', d.autoApproved ? `${d.organizer}'s payout was approved automatically. Please send it:` : `${d.organizer} is asking to be paid:`, payoutText(d.payout), d.payout.note ? `  Note: ${d.payout.note}` : '', d.accountWarning ?? '', '', d.adminUrl].join('\n');
   return { subject, html: layout({ preheader: `${d.organizer} · ${money(d.payout.amount, d.payout.currency)}`, title: d.autoApproved ? 'Payout to send' : 'Payout request', body, tone: 'marigold' }), text };
 }
 
@@ -487,7 +488,7 @@ export function payoutDecided(d: { name: string | null; type: 'payout_approved' 
   return { subject: t.subject, html: layout({ preheader: t.line, title: t.subject, body, tone: t.tone }), text };
 }
 
-export function payoutAccountChanged(d: { name: string | null; forAdmin: boolean; first: boolean; organizer: string; method: string; accountName: string; accountNumber: string; bankName: string | null; organizerId: string; updatedAt: Date; url: string }): Rendered {
+export function payoutAccountChanged(d: { name: string | null; forAdmin: boolean; first: boolean; organizer: string; method: string; accountName: string; accountNumber: string; bankName: string | null; organizerId: string; updatedAt: Date; url: string; adminUrl: string }): Rendered {
   const where = d.method === 'WAVE' ? `Wave ${d.accountNumber}` : `${d.bankName ?? 'Bank'} ${d.accountNumber}`;
   if (d.forAdmin) {
     const subject = `Check payout details: ${d.organizer}`;
@@ -496,8 +497,8 @@ export function payoutAccountChanged(d: { name: string | null; forAdmin: boolean
       p(`<b>${h(d.organizer)}</b> ${d.first ? 'added' : 'changed'} where their money is sent. No payout can go there until an admin has checked it.`) +
       `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px">${h(where)}<br>Name: ${h(d.accountName)}</div>` +
       muted('Check the name matches the organizer (their business or the person you approved), ideally by calling them on a number you already have. A change right before a payout request is a common sign of a hijacked account.') +
-      muted(`Confirm: <code>POST /api/v1/admin/organizers/${h(d.organizerId)}/payout-account/verify</code> with <code>{"updatedAt":"${h(d.updatedAt.toISOString())}"}</code>`);
-    const text = [greet(d.name), '', `${d.organizer} ${d.first ? 'added' : 'changed'} their payout details:`, `  ${where}`, `  Name: ${d.accountName}`, '', `Confirm: POST /api/v1/admin/organizers/${d.organizerId}/payout-account/verify {"updatedAt":"${d.updatedAt.toISOString()}"}`].join('\n');
+      button(d.adminUrl, 'Check the details');
+    const text = [greet(d.name), '', `${d.organizer} ${d.first ? 'added' : 'changed'} their payout details:`, `  ${where}`, `  Name: ${d.accountName}`, '', `Mark them as checked: ${d.adminUrl}`].join('\n');
     return { subject, html: layout({ preheader: `${d.organizer} · ${where}`, title: subject, body, tone: 'marigold' }), text };
   }
   const subject = d.first ? 'Your payout details were added' : 'Your payout details were changed';

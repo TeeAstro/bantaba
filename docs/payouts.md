@@ -101,7 +101,7 @@ Admins can mark an organizer as **verified**: the platform has confirmed it's th
 
 ## Limits of this
 
-- **No admin screens yet:** everything admin-side is the API (`/api/docs`) and the emails, until the admin dashboard (Phase 14).
+- **Admin screens:** payouts and payout-detail checks are in the admin dashboard (`/admin/payouts`, the organizer page; docs/admin-dashboard.md). The admin emails link there.
 - **Money is sent by hand:** there's no Wave/bank payout integration.
 - **Cancelled events' money stays held:** the platform settles these with the organizer outside the system for now.
 - **No platform commission:** the platform keeps only the booking fee. A percentage commission on ticket sales would be subtracted from "earned".

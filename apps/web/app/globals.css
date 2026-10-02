@@ -521,3 +521,63 @@ textarea { min-height: 88px; resize: vertical; }
   .pcards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .pcards-small { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ---------- Admin dashboard (Phase 14, docs/admin-dashboard.md) ---------- */
+
+.shell-admin .nav a { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nav-count { min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--marigold); color: var(--ink); font-size: 12px; font-weight: 700; line-height: 20px; text-align: center; }
+.nav a[aria-current='page'] .nav-count { background: #fff; color: var(--teal-strong); }
+
+/* "Needs attention": one row per kind of work, coloured by what's at stake. */
+.attention-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.attention { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--ink-faint); border-radius: var(--radius-m); }
+.attention-money { border-left-color: var(--marigold); }
+.attention-risk { border-left-color: var(--red); }
+.attention-review { border-left-color: var(--teal); }
+.attention-link { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 14px 18px; color: var(--ink); }
+.attention-link:hover { text-decoration: none; background: var(--paper); }
+.attention-count { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; text-align: right; }
+.attention-body { display: grid; gap: 2px; }
+.attention-title { font-weight: 650; color: var(--teal-strong); }
+.attention-link:hover .attention-title { text-decoration: underline; }
+.attention-what { font-size: 13px; color: var(--ink-soft); }
+.attention-since { color: var(--ink-faint); white-space: nowrap; }
+.clear-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.clear-list li::before { content: '✓ '; color: var(--green); }
+@media (max-width: 560px) {
+  .attention-link { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 12px 14px; }
+  .attention-count { font-size: 22px; }
+  .attention-since { grid-column: 2; }
+}
+
+.filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+.filters .field { min-width: 180px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+button.chip { font: inherit; font-size: 13px; cursor: pointer; color: var(--ink-soft); }
+button.chip[aria-pressed='true'] { background: var(--teal); border-color: var(--teal); color: #fff; }
+.search { display: flex; gap: 8px; }
+.search input { min-width: 200px; }
+.btn-link-dark { background: none; border: 0; padding: 8px 0; font: inherit; font-size: 14px; color: var(--teal); cursor: pointer; text-decoration: underline; }
+
+.cell-warn { display: block; font-size: 12px; color: #8e2a20; margin-top: 2px; }
+.row-end { justify-content: flex-end; flex-wrap: nowrap; gap: 6px; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: var(--paper); padding: 1px 4px; border-radius: 3px; }
+
+.review-card { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 20px; padding: 20px; }
+.review-media img, .review-noimg { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--paper); }
+.review-noimg { display: grid; place-items: center; }
+.review-desc { white-space: pre-line; max-height: 12em; overflow: auto; }
+@media (max-width: 640px) {
+  .review-card { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .review-media { max-width: 140px; }
+}
+
+.moderate-images { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: start; }
+.moderate-images figure { margin: 0; display: grid; gap: 8px; justify-items: start; }
+.moderate-logo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); }
+.moderate-banner { width: 100%; aspect-ratio: 3 / 1; object-fit: cover; border-radius: var(--radius-s); border: 1px solid var(--line); }
+.moderate-empty { display: grid; place-items: center; width: 100%; min-height: 80px; border: 1px dashed var(--line); border-radius: var(--radius-s); }
+@media (max-width: 560px) { .moderate-images { grid-template-columns: minmax(0, 1fr); } }
+
+.audit-detail td { background: var(--paper); }
+.audit-detail pre { margin: 0; font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 320px; overflow: auto; }

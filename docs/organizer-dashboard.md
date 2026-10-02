@@ -20,7 +20,7 @@ Phase 9 is the first phase with real screens: an organizer dashboard in the Next
 | · Staff | Assign staff (existing or new account), change role/gate, remove |
 | `/organizer/staff` | The organizer's staff roster and where each person is assigned |
 
-Admins can call every per-event endpoint (as elsewhere, they bypass ownership), but the dashboard UI itself is organizer-only; the admin UI is Phase 14.
+Admins can call every per-event endpoint (as elsewhere, they bypass ownership), but the dashboard UI itself is organizer-only; admins have their own area at `/admin` (docs/admin-dashboard.md).
 
 ## New API endpoints
 
@@ -83,4 +83,4 @@ All aggregation happens in the database (`groupBy`, `aggregate`, and two raw SQL
 - **No CSV export** of orders/attendees.
 - **Check-in log isn't paged** (flagged in `docs/checkin.md` already); fine for testing-scale events, needs paging before large ones.
 - **Sales-per-day chart** shows the most recent 45 days of sales.
-- **Admin dashboard UI** is Phase 14; admins can use the API.
+- **Admin dashboard UI** is a separate area at `/admin` (Phase 14, docs/admin-dashboard.md).

@@ -27,6 +27,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local mail catcher (Phase 12): the backend sends to it when
+  # SMTP_HOST=localhost, SMTP_PORT=1025; read the emails at http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
   backend:
     build:
       context: ./apps/backend

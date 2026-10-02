@@ -8,8 +8,8 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsWorker } from './notifications.worker';
 import { ListNotificationsQueryDto } from './dto/list-notifications.dto';
 
-// Admin view of the outbox until the admin dashboard (Phase 14) has a
-// screen for it: see what was sent, what failed and why, and retry.
+// Admin view of the outbox (the admin dashboard's Emails screen): see
+// what was sent, what failed and why, and retry.
 @Controller('admin/notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)

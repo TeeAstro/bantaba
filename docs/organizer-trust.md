@@ -51,7 +51,7 @@ For organizers who need it:
 
 ## Admin API
 
-Until the admin dashboard (Phase 14) has screens, use the API docs at `/api/docs`, signed in as an admin:
+The admin dashboard (`/admin/organizers`, `/admin/events`; docs/admin-dashboard.md) puts screens on these. The API, for scripts or `/api/docs`:
 
 | | |
 |---|---|

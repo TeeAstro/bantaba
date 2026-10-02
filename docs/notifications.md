@@ -29,7 +29,7 @@ Not sent:
 - Description, rules or image edits, and any change to a draft event.
 - Marketing of any kind. These are all service messages, so there's no unsubscribe yet. If marketing email is added, it needs opt-in and an unsubscribe link.
 
-**Not built yet:** "your organizer account was approved" is waiting for the admin dashboard (Phase 14). Approval doesn't have an action of its own yet (it's set directly in the database). Email address verification is also still to come.
+Organizers are emailed when an admin approves, rejects, suspends or reinstates them, or gives them the verified badge (`organizer_status`; docs/organizer-trust.md). Admins do this from the organizer page of the admin dashboard (docs/admin-dashboard.md). **Not built yet:** email address verification.
 
 ## How sending works
 
