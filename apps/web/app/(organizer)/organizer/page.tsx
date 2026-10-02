@@ -3,9 +3,19 @@
 import Link from 'next/link';
 import { useApi } from '@/lib/hooks';
 import { Overview, OrganizerPermissions } from '@/lib/types';
-import { dateTime, money, dayParts } from '@/lib/format';
-import { CapacityMeter, ErrorNotice, Loading, StatusBadge } from '@/components/ui';
+import { dayParts, money, pct } from '@/lib/format';
+import { ErrorNotice, Loading } from '@/components/ui';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
+import { Icon } from '@/components/Icon';
+import { BarChart, Delta, dalasi, dalasiShort } from '@/components/BarChart';
+import { HeroStats } from '@/components/HeroStats';
+import { WeekPulse } from '@/components/WeekPulse';
+import { waitingFor } from '@/lib/admin';
+
+// Organizer home (Phase 15, docs/organizer-dashboard.md): the next event
+// first, then this week's numbers, what needs doing, and what's coming up.
+
+const DAY = 86_400_000;
 
 // docs/organizer-trust.md: what a new organizer's account can do, so the
 // restrictions never come as a surprise.
@@ -19,15 +29,87 @@ function AccountLimits({ p }: { p: OrganizerPermissions }) {
   ].filter(Boolean) as string[];
   if (items.length === 0) return null;
   return (
-    <section className="panel panel-pad">
-      <h2 style={{ marginBottom: 6 }}>New organizer account</h2>
-      <p className="small muted" style={{ marginBottom: 10 }}>To protect ticket buyers, new accounts start with a few limits. They’re lifted as you build a track record; contact the platform team if you need more sooner.</p>
-      <ul className="small" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
+    <details className="panel panel-pad limits">
+      <summary><strong>New organizer account:</strong> <span className="muted">a few limits apply while you build a track record.</span></summary>
+      <ul className="small">
         {items.map((t) => <li key={t}>{t}</li>)}
       </ul>
-    </section>
+      <p className="small muted">They’re lifted as you sell; contact the platform team if you need more sooner.</p>
+    </details>
   );
 }
+
+function greeting() {
+  // Banjul time is UTC+0 all year.
+  const h = new Date().getUTCHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+function startsIn(iso: string) {
+  const start = new Date(iso);
+  const today = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+  const day = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+  const days = Math.round((day - today) / DAY);
+  if (start.getTime() <= Date.now()) return 'On now';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `In ${days} days`;
+}
+
+type Todo = { key: string; tone: 'gold' | 'red' | 'blue' | 'green'; mark: React.ReactNode; title: string; sub: string; href: string };
+
+function todos(d: Overview): Todo[] {
+  const t = d.todo;
+  const out: Todo[] = [];
+  if (t.refundRequests.count > 0) {
+    const since = waitingFor(t.refundRequests.oldestAt);
+    out.push({
+      key: 'refunds', tone: 'gold', mark: t.refundRequests.count,
+      title: `Answer ${t.refundRequests.count} refund ${t.refundRequests.count === 1 ? 'request' : 'requests'}`,
+      sub: [t.refundRequests.event?.name, since && `oldest ${since}`].filter(Boolean).join(' · '),
+      href: t.refundRequests.event ? `/organizer/events/${t.refundRequests.event.id}?tab=refunds` : '/organizer/events',
+    });
+  }
+  const soon = Date.now() + 14 * DAY;
+  for (const e of d.upcoming.filter((e) => e.staff === 0 && ['PUBLISHED', 'SOLD_OUT'].includes(e.status) && new Date(e.startDate).getTime() < soon).slice(0, 2)) {
+    out.push({ key: `staff-${e.id}`, tone: 'red', mark: '!', title: 'Assign gate staff', sub: `${e.name} has nobody to scan tickets yet`, href: `/organizer/events/${e.id}?tab=staff` });
+  }
+  for (const e of t.sentBack.slice(0, 2)) {
+    out.push({ key: `back-${e.id}`, tone: 'red', mark: '!', title: 'Sent back by the platform team', sub: `${e.name}: read the note, fix and resubmit`, href: `/organizer/events/${e.id}` });
+  }
+  if (t.changesInReview.length > 0) {
+    out.push({ key: 'changes', tone: 'blue', mark: '…', title: 'Changes waiting for review', sub: t.changesInReview.map((e) => e.name).join(', '), href: `/organizer/events/${t.changesInReview[0].id}` });
+  }
+  if (t.eventsInReview > 0) {
+    out.push({ key: 'review', tone: 'blue', mark: '…', title: `${t.eventsInReview} ${t.eventsInReview === 1 ? 'event' : 'events'} waiting for review`, sub: 'Usually checked within a working day', href: '/organizer/events' });
+  }
+  const drafts = d.eventsByStatus.DRAFT ?? 0;
+  if (drafts > 0) {
+    out.push({ key: 'drafts', tone: 'blue', mark: drafts, title: `${drafts} ${drafts === 1 ? 'draft' : 'drafts'} not on sale yet`, sub: 'Add tickets and publish when ready', href: '/organizer/events' });
+  }
+  const acct = t.payoutAccount;
+  out.push(
+    !acct.method
+      ? { key: 'payout', tone: 'red', mark: '!', title: 'Add your payout details', sub: 'Where we send your money: Wave or bank', href: '/organizer/payouts' }
+      : !acct.verified
+        ? { key: 'payout', tone: 'gold', mark: '…', title: 'Payout details being checked', sub: `${acct.method === 'WAVE' ? 'Wave' : 'Bank'} · ${acct.account ?? ''}`, href: '/organizer/payouts' }
+        : { key: 'payout', tone: 'green', mark: <Icon name="check" size={14} />, title: 'Payout details checked', sub: `${acct.method === 'WAVE' ? 'Wave' : 'Bank'} · ${acct.account ?? ''}`, href: '/organizer/payouts' },
+  );
+  return out;
+}
+
+const ago = (iso: string) => {
+  const w = waitingFor(iso);
+  return !w || w === '0 min' ? 'just now' : `${w} ago`;
+};
+
+// "26 Sep – 2 Oct": the last 7 days, today included (Banjul = UTC).
+function weekRange() {
+  const f = (t: number) => new Date(t).toLocaleDateString('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' });
+  return `${f(Date.now() - 6 * DAY)} – ${f(Date.now())}`;
+}
+
+const posterTint = ['#F59E0B', '#0EA5E9', '#7C3AED', '#10B981', '#E11D48'];
 
 export default function OverviewPage() {
   const { data, error, loading, reload } = useApi<Overview>('/organizer/overview');
@@ -35,23 +117,19 @@ export default function OverviewPage() {
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
   if (loading || !data) return <Loading />;
 
-  const { totals } = data;
-  const published = data.eventsByStatus.PUBLISHED ?? 0;
-  const drafts = data.eventsByStatus.DRAFT ?? 0;
+  const next = data.upcoming.find((e) => e.status === 'PUBLISHED' || e.status === 'SOLD_OUT');
+  const rest = data.upcoming.filter((e) => e.id !== next?.id).slice(0, 3);
+  const days30 = data.salesByDay.reduce((a, d) => ({ tickets: a.tickets + d.tickets, revenue: a.revenue + d.revenue }), { tickets: 0, revenue: 0 });
+  const list = todos(data);
 
   return (
-    <div className="stack-l">
+    <div className="dash">
       <div className="page-head">
         <div>
+          <p className="muted">{greeting()}</p>
           <h1 className="title-with-badge">{data.organizer.businessName}{data.organizer.verified && <VerifiedBadge size={22} />}</h1>
-          <p className="muted">
-            {published} published {published === 1 ? 'event' : 'events'}, {drafts} {drafts === 1 ? 'draft' : 'drafts'}
-          </p>
         </div>
-        <div className="row">
-          <Link className="btn btn-quiet" href={`/o/${data.organizer.slug}`} target="_blank">Your public page</Link>
-          <Link className="btn" href="/organizer/events/new">Create event</Link>
-        </div>
+        <Link className="btn btn-quiet" href={`/o/${data.organizer.slug}`} target="_blank">Your public page</Link>
       </div>
 
       {data.organizer.verificationStatus === 'SUSPENDED' ? (
@@ -66,98 +144,160 @@ export default function OverviewPage() {
         <AccountLimits p={data.organizer.permissions} />
       ) : null}
 
-      <dl className="stats">
-        <div className="stat">
-          <dt>Ticket revenue</dt>
-          <dd className="num">{money(totals.ticketRevenue, totals.currency)}</dd>
-          <p className="sub">after discounts and refunds · <Link href="/organizer/payouts">payouts</Link></p>
-        </div>
-        <div className="stat">
-          <dt>Tickets sold</dt>
-          <dd className="num">{totals.ticketsSold.toLocaleString()}</dd>
-          <p className="sub">{totals.paidOrders} paid orders</p>
-        </div>
-        <div className="stat">
-          <dt>Checked in</dt>
-          <dd className="num">{totals.checkedIn.toLocaleString()}</dd>
-          <p className="sub">across all events</p>
-        </div>
-        <div className="stat">
-          <dt>Platform fees paid by buyers</dt>
-          <dd className="num">{money(totals.platformFees, totals.currency)}</dd>
-          <p className="sub">{money(totals.grossCollected, totals.currency)} collected in total</p>
-        </div>
-      </dl>
+      {next ? (
+        <section className="hero" aria-label="Next event">
+          <div className="hero-poster">
+            {next.posterUrl ? <img src={next.posterUrl} alt="" /> : <span>{next.name.slice(0, 1)}</span>}
+          </div>
+          <div className="hero-body">
+            <span className="hero-chip">Next event · {startsIn(next.startDate).toLowerCase()}</span>
+            <h2>{next.name}</h2>
+            <p className="hero-meta">{(() => { const p = dayParts(next.startDate); return `${p.weekday} ${p.day} ${p.month} · ${p.time} · ${next.venue}`; })()}</p>
+            <div className="hero-sold">
+              <span><strong>{next.ticketsSold.toLocaleString()}</strong> of {next.capacity.toLocaleString()} sold</span>
+              {next.soldToday > 0 && <span className="hero-today">+{next.soldToday} today</span>}
+            </div>
+            <div className="hero-meter"><span style={{ width: `${next.capacity ? Math.min(100, (next.ticketsSold / next.capacity) * 100) : 0}%` }} /></div>
+          </div>
+          <div className="hero-actions">
+            <Link className="btn hero-btn-main" href={`/organizer/events/${next.id}`}>Open the event</Link>
+            <Link className="btn hero-btn" href={`/organizer/events/${next.id}?tab=staff`}>Gate staff ({next.staff})</Link>
+          </div>
+        </section>
+      ) : (
+        <section className="hero hero-empty">
+          <div className="hero-body">
+            <h2>No event on sale right now</h2>
+            <p className="hero-meta">Create one, add tickets and publish it to start selling.</p>
+          </div>
+          <div className="hero-actions">
+            <Link className="btn hero-btn-main" href="/organizer/events/new">+ Create event</Link>
+          </div>
+        </section>
+      )}
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Coming up</h2>
-          <Link href="/organizer/events" className="small">All events</Link>
-        </div>
-        {data.upcoming.length === 0 ? (
-          <div className="empty">
-            <p>No upcoming events.</p>
-            <Link className="btn" href="/organizer/events/new">Create event</Link>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Event</th><th>Date</th><th>Status</th><th style={{ width: '28%' }}>Sold</th></tr>
-              </thead>
-              <tbody>
-                {data.upcoming.map((e) => {
-                  const d = dayParts(e.startDate);
-                  return (
-                    <tr key={e.id}>
-                      <td>
-                        <Link href={`/organizer/events/${e.id}`}>{e.name}</Link>
-                        <span className="cell-sub">{e.venue}</span>
-                      </td>
-                      <td className="num">{d.weekday} {d.day} {d.month}<span className="cell-sub">{d.time}</span></td>
-                      <td><StatusBadge status={e.status} /></td>
-                      <td>
-                        <div className="small num" style={{ marginBottom: 6 }}>
-                          {e.ticketsSold} of {e.capacity}
-                        </div>
-                        <CapacityMeter sold={e.ticketsSold} capacity={e.capacity} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <HeroStats
+        aria="This week"
+        label="Sales this week"
+        period={weekRange()}
+        value={dalasi(data.thisWeek.revenue)}
+        change={<Delta value={data.thisWeek.revenue} previous={data.lastWeek.revenue} suffix=" vs last week" />}
+        body={<WeekPulse days={data.salesByDay} next={next ? { ...next, soldLast7: data.thisWeek.byEvent.find((e) => e.id === next.id)?.tickets ?? 0 } : null} />}
+        side={[
+          { label: 'Tickets this week', value: data.thisWeek.tickets.toLocaleString(), note: <Delta value={data.thisWeek.tickets} previous={data.lastWeek.tickets} /> },
+          {
+            label: 'Available to pay out',
+            value: dalasi(data.payouts.available),
+            note: data.payouts.inProgress > 0
+              ? `${dalasi(data.payouts.inProgress)} on its way`
+              : data.payouts.available > 0
+                ? <Link href="/organizer/payouts">Ask for a payout →</Link>
+                : data.payouts.held > 0 ? `${dalasi(data.payouts.held)} after your events` : <Link href="/organizer/payouts">Payouts</Link>,
+          },
+          data.lastEvent && data.lastEvent.ticketsSold > 0
+            ? { label: 'Checked in, last event', value: pct(data.lastEvent.checkedIn / data.lastEvent.ticketsSold), note: `${data.lastEvent.checkedIn} of ${data.lastEvent.ticketsSold} · ${data.lastEvent.name}` }
+            : { label: 'Tickets sold, all time', value: data.totals.ticketsSold.toLocaleString(), note: `${data.totals.paidOrders} paid orders` },
+        ]}
+      />
 
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Latest paid orders</h2>
-        </div>
-        {data.recentOrders.length === 0 ? (
-          <div className="empty"><p>No paid orders yet. They’ll appear here as tickets sell.</p></div>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Customer</th><th>Event</th><th className="right">Tickets</th><th className="right">Total</th><th>Paid</th></tr>
-              </thead>
-              <tbody>
-                {data.recentOrders.map((o) => (
-                  <tr key={o.id}>
-                    <td>{o.customer.fullName ?? o.customer.email}<span className="cell-sub">{o.customer.fullName ? o.customer.email : ''}</span></td>
-                    <td><Link href={`/organizer/events/${o.event.id}?tab=orders`}>{o.event.name}</Link></td>
-                    <td className="right num">{o.tickets}</td>
-                    <td className="right num">{money(o.total, o.currency)}</td>
-                    <td className="num small">{dateTime(o.paidAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="dash-row dash-row-wide">
+        <section className="panel panel-pad dash-panel">
+          <div className="spread dash-chart-head">
+            <h2>Sales, last 30 days</h2>
+            <span className="small muted">{dalasi(days30.revenue)} · {days30.tickets.toLocaleString()} {days30.tickets === 1 ? 'ticket' : 'tickets'}</span>
           </div>
-        )}
-      </section>
+          <div className="dash-chart-fill">
+            <BarChart
+              label="Your ticket sales per day, last 30 days"
+              slots={data.salesByDay.map((d) => ({ label: new Date(`${d.date}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short' }), value: d.revenue }))}
+              format={dalasi}
+              axisFormat={dalasiShort}
+              height={240}
+              width={640}
+              labelEvery={7}
+            />
+          </div>
+        </section>
+
+        <section className="panel dash-panel" aria-labelledby="todo">
+          <div className="panel-head"><h2 id="todo">To do</h2></div>
+          <ul className="dash-list">
+            {list.map((t) => (
+              <li key={t.key} className="dash-li todo">
+                <Link href={t.href} className="todo-link">
+                  <span className={`todo-mark todo-${t.tone}`}>{t.mark}</span>
+                  <span className="todo-text">
+                    <span className="todo-title">{t.title}</span>
+                    {t.sub && <span className="cell-sub">{t.sub}</span>}
+                  </span>
+                  <span className="todo-go" aria-hidden>→</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <div className="dash-row dash-row-wide">
+        <section className="dash-panel" aria-labelledby="coming">
+          <div className="spread dash-h-row">
+            <h2 id="coming">Coming up</h2>
+            <Link href="/organizer/events" className="small">All events</Link>
+          </div>
+          {rest.length === 0 ? (
+            <div className="panel empty dash-fill">
+              <p>{next ? 'Nothing else coming up.' : 'No upcoming events.'}</p>
+              <Link className="btn" href="/organizer/events/new">+ Create event</Link>
+            </div>
+          ) : (
+            <div className="ecards">
+              {rest.map((e, i) => {
+                const p = dayParts(e.startDate);
+                const share = e.capacity ? e.ticketsSold / e.capacity : 0;
+                const status = e.status === 'DRAFT' ? 'Draft · not on sale' : e.status === 'PENDING_APPROVAL' ? 'Waiting for review' : share >= 0.8 ? 'On sale · almost sold out' : e.status === 'SOLD_OUT' ? 'Sold out' : 'On sale';
+                return (
+                  <Link key={e.id} href={`/organizer/events/${e.id}`} className="ecard">
+                    <span className="ecard-poster" style={e.posterUrl ? undefined : { background: posterTint[i % posterTint.length] }}>
+                      {e.posterUrl && <img src={e.posterUrl} alt="" />}
+                      <span className="ecard-date">{p.weekday} {p.day} {p.month}</span>
+                    </span>
+                    <span className="ecard-body">
+                      <strong>{e.name}</strong>
+                      <span className={`ecard-status ${e.status === 'DRAFT' || e.status === 'PENDING_APPROVAL' ? 'faint' : share >= 0.8 ? 'text-gold' : 'text-green'}`}>{status}</span>
+                      <span className="meter"><span className="sold" style={{ width: `${Math.min(100, share * 100)}%` }} /></span>
+                      <span className="small muted">{e.ticketsSold.toLocaleString()} of {e.capacity.toLocaleString()} sold</span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="panel dash-panel" aria-labelledby="orders">
+          <div className="panel-head"><h2 id="orders">Latest orders</h2></div>
+          {data.recentOrders.length === 0 ? (
+            <div className="empty dash-fill"><p>No paid orders yet. They’ll appear here as tickets sell.</p></div>
+          ) : (
+            <ul className="dash-list">
+              {data.recentOrders.slice(0, 5).map((o) => (
+                <li key={o.id} className="dash-li">
+                  <span className="dash-event-name">
+                    <strong>{o.customer.fullName ?? o.customer.email}</strong>
+                    <span className="cell-sub">
+                      {(o.items ?? []).map((i) => `${i.quantity} × ${i.ticketType}`).join(', ') || `${o.tickets} tickets`} · <Link href={`/organizer/events/${o.event.id}?tab=orders`}>{o.event.name}</Link>
+                    </span>
+                  </span>
+                  <span className="order-amt">
+                    <strong className="num">{dalasi(o.total)}</strong>
+                    <span className="cell-sub">{ago(o.paidAt)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

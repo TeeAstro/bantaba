@@ -5,7 +5,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AdminDashboardService } from './admin-dashboard.service';
-import { ListAuditLogQueryDto, ListCardFlagsQueryDto, ResolveCardFlagDto } from './dto/admin-dashboard.dto';
+import { AdminStatsQueryDto, ListAuditLogQueryDto, ListCardFlagsQueryDto, ResolveCardFlagDto } from './dto/admin-dashboard.dto';
+import { AdminStatsService } from './admin-stats.service';
 
 type Actor = { id: string; role: UserRole };
 
@@ -14,7 +15,16 @@ type Actor = { id: string; role: UserRole };
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class AdminDashboardController {
-  constructor(private readonly dashboard: AdminDashboardService) {}
+  constructor(
+    private readonly dashboard: AdminDashboardService,
+    private readonly statsService: AdminStatsService,
+  ) {}
+
+  /** Platform figures for the dashboard home: money, sales over time, activity, events, organizers. */
+  @Get('stats')
+  stats(@Query() q: AdminStatsQueryDto) {
+    return this.statsService.stats(q.period ?? '30d');
+  }
 
   /** Counts of everything waiting for an admin (the "Needs attention" home). */
   @Get('attention')

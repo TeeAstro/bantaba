@@ -3051,6 +3051,49 @@
         "description": "**Roles:** ADMIN"
       }
     },
+    "/api/v1/admin/stats": {
+      "get": {
+        "operationId": "AdminDashboard_stats",
+        "summary": "",
+        "description": "Platform figures for the dashboard home: money, sales over time, activity, events, organizers.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "description": "today (since midnight, by hour), 7d and 30d (by day), year (since 1 January, by month). Default 30d.",
+            "schema": {
+              "enum": [
+                "today",
+                "7d",
+                "30d",
+                "year"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Dashboard"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/attention": {
       "get": {
         "operationId": "AdminDashboard_attention",

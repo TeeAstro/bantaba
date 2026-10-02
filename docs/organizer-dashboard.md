@@ -7,11 +7,11 @@ Phase 9 is the first phase with real screens: an organizer dashboard in the Next
 | Screen | What's on it |
 |---|---|
 | `/login` | Organizer sign-in. Other roles are told plainly why they can't use it. |
-| `/organizer` | Totals across all their events (ticket revenue, tickets sold, check-ins, fees), upcoming events with sold-vs-capacity bars, latest paid orders |
+| `/organizer` | Reworked in Phase 15, see below |
 | `/organizer/events` | Their events (upcoming / past / all), drafts included |
 | `/organizer/events/new` | Create an event (starts as a draft) |
-| `/organizer/events/:id` | Ticket-stub header with **Publish** / **Cancel event**, then tabs: |
-| · Overview | Sold / reserved / capacity, revenue, attendance rate, awaiting-payment count, sales-per-day chart, per-ticket-type breakdown, scan results |
+| `/organizer/events/:id` | Reworked in Phase 15 (see below): compact header, then five groups of tabs: |
+| · Overview | Tickets sold, revenue (+ today), waiting for payment or checked in, refund requests; tickets per day; "Before the event" checklist (or scans once it has started); each ticket type's sales |
 | · Ticket types | List with **Pause sales / Resume sales**; add GA or reserved-seating types (price entered in dalasi) |
 | · Seats | Live seat map (only shown when the event has reserved seating) |
 | · Orders | Searchable (name, email, order ID), filterable by status, paged |
@@ -21,6 +21,32 @@ Phase 9 is the first phase with real screens: an organizer dashboard in the Next
 | `/organizer/staff` | The organizer's staff roster and where each person is assigned |
 
 Admins can call every per-event endpoint (as elsewhere, they bypass ownership), but the dashboard UI itself is organizer-only; admins have their own area at `/admin` (docs/admin-dashboard.md).
+
+## Phase 15 rework
+
+Designed on the "Bantaba Host screens" canvas, then built.
+
+**Overview (`/organizer`)**
+- Greeting, the organizer's name and blue tick, and a link to their public page. A new account's limits fold into one line you can open.
+- **Next event:** a dark card with the poster, how soon it starts, how much has sold (and how many today), and buttons to open the event, its gate staff and the scanner. With no event on sale it offers **Create event**.
+- **This week:** sales for the last 7 days as the headline figure, with its change against the 7 before, a bar for each day (today in dark blue), and a **selling pace** line for the next event (`components/WeekPulse.tsx`). Beside it: tickets this week, money available to pay out, and the last event's check-in rate.
+  - **Selling pace:** tickets sold for the next event over the last 7 days, divided by 7. If the tickets left would sell before it starts, it says "on track to sell out by <date>" (green). Otherwise it says roughly how many will be left (gold). With no sales in 7 days it suggests sharing the event; a sold-out event says so.
+- **Sales, last 30 days** beside a **To do** list: refund requests (oldest first), events starting within 2 weeks with no gate staff, events sent back by the platform, changes and events waiting for review, drafts, and payout details (missing, being checked, or checked).
+- **Coming up** as poster cards beside **Latest orders** with what was bought.
+- The menu gets a **+ Create event** button and is ordered Overview, Events, Payouts, Staff, Profile, Scanner.
+
+**Event page (`/organizer/events/:id`)**
+- **Header:** poster thumbnail, status and "Almost sold out" labels, date, venue, category and a countdown. **Edit event** stays visible; **Cancel event** and **Open the scanner** move into the ⋯ menu so cancelling can't be clicked by accident. Notices (waiting for review, changes requested, changes in review, suspended) sit under the header.
+- **Tabs:** Overview, Tickets, Sales (Orders, Refunds), People (Attendees, Gate staff), At the gate (Check-ins, Seats). A group with more than one page shows small sub-tabs. Each page keeps its old `?tab=` key, so links like `?tab=refunds` still work. Sales shows the number of refund requests.
+- **Revenue** is the headline figure on the event's Overview tab, with today's sales and a bar splitting it by ticket type; tickets sold, waiting for payment (or checked in) and refund requests sit beside it.
+- **Before the event** checklist: ticket types, poster, gate staff, scanner phones signed in, payout details. Each has a link to fix it.
+- There's no per-event public page yet (it comes with the storefront), so the header has no "View public page" button for now.
+
+**Headline panels** (`components/HeroStats.tsx`): one big figure, a bar of what it's made of (colours checked for colour-blind readers; the last "other" part is grey) and three smaller figures beside it. **Panels side by side always end on the same line**: rows are stretched grids and lists grow to fill (`.dash-row`, `.dash-panel`, `.dash-list` in `globals.css`). Charts (`components/BarChart.tsx`) draw at the width they get, so labels stay readable on a phone.
+
+**API additions**
+- `GET /organizer/overview` also returns `salesByDay` (last 30 days), `thisWeek` (with `byEvent`) and `lastWeek`, `payouts` (available, in progress, held), `lastEvent` (sold and checked in), `todo`, and per upcoming event `posterUrl`, `soldToday` and `staff`. Recent orders include their lines.
+- `GET /events/:id/dashboard` also returns `today` (tickets kept and their revenue since midnight) and `readiness` (staff, signed-in scanner phones, payout details).
 
 ## New API endpoints
 

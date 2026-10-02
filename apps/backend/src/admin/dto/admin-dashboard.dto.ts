@@ -37,3 +37,9 @@ export class ResolveCardFlagDto {
   @IsOptional() @IsString() @MaxLength(500)
   note?: string;
 }
+
+export class AdminStatsQueryDto {
+  /** today (since midnight, by hour), 7d and 30d (by day), year (since 1 January, by month). Default 30d. */
+  @IsOptional() @IsIn(['today', '7d', '30d', 'year'])
+  period?: 'today' | '7d' | '30d' | 'year';
+}

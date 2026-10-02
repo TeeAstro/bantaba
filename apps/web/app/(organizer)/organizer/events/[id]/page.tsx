@@ -7,6 +7,7 @@ import { api, ApiError } from '@/lib/api';
 import { useApi } from '@/lib/hooks';
 import { EventDashboard, EventRecord, SeatMap } from '@/lib/types';
 import { PendingChanges } from '@/components/event/PendingChanges';
+import { Icon, IconName } from '@/components/Icon';
 import { dateTime, dayParts } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
 import { SeatMapView } from '@/components/SeatMapView';
@@ -46,16 +47,27 @@ function EventDetail() {
   const editable = event.status !== 'CANCELLED' && event.status !== 'COMPLETED';
   const hasSeating = data.ticketTypes.some((t) => t.section);
 
-  const tabs = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'tickets', label: 'Ticket types' },
-    ...(hasSeating ? [{ key: 'seats', label: 'Seats' }] : []),
-    { key: 'orders', label: 'Orders' },
-    { key: 'attendees', label: 'Attendees' },
-    { key: 'refunds', label: data.refunds.requests > 0 ? `Refunds (${data.refunds.requests})` : 'Refunds' },
-    { key: 'checkins', label: 'Check-ins' },
-    { key: 'staff', label: 'Staff' },
+  // Five groups instead of eight tabs (Phase 15). Each sub-page keeps its
+  // own ?tab= key, so links like ?tab=refunds still work.
+  const groups: { key: string; label: string; icon: IconName; badge?: number; subs: { key: string; label: string; badge?: number }[] }[] = [
+    { key: 'overview', label: 'Overview', icon: 'dashboard', subs: [{ key: 'overview', label: 'Overview' }] },
+    { key: 'tickets', label: 'Tickets', icon: 'tickets', subs: [{ key: 'tickets', label: 'Ticket types' }] },
+    {
+      key: 'sales', label: 'Sales', icon: 'orders', badge: data.refunds.requests,
+      subs: [{ key: 'orders', label: 'Orders' }, { key: 'refunds', label: 'Refunds', badge: data.refunds.requests }],
+    },
+    { key: 'people', label: 'People', icon: 'attendees', subs: [{ key: 'attendees', label: 'Attendees' }, { key: 'staff', label: 'Gate staff' }] },
+    {
+      key: 'gate', label: 'At the gate', icon: 'checkins',
+      subs: [{ key: 'checkins', label: 'Check-ins' }, ...(hasSeating ? [{ key: 'seats', label: 'Seats' }] : [])],
+    },
   ];
+  const group = groups.find((g) => g.subs.some((x) => x.key === tab)) ?? groups[0];
+  const href = (key: string) => `/organizer/events/${event.id}?tab=${key}`;
+  const share = data.summary.capacity ? data.summary.ticketsSold / data.summary.capacity : 0;
+  const started = new Date(event.startDate).getTime() <= Date.now();
+  const daysTo = Math.ceil((new Date(event.startDate).getTime() - Date.now()) / 86_400_000);
+  const when = `${d.weekday} ${d.day} ${d.month}, ${d.time} – ${dayParts(event.endDate).time}`;
 
   async function act(path: 'publish' | 'cancel') {
     setBusy(true);
@@ -73,66 +85,71 @@ function EventDetail() {
 
   return (
     <div>
-      <p className="small" style={{ marginBottom: 12 }}>
-        <Link href="/organizer/events">Events</Link>
+      <p className="small crumbs">
+        <Link href="/organizer/events">Events</Link> <span className="faint">/</span> <span className="muted">{event.name}</span>
       </p>
 
-      {/* Overview only, so the other tabs keep their data near the top */}
-      {event.bannerUrl && tab === 'overview' && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img className="event-banner" src={event.bannerUrl} alt="" />
-      )}
-
-      <header className="stub">
-        <div className="stub-body">
-          <StatusBadge status={event.status} />
+      <header className="ev-head">
+        <div className="ev-poster">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {event.posterUrl ? <img src={event.posterUrl} alt="" /> : <span>{event.name.slice(0, 1)}</span>}
+        </div>
+        <div className="ev-title">
+          <div className="row ev-chips">
+            <StatusBadge status={event.status} />
+            {(event.status === 'PUBLISHED') && share >= 0.8 && share < 1 && <span className="badge badge-gold">Almost sold out</span>}
+          </div>
           <h1>{event.name}</h1>
-          <div className="stub-meta">
+          <p className="ev-meta">
+            <span>{when}</span>
             <span>{event.venue.name}</span>
             <span>{event.category}</span>
-            <span>Ends {dateTime(event.endDate)}</span>
-          </div>
-          {actionError && <div className="notice notice-error" role="alert" style={{ marginTop: 14 }}>{actionError}</div>}
-          {/* docs/organizer-trust.md */}
-          {event.status === 'PENDING_APPROVAL' && (
-            <div className="notice notice-info" style={{ marginTop: 14 }}>
-              Waiting for review{event.submittedForReviewAt ? ` since ${dateTime(event.submittedForReviewAt)}` : ''}. It goes on sale as soon as the platform team approves it; you’ll get an email. You can keep editing meanwhile.
-            </div>
-          )}
-          {event.status === 'DRAFT' && event.reviewNote && (
-            <div className="notice notice-warn" style={{ marginTop: 14 }}>
-              <b>Changes requested:</b> {event.reviewNote} Make the changes, then submit it again.
-            </div>
-          )}
-          {record.data && (
-            <div style={{ marginTop: 14 }}><PendingChanges event={record.data} onWithdrawn={record.reload} /></div>
-          )}
-          {!data.permissions.canSell && (
-            <div className="notice notice-error" style={{ marginTop: 14 }}>Ticket sales are paused: your account is suspended.</div>
-          )}
-          <div className="stub-actions row">
-            {event.status === 'DRAFT' && (
-              <button className="btn" disabled={busy || data.ticketTypes.length === 0} onClick={() => act('publish')} title={data.ticketTypes.length === 0 ? 'Add a ticket type first' : undefined}>
-                {data.permissions.requireEventReview ? 'Submit for review' : 'Publish'}
-              </button>
-            )}
-            {event.status === 'DRAFT' && data.ticketTypes.length === 0 && (
-              <span className="small muted">Add a ticket type before publishing.</span>
-            )}
-            {editable && (
-              <Link className="btn btn-quiet" href={`/organizer/events/${event.id}/edit`}>Edit event</Link>
-            )}
-            {editable && event.status !== 'DRAFT' && (
-              <button className="btn btn-danger" disabled={busy} onClick={() => setCancelOpen(true)}>Cancel event</button>
-            )}
-          </div>
+            {!started && editable && daysTo <= 14 && <span className="ev-soon">{daysTo <= 1 ? (daysTo === 1 ? 'tomorrow' : 'today') : `in ${daysTo} days`}</span>}
+            {started && new Date(event.endDate).getTime() > Date.now() && event.status !== 'CANCELLED' && <span className="ev-soon">on now</span>}
+          </p>
         </div>
-        <div className="stub-tear" aria-label={`Starts ${d.weekday} ${d.day} ${d.month} at ${d.time}`}>
-          <div className="stub-day">{d.day}</div>
-          <div className="stub-month">{d.month} {new Date(event.startDate).getUTCFullYear()}</div>
-          <div className="stub-time">{d.weekday} {d.time}</div>
+        <div className="ev-actions">
+          {event.status === 'DRAFT' && (
+            <button className="btn" disabled={busy || data.ticketTypes.length === 0} onClick={() => act('publish')} title={data.ticketTypes.length === 0 ? 'Add a ticket type first' : undefined}>
+              {data.permissions.requireEventReview ? 'Submit for review' : 'Publish'}
+            </button>
+          )}
+          {editable && (
+            <Link className={`btn ${event.status === 'DRAFT' ? 'btn-quiet' : ''}`} href={`/organizer/events/${event.id}/edit`}>Edit event</Link>
+          )}
+          {editable && event.status !== 'DRAFT' && (
+            <details className="menu">
+              <summary className="btn btn-quiet" aria-label="More actions"><Icon name="more" /></summary>
+              <div className="menu-pop" role="menu">
+                <Link role="menuitem" href={`/scan/${event.id}`}>Open the scanner</Link>
+                <button role="menuitem" className="menu-danger" disabled={busy} onClick={(e) => { (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; setCancelOpen(true); }}>Cancel event…</button>
+              </div>
+            </details>
+          )}
         </div>
       </header>
+
+      <div className="ev-notices">
+        {event.status === 'DRAFT' && data.ticketTypes.length === 0 && (
+          <div className="notice notice-info">Add a ticket type before publishing: <Link href={href('tickets')}>Ticket types</Link>.</div>
+        )}
+        {actionError && <div className="notice notice-error" role="alert">{actionError}</div>}
+        {/* docs/organizer-trust.md */}
+        {event.status === 'PENDING_APPROVAL' && (
+          <div className="notice notice-info">
+            Waiting for review{event.submittedForReviewAt ? ` since ${dateTime(event.submittedForReviewAt)}` : ''}. It goes on sale as soon as the platform team approves it; you’ll get an email. You can keep editing meanwhile.
+          </div>
+        )}
+        {event.status === 'DRAFT' && event.reviewNote && (
+          <div className="notice notice-warn">
+            <b>Changes requested:</b> {event.reviewNote} Make the changes, then submit it again.
+          </div>
+        )}
+        {record.data && <PendingChanges event={record.data} onWithdrawn={record.reload} />}
+        {!data.permissions.canSell && (
+          <div className="notice notice-error">Ticket sales are paused: your account is suspended.</div>
+        )}
+      </div>
 
       {cancelOpen && (
         <div className="modal-backdrop" role="presentation" onClick={(e) => e.target === e.currentTarget && !busy && setCancelOpen(false)}>
@@ -163,14 +180,27 @@ function EventDetail() {
         </div>
       )}
 
-      <nav className="tabs" aria-label="Event sections">
-        {tabs.map((t) => (
-          <Link key={t.key} href={`/organizer/events/${event.id}?tab=${t.key}`} aria-current={tab === t.key ? 'page' : undefined} scroll={false}>
-            {t.label}
+      <nav className="tabs ev-tabs" aria-label="Event sections">
+        {groups.map((g) => (
+          <Link key={g.key} href={href(g.subs[0].key)} aria-current={group.key === g.key ? 'page' : undefined} scroll={false}>
+            <Icon name={g.icon} size={16} />
+            {g.label}
+            {!!g.badge && <span className="tab-count" aria-label={`${g.badge} waiting`}>{g.badge}</span>}
           </Link>
         ))}
       </nav>
+      {group.subs.length > 1 && (
+        <nav className="subtabs" aria-label={`${group.label} sections`}>
+          {group.subs.map((x) => (
+            <Link key={x.key} href={href(x.key)} aria-current={tab === x.key ? 'page' : undefined} scroll={false}>
+              {x.label}
+              {!!x.badge && <span className="tab-count">{x.badge}</span>}
+            </Link>
+          ))}
+        </nav>
+      )}
 
+      <div className="ev-body">
       {tab === 'overview' && <OverviewTab d={data} />}
       {tab === 'tickets' && <TicketsTab d={data} onChange={reload} />}
       {tab === 'seats' && <SeatsTab eventId={event.id} />}
@@ -179,6 +209,7 @@ function EventDetail() {
       {tab === 'refunds' && <RefundsTab d={data} onChange={reload} />}
       {tab === 'checkins' && <CheckInsTab eventId={event.id} />}
       {tab === 'staff' && <StaffTab eventId={event.id} venueId={event.venue.id} editable={editable} />}
+      </div>
     </div>
   );
 }

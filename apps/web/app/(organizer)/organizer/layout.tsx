@@ -6,14 +6,15 @@ import { useEffect } from 'react';
 import { logout } from '@/lib/api';
 import { useSessionUser } from '@/lib/hooks';
 import { Logo } from '@/components/Logo';
+import { Icon, IconName } from '@/components/Icon';
 
-const NAV = [
-  { href: '/organizer', label: 'Overview', exact: true },
-  { href: '/organizer/events', label: 'Events' },
-  { href: '/organizer/profile', label: 'Profile' },
-  { href: '/organizer/staff', label: 'Staff' },
-  { href: '/organizer/payouts', label: 'Payouts' },
-  { href: '/scan', label: 'Scanner' },
+const NAV: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
+  { href: '/organizer', label: 'Overview', icon: 'dashboard', exact: true },
+  { href: '/organizer/events', label: 'Events', icon: 'events' },
+  { href: '/organizer/payouts', label: 'Payouts', icon: 'payouts' },
+  { href: '/organizer/staff', label: 'Staff', icon: 'staff' },
+  { href: '/organizer/profile', label: 'Profile', icon: 'profile' },
+  { href: '/scan', label: 'Scanner', icon: 'scanner' },
 ];
 
 // Client-side guard: redirects to /login when there's no organizer
@@ -46,11 +47,13 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
             const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined}>
-                {item.label}
+                <Icon name={item.icon} />
+                <span className="nav-label">{item.label}</span>
               </Link>
             );
           })}
         </nav>
+        <Link href="/organizer/events/new" className="btn sidebar-create">+ Create event</Link>
         <div className="sidebar-foot">
           <div>{user.fullName ?? user.email}</div>
           <button
@@ -60,7 +63,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
               router.replace('/login');
             }}
           >
-            Sign out
+            <Icon name="signOut" size={16} />
+            <span>Sign out</span>
           </button>
         </div>
       </aside>

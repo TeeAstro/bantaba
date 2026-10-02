@@ -929,6 +929,33 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 6 | Offline | Turn off Wi-Fi and reload a page | Pages still work, in the system font |
 | 7 | Automated | All suites in `apps/backend` | Same results as before (nothing functional changed) |
 
+## Dashboards (Phase 15)
+
+**Read `docs/admin-dashboard.md` (Dashboard) and `docs/organizer-dashboard.md` (Phase 15 rework).** Designed on the "Bantaba Host screens" canvas.
+
+- **Admin:** a new **Dashboard** at `/admin`. It shows money, ticket sales against the previous period, activity, events and organizers, for today, 7 days, 30 days or this year. **Needs attention** moves to `/admin/attention`, with its total in the menu.
+- **Organizer overview:** a next-event card, this week's figures, a sales chart beside a to-do list, upcoming events as poster cards and the latest orders. **+ Create event** sits in the menu.
+- **Event page:** a compact header, with Cancel moved into the ⋯ menu. Five tab groups (Overview, Tickets, Sales, People, At the gate) with sub-tabs. A "Before the event" checklist. Old `?tab=` links still work.
+- **New endpoint:** `GET /admin/stats?period=`. `GET /organizer/overview` and `GET /events/:id/dashboard` return extra fields. **No migration.**
+
+1. Rebuild and restart the backend, then restart the frontend.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Admin home | Sign in as `admin@example.com` | Lands on **Dashboard**: five money figures, sales chart with the previous period in light blue, Activity and Events side by side ending on the same line, Top organizers and Organizers |
+| 2 | Period | Click **Today**, **7 days**, **This year** | Chart has 24 hours / 7 days / 12 months; figures change; the line under the title says what it's compared with |
+| 3 | Attention banner | Leave a payout request or an organizer waiting | Gold banner "N things need attention" listing them; **Open →** goes to `/admin/attention`; the menu shows the same total |
+| 4 | A sale shows up | Buy 2 tickets (MOCK) as a customer, reload the admin dashboard on **Today** | Ticket sales, orders, tickets sold go up; a bar appears for this hour |
+| 5 | Organizer home | Sign in as `organizer@example.com` | Dark next-event card with "+N today" after the sale; four figure cards; sales chart beside **To do**; poster cards beside **Latest orders** with "2 × Regular" |
+| 6 | To do | Have no gate staff on an event starting within 2 weeks | "Assign gate staff" with a link to that event's **People → Gate staff** |
+| 7 | Event page | Open an event | Poster, status, countdown; **Edit event** and **⋯** (Open the scanner, Cancel event…); five tabs; Before the event checklist |
+| 8 | Sub-tabs | Click **Sales**, then **Refunds**; open an old link `…?tab=staff` | Sales shows Orders and Refunds pills; the old link opens **People → Gate staff** |
+| 9 | Cancel still works | ⋯ → **Cancel event…** | The usual cancel dialog |
+| 10 | Phone | All three pages in a narrow window | No sideways scrolling; chart labels readable; cards stack |
+| 11 | Automated | `node dashboard-stats-test.js` in `apps/backend` | `8/8 passed`; all other suites unchanged |
+
 ## Project structure
 
 ```

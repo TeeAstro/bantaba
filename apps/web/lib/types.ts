@@ -31,9 +31,25 @@ export interface Overview {
     status: string;
     startDate: string;
     venue: string;
+    posterUrl: string | null;
     capacity: number;
     ticketsSold: number;
+    soldToday: number;
+    staff: number;
   }[];
+  // Phase 15
+  salesByDay: { date: string; tickets: number; revenue: number }[];
+  thisWeek: { tickets: number; revenue: number; byEvent: { id: string; name: string; tickets: number; revenue: number }[] };
+  lastWeek: { tickets: number; revenue: number };
+  payouts: { available: number; inProgress: number; held: number };
+  lastEvent: { id: string; name: string; endDate: string; ticketsSold: number; checkedIn: number } | null;
+  todo: {
+    refundRequests: { count: number; oldestAt: string | null; event: { id: string; name: string } | null };
+    changesInReview: { id: string; name: string }[];
+    eventsInReview: number;
+    sentBack: { id: string; name: string }[];
+    payoutAccount: { method: 'WAVE' | 'BANK' | null; account: string | null; verified: boolean };
+  };
   recentOrders: {
     id: string;
     event: { id: string; name: string };
@@ -41,6 +57,7 @@ export interface Overview {
     total: number;
     currency: string;
     tickets: number;
+    items?: { ticketType: string; quantity: number }[];
     paidAt: string;
   }[];
 }
@@ -69,6 +86,8 @@ export interface TicketTypeStat {
   remaining: number;
   revenue: number;
   isActive: boolean;
+  salesStart?: string | null;
+  salesEnd?: string | null;
   section: { id: string; name: string } | null;
   accessZone: { id: string; name: string } | null;
 }
@@ -90,6 +109,9 @@ export interface EventDashboard {
     reviewNote: string | null;
   };
   permissions: OrganizerPermissions;
+  // Phase 15
+  today: { tickets: number; revenue: number };
+  readiness: { staff: number; staffPhones: number; payoutMethod: 'WAVE' | 'BANK' | null; payoutDetailsVerified: boolean };
   summary: {
     capacity: number;
     ticketsSold: number;

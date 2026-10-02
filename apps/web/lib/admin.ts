@@ -180,3 +180,35 @@ export function waitingFor(iso: string | null | undefined, now = Date.now()): st
   const days = Math.round(hours / 24);
   return `${days} days`;
 }
+
+// ---------- Dashboard figures (Phase 15, GET /admin/stats) ----------
+
+export type StatsPeriod = 'today' | '7d' | '30d' | 'year';
+export interface Compare { value: number; previous: number }
+
+export interface AdminStats {
+  period: { name: StatsPeriod; from: string; to: string; previousFrom: string; previousTo: string; bucket: 'hour' | 'day' | 'month' };
+  currency: string;
+  money: {
+    ticketSales: Compare & { organizers: number; fees: number };
+    platformFees: Compare;
+    refunded: Compare & { count: number };
+    paidToOrganizers: { value: number; count: number };
+    owedToOrganizers: { value: number; payableNow: number };
+  };
+  series: { start: string; value: number; previous: number; future: boolean }[];
+  activity: Record<'ticketsSold' | 'orders' | 'checkedIn' | 'newCustomers' | 'averageOrder' | 'unpaidCheckouts', Compare>;
+  events: {
+    liveNow: number;
+    thisWeek: number;
+    onSale: number;
+    items: { id: string; name: string; startDate: string; endDate: string; status: string; live: boolean; venue: string; organizer: { id: string; businessName: string }; capacity: number; ticketsSold: number }[];
+  };
+  organizers: {
+    top: { id: string; businessName: string; slug: string; trustLevel: TrustLevel; verificationStatus: VerificationStatus; verified: boolean; events: number; tickets: number; sales: number }[];
+    byLevel: { trusted: number; new: number; waiting: number; suspended: number };
+    newInPeriod: number;
+    blueTick: number;
+    waiting: { count: number; oldest: { id: string; businessName: string; createdAt: string }[] };
+  };
+}

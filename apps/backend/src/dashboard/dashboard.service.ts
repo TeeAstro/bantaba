@@ -2,6 +2,9 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { CheckInResult, OrderStatus, Prisma, TicketStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { organizerPermissions } from '../organizers/organizer-permissions';
+import { PayoutsService, mask } from '../payouts/payouts.service';
+
+const DAY = 86_400_000;
 
 interface AuthenticatedUser {
   id: string;
@@ -23,7 +26,10 @@ const LIVE_TICKET_STATUSES: TicketStatus[] = [
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly payouts: PayoutsService,
+  ) {}
 
   // Owner organizer or admin; 404 (not 403) for anyone else, matching
   // event visibility elsewhere — see docs/events.md.
@@ -67,7 +73,7 @@ export class DashboardService {
         where: { ...eventWhere, endDate: { gte: new Date() }, status: { in: ['DRAFT', 'PUBLISHED', 'SOLD_OUT'] } },
         orderBy: { startDate: 'asc' },
         take: 5,
-        include: { venue: { select: { name: true } }, ticketTypes: { select: { quantityTotal: true } } },
+        include: { venue: { select: { name: true } }, ticketTypes: { select: { quantityTotal: true } }, _count: { select: { eventStaff: true } } },
       }),
       this.prisma.ticketOrder.findMany({
         where: { event: eventWhere, status: { in: MONEY_ORDER_STATUSES } },
@@ -76,6 +82,7 @@ export class DashboardService {
         include: {
           event: { select: { id: true, name: true } },
           customer: { select: { email: true, fullName: true } },
+          items: { select: { quantity: true, ticketType: { select: { name: true } } } },
           _count: { select: { tickets: true } },
         },
       }),
@@ -83,8 +90,10 @@ export class DashboardService {
 
     const soldByEvent = await this.soldTicketsByEvent(upcoming.map((e) => e.id));
     const refunded = await this.refundTotals({ order: { event: eventWhere } });
+    const { soldToday, ...extra } = await this.overviewExtras(organizer, upcoming.map((e) => e.id));
 
     return {
+      ...extra,
       organizer: {
         id: organizer.id,
         businessName: organizer.businessName,
@@ -115,8 +124,11 @@ export class DashboardService {
         status: e.status,
         startDate: e.startDate,
         venue: e.venue.name,
+        posterUrl: e.posterUrl,
         capacity: e.ticketTypes.reduce((n, t) => n + t.quantityTotal, 0),
         ticketsSold: soldByEvent.get(e.id) ?? 0,
+        soldToday: soldToday.get(e.id) ?? 0,
+        staff: e._count.eventStaff,
       })),
       recentOrders: recentOrders.map((o) => ({
         id: o.id,
@@ -125,8 +137,104 @@ export class DashboardService {
         total: o.total,
         currency: o.currency,
         tickets: o._count.tickets,
+        items: o.items.map((i) => ({ ticketType: i.ticketType.name, quantity: i.quantity })),
         paidAt: o.updatedAt,
       })),
+    };
+  }
+
+  // Phase 15 overview: sales over the last 30 days, this week against last
+  // week, money ready to pay out, the last event's turnout and the to-do list.
+  private async overviewExtras(organizer: { id: string; payoutAdvancePercent: number; payoutMethod: string | null; payoutAccountNumber: string | null; payoutDetailsVerifiedAt: Date | null }, upcomingIds: string[]) {
+    const now = new Date();
+    const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const from30 = new Date(midnight.getTime() - 29 * DAY);
+    const weekStart = new Date(midnight.getTime() - 6 * DAY);
+    const lastWeekStart = new Date(weekStart.getTime() - 7 * DAY);
+    const eventWhere = { organizerId: organizer.id };
+
+    const weekByEvent = this.prisma.$queryRaw<{ id: string; name: string; tickets: bigint; revenue: bigint }[]>`
+      SELECT e.id, e.name, COUNT(t.id) AS tickets, COALESCE(SUM(oi."unitPrice"), 0) AS revenue
+      FROM tickets t
+      JOIN ticket_types tt ON tt.id = t."ticketTypeId"
+      JOIN events e ON e.id = tt."eventId"
+      LEFT JOIN order_items oi ON oi."orderId" = t."orderId" AND oi."ticketTypeId" = t."ticketTypeId"
+      WHERE e."organizerId" = ${organizer.id} AND t."orderId" IS NOT NULL AND t."purchasedAt" >= ${weekStart}
+      GROUP BY e.id, e.name ORDER BY revenue DESC`;
+    const [daily, today, balance, lastEvent, refundRequests, oldestRefund, pendingChanges, inReview, sentBack] = await Promise.all([
+      // Paid tickets and the organizer's share of their price, per day (UTC = Banjul time).
+      this.prisma.$queryRaw<{ day: Date; tickets: bigint; revenue: bigint }[]>`
+        SELECT date_trunc('day', t."purchasedAt") AS day, COUNT(t.id) AS tickets, COALESCE(SUM(oi."unitPrice"), 0) AS revenue
+        FROM tickets t
+        JOIN ticket_types tt ON tt.id = t."ticketTypeId"
+        JOIN events e ON e.id = tt."eventId"
+        LEFT JOIN order_items oi ON oi."orderId" = t."orderId" AND oi."ticketTypeId" = t."ticketTypeId"
+        WHERE e."organizerId" = ${organizer.id} AND t."orderId" IS NOT NULL AND t."purchasedAt" >= ${lastWeekStart < from30 ? lastWeekStart : from30}
+        GROUP BY 1 ORDER BY 1`,
+      upcomingIds.length
+        ? this.prisma.$queryRaw<{ eventId: string; n: bigint }[]>`
+            SELECT tt."eventId", COUNT(t.id) AS n FROM tickets t JOIN ticket_types tt ON tt.id = t."ticketTypeId"
+            WHERE tt."eventId" IN (${Prisma.join(upcomingIds)}) AND t."orderId" IS NOT NULL AND t."purchasedAt" >= ${midnight}
+            GROUP BY tt."eventId"`
+        : Promise.resolve([] as { eventId: string; n: bigint }[]),
+      this.payouts.balance(this.prisma, organizer, now),
+      this.prisma.event.findFirst({
+        where: { ...eventWhere, endDate: { lt: now }, status: { in: ['PUBLISHED', 'SOLD_OUT', 'COMPLETED'] } },
+        orderBy: { endDate: 'desc' },
+        select: { id: true, name: true, endDate: true },
+      }),
+      this.prisma.refund.count({ where: { status: 'REQUESTED', order: { event: eventWhere } } }),
+      this.prisma.refund.findFirst({ where: { status: 'REQUESTED', order: { event: eventWhere } }, orderBy: { createdAt: 'asc' }, select: { createdAt: true, order: { select: { event: { select: { id: true, name: true } } } } } }),
+      this.prisma.eventChangeRequest.findMany({ where: { status: 'PENDING', event: eventWhere }, select: { event: { select: { id: true, name: true } } }, take: 5 }),
+      this.prisma.event.count({ where: { ...eventWhere, status: 'PENDING_APPROVAL' } }),
+      this.prisma.event.findMany({ where: { ...eventWhere, status: 'DRAFT', reviewNote: { not: null } }, select: { id: true, name: true }, take: 5 }),
+    ]);
+
+    const byDay = new Map(daily.map((d) => [d.day.toISOString().slice(0, 10), { tickets: Number(d.tickets), revenue: Number(d.revenue) }]));
+    const salesByDay: { date: string; tickets: number; revenue: number }[] = [];
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(from30.getTime() + i * DAY).toISOString().slice(0, 10);
+      salesByDay.push({ date, ...(byDay.get(date) ?? { tickets: 0, revenue: 0 }) });
+    }
+    const sumRange = (a: Date, b: Date) => {
+      let tickets = 0;
+      let revenue = 0;
+      for (const [date, v] of byDay) {
+        const d = new Date(date + 'T00:00:00Z');
+        if (d >= a && d < b) { tickets += v.tickets; revenue += v.revenue; }
+      }
+      return { tickets, revenue };
+    };
+    const tomorrow = new Date(midnight.getTime() + DAY);
+
+    let lastEventTurnout = null;
+    if (lastEvent) {
+      const [sold, used] = await Promise.all([
+        this.prisma.ticket.count({ where: { ticketType: { eventId: lastEvent.id }, status: { in: LIVE_TICKET_STATUSES } } }),
+        this.prisma.ticket.count({ where: { ticketType: { eventId: lastEvent.id }, status: TicketStatus.USED } }),
+      ]);
+      lastEventTurnout = { ...lastEvent, ticketsSold: sold, checkedIn: used };
+    }
+
+    return {
+      soldToday: new Map(today.map((t) => [t.eventId, Number(t.n)])),
+      salesByDay,
+      // Last 7 days (today included) against the 7 before.
+      thisWeek: { ...sumRange(weekStart, tomorrow), byEvent: (await weekByEvent).map((r) => ({ id: r.id, name: r.name, tickets: Number(r.tickets), revenue: Number(r.revenue) })) },
+      lastWeek: sumRange(lastWeekStart, weekStart),
+      payouts: { available: Math.max(0, balance.totals.available), inProgress: balance.totals.inProgress, held: balance.totals.held },
+      lastEvent: lastEventTurnout,
+      todo: {
+        refundRequests: { count: refundRequests, oldestAt: oldestRefund?.createdAt ?? null, event: oldestRefund?.order.event ?? null },
+        changesInReview: pendingChanges.map((c) => c.event),
+        eventsInReview: inReview,
+        sentBack,
+        payoutAccount: {
+          method: organizer.payoutMethod,
+          account: organizer.payoutAccountNumber ? mask(organizer.payoutAccountNumber) : null,
+          verified: !!organizer.payoutDetailsVerifiedAt,
+        },
+      },
     };
   }
 
@@ -205,6 +313,19 @@ export class DashboardService {
     const refunded = await this.refundTotals({ order: { eventId } });
     const refundRequests = await this.prisma.refund.count({ where: { order: { eventId }, status: 'REQUESTED' } });
     const awaitingPayout = await this.prisma.refund.count({ where: { order: { eventId }, status: 'APPROVED' } });
+    // Phase 15: for the event page's "Before the event" checklist and today's figures.
+    const now = new Date();
+    const midnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const [staffCount, staffPhones, [today]] = await Promise.all([
+      this.prisma.eventStaff.count({ where: { eventId } }),
+      this.prisma.staffDevice.count({ where: { staff: { eventId } } }),
+      this.prisma.$queryRaw<{ tickets: bigint; revenue: bigint | null }[]>`
+        SELECT COUNT(t.id) AS tickets, SUM(oi."unitPrice") AS revenue
+        FROM tickets t JOIN ticket_types tt ON tt.id = t."ticketTypeId"
+        LEFT JOIN order_items oi ON oi."orderId" = t."orderId" AND oi."ticketTypeId" = t."ticketTypeId"
+        WHERE tt."eventId" = ${eventId} AND t."orderId" IS NOT NULL AND t."purchasedAt" >= ${midnight}
+          AND t.status::text IN (${Prisma.join(LIVE_TICKET_STATUSES)})`,
+    ]);
 
     const liveMap = new Map(liveByType.map((g) => [g.ticketTypeId, g._count._all]));
     const ticketsSold = [...liveMap.values()].reduce((a, b) => a + b, 0);
@@ -237,6 +358,13 @@ export class DashboardService {
         reviewNote: event.reviewNote,
       },
       permissions: organizerPermissions(event.organizer),
+      today: { tickets: Number(today?.tickets ?? 0), revenue: Number(today?.revenue ?? 0) },
+      readiness: {
+        staff: staffCount,
+        staffPhones,
+        payoutMethod: event.organizer.payoutMethod,
+        payoutDetailsVerified: !!event.organizer.payoutDetailsVerifiedAt,
+      },
       notifications: { pending: notifications.pending ?? 0, sent: notifications.sent ?? 0, failed: notifications.failed ?? 0 },
       summary: {
         capacity,

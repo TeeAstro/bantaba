@@ -45,10 +45,19 @@ The older `--teal*` names still work and now mean river blue.
 
 ## Type
 
-- **Bricolage Grotesque** (500/700/800) for headings and the wordmark.
-- **Figtree** (400–700) for everything else.
+- **Inter** (400–800) for everything in Bantaba Host: words, headings and figures. One family looks calm and exact, like other money apps. Figures use even-width digits (`tnum`), so amounts line up in columns.
+- **Bricolage Grotesque** (500/800) for the wordmark only (`--font-logo`).
+- Figtree, used before 2 Oct, is no longer loaded.
 
-Both load from Google Fonts in `app/layout.tsx`. If they can't load, the system font is used, so nothing breaks offline.
+Both load from Google Fonts in `app/layout.tsx`. If they can't load, the system font is used, so nothing breaks offline. The buyer storefront can still choose its own type when it's designed.
+
+## Icons
+
+- **Style:** line icons from Lucide (2 px stroke, rounded), in `apps/web/components/Icon.tsx`. The drawings are copied in with their ISC licence, so there's no extra package to install.
+- **Used in:** the sidebar menus, the event page tabs, the admin Needs attention list and Sign out.
+- **Adding one:** copy its shapes from lucide.dev into `ICONS` and give it a short name.
+- **Accessibility:** icons sit next to a text label and are hidden from screen readers. An icon on its own needs `label`.
+- **Staff mobile app:** it has no menu yet. When it gets one, use Feather icons (Lucide's ancestor) through `@expo/vector-icons`, so both apps look alike.
 
 ## Rules that keep it trustworthy
 

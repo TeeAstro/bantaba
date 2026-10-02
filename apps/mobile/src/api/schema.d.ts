@@ -1343,6 +1343,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Platform figures for the dashboard home: money, sales over time, activity, events, organizers.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["AdminDashboard_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/attention": {
         parameters: {
             query?: never;
@@ -4846,6 +4867,40 @@ export interface operations {
     Admin_ping: {
         parameters: {
             query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminDashboard_stats: {
+        parameters: {
+            query?: {
+                /** @description today (since midnight, by hour), 7d and 30d (by day), year (since 1 January, by month). Default 30d. */
+                period?: "today" | "7d" | "30d" | "year";
+            };
             header?: never;
             path?: never;
             cookie?: never;

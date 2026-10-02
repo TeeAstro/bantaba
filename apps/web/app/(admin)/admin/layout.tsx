@@ -2,23 +2,25 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { api, logout } from '@/lib/api';
 import { useSessionUser } from '@/lib/hooks';
 import { Logo } from '@/components/Logo';
+import { Icon, IconName } from '@/components/Icon';
 import { Attention, AttentionContext, AttentionCounts } from '@/lib/admin';
 
 type Count = (c: AttentionCounts) => number;
 
-const NAV: { href: string; label: string; exact?: boolean; count?: Count }[] = [
-  { href: '/admin', label: 'Needs attention', exact: true },
-  { href: '/admin/events', label: 'Event review', count: (c) => c.eventsInReview + c.eventChangesInReview },
-  { href: '/admin/organizers', label: 'Organizers', count: (c) => c.organizersPending + c.payoutAccountsToCheck + c.lookalikeWarnings },
-  { href: '/admin/payouts', label: 'Payouts', count: (c) => c.payoutRequests + c.payoutsToSend },
-  { href: '/admin/refunds', label: 'Refunds', count: (c) => c.manualRefundsToPay + c.failedProviderRefunds },
-  { href: '/admin/card-payments', label: 'Card payments', count: (c) => c.cardPaymentsFlagged },
-  { href: '/admin/emails', label: 'Emails', count: (c) => c.failedEmails },
-  { href: '/admin/audit', label: 'Audit log' },
+const NAV: { href: string; label: string; icon: IconName; exact?: boolean; count?: Count; group?: string }[] = [
+  { href: '/admin', label: 'Dashboard', icon: 'dashboard', exact: true, group: 'Overview' },
+  { href: '/admin/attention', label: 'Needs attention', icon: 'attention', count: (c) => Object.entries(c).filter(([k]) => k !== 'payoutsToSendAuto').reduce((n, [, v]) => n + v, 0) },
+  { group: 'Review', href: '/admin/events', label: 'Event review', icon: 'review', count: (c) => c.eventsInReview + c.eventChangesInReview },
+  { href: '/admin/organizers', label: 'Organizers', icon: 'organizers', count: (c) => c.organizersPending + c.payoutAccountsToCheck + c.lookalikeWarnings },
+  { group: 'Money', href: '/admin/payouts', label: 'Payouts', icon: 'payouts', count: (c) => c.payoutRequests + c.payoutsToSend },
+  { href: '/admin/refunds', label: 'Refunds', icon: 'refunds', count: (c) => c.manualRefundsToPay + c.failedProviderRefunds },
+  { href: '/admin/card-payments', label: 'Card payments', icon: 'card', count: (c) => c.cardPaymentsFlagged },
+  { group: 'System', href: '/admin/emails', label: 'Emails', icon: 'emails', count: (c) => c.failedEmails },
+  { href: '/admin/audit', label: 'Audit log', icon: 'audit' },
 ];
 
 // Client-side guard: only admins see this area. Like the organizer
@@ -70,10 +72,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
               const n = attention && item.count ? item.count(attention.counts) : 0;
               return (
-                <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined}>
-                  {item.label}
+                <Fragment key={item.href}>
+                {item.group && <div className="nav-group">{item.group}</div>}
+                <Link href={item.href} aria-current={active ? 'page' : undefined}>
+                  <Icon name={item.icon} />
+                  <span className="nav-label">{item.label}</span>
                   {n > 0 && <span className="nav-count" aria-label={`${n} waiting`}>{n}</span>}
                 </Link>
+                </Fragment>
               );
             })}
           </nav>
@@ -86,7 +92,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 router.replace('/login');
               }}
             >
-              Sign out
+              <Icon name="signOut" size={16} />
+              <span>Sign out</span>
             </button>
           </div>
         </aside>
