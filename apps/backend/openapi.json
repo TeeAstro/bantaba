@@ -2948,6 +2948,65 @@
         ]
       }
     },
+    "/api/v1/auth/email-code": {
+      "post": {
+        "operationId": "Auth_requestEmailCode",
+        "summary": "",
+        "description": "Buyers (Phase 16): email me a 6-digit sign-in code. Host accounts get a note to use their password instead.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/v1/auth/email-code/verify": {
+      "post": {
+        "operationId": "Auth_verifyEmailCode",
+        "summary": "",
+        "description": "Sign in with the code; makes a buyer account if there isn't one (`created: true`).",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
     "/api/v1/auth/forgot-password": {
       "post": {
         "operationId": "Auth_forgotPassword",
@@ -3782,6 +3841,8 @@
     "/api/v1/orders/checkout": {
       "post": {
         "operationId": "Orders_checkout",
+        "summary": "",
+        "description": "Signed-in buyer. Without `provider`, only holds the tickets (pay with POST /orders/:id/pay).\n\n**Roles:** CUSTOMER",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3818,8 +3879,40 @@
           {
             "bearer": []
           }
-        ],
-        "description": "**Roles:** CUSTOMER"
+        ]
+      }
+    },
+    "/api/v1/orders/guest-checkout": {
+      "post": {
+        "operationId": "Orders_guestCheckout",
+        "summary": "",
+        "description": "Buying without signing in. Returns `orderToken`, the guest's private key to this order (send it as X-Order-Token).",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuestCheckoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Orders"
+        ]
       }
     },
     "/api/v1/orders/mine": {
@@ -3857,11 +3950,30 @@
     "/api/v1/orders/{id}": {
       "get": {
         "operationId": "Orders_findOne",
+        "summary": "",
+        "description": "The buyer, an admin, or a guest with X-Order-Token.",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-order-token",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Order-Token",
+            "in": "header",
+            "description": "A guest checkout’s private key to this order (Phase 16, docs/storefront.md)",
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -3877,15 +3989,78 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
           }
         },
         "tags": [
           "Orders"
         ],
         "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/pay": {
+      "post": {
+        "operationId": "Orders_pay",
+        "summary": "",
+        "description": "Pay a held order: Wave, card or bank transfer. Starting a payment keeps the tickets held while it's finished.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-order-token",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Order-Token",
+            "in": "header",
+            "description": "A guest checkout’s private key to this order (Phase 16, docs/storefront.md)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayOrderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {},
           {
             "bearer": []
           }
@@ -4599,6 +4774,413 @@
         },
         "tags": [
           "App Config"
+        ]
+      }
+    },
+    "/api/v1/storefront/discover": {
+      "get": {
+        "operationId": "Storefront_discover",
+        "summary": "",
+        "description": "Discover: Trending, then events grouped by host (at most two each), with price labels.",
+        "parameters": [
+          {
+            "name": "when",
+            "required": false,
+            "in": "query",
+            "description": "Date buttons on Discover: all (default), weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`)",
+            "schema": {
+              "enum": [
+                "all",
+                "weekend",
+                "week",
+                "date"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "With when=date: YYYY-MM-DD",
+            "schema": {
+              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Search: event, artist (in the description), host, venue or town",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Hosts per page (default 12)",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Storefront"
+        ]
+      }
+    },
+    "/api/v1/admin/trending": {
+      "get": {
+        "operationId": "AdminTrending_view",
+        "summary": "",
+        "description": "The row as buyers see it, the picks, what's next in line and hidden events.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/trending/search": {
+      "get": {
+        "operationId": "AdminTrending_search",
+        "summary": "",
+        "description": "Events on sale that could be picked (canPick: the host has a blue tick).\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Part of the event's or host's name",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/trending/picks": {
+      "post": {
+        "operationId": "AdminTrending_addPick",
+        "summary": "",
+        "description": "Pick an event (up to 3, blue-tick hosts only).\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTrendingPickDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/trending/picks/{id}": {
+      "patch": {
+        "operationId": "AdminTrending_updatePick",
+        "summary": "",
+        "description": "Change how long a pick is shown.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTrendingPickDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "AdminTrending_removePick",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/admin/trending/picks/order": {
+      "put": {
+        "operationId": "AdminTrending_reorder",
+        "summary": "",
+        "description": "Put the picks in a new order.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderTrendingPicksDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/trending/hidden": {
+      "post": {
+        "operationId": "AdminTrending_hide",
+        "summary": "",
+        "description": "Take an event out of the best sellers.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HideTrendingEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/trending/hidden/{eventId}": {
+      "delete": {
+        "operationId": "AdminTrending_unhide",
+        "summary": "",
+        "description": "Let a hidden event back in.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/trending/settings": {
+      "patch": {
+        "operationId": "AdminTrending_settings",
+        "summary": "",
+        "description": "Cards in the row (4, 6 or 8) and one event per host.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrendingSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Trending"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
         ]
       }
     }
@@ -5354,6 +5936,36 @@
           "success"
         ]
       },
+      "RequestEmailCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "VerifyEmailCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "code": {
+            "type": "string",
+            "description": "The 6 digits from the email",
+            "pattern": "/^\\s*\\d{6}\\s*$/"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
       "ForgotPasswordDto": {
         "type": "object",
         "properties": {
@@ -5684,9 +6296,56 @@
           }
         },
         "required": [
-          "provider",
           "eventId",
           "items"
+        ]
+      },
+      "GuestCheckoutDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/PaymentProviderType"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CheckoutItemDto"
+            }
+          },
+          "fullName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "phone": {
+            "type": "string",
+            "description": "e.g. +220 301 2345",
+            "pattern": "/^\\+?[0-9 ()-]{7,20}$/"
+          }
+        },
+        "required": [
+          "eventId",
+          "items",
+          "fullName",
+          "email"
+        ]
+      },
+      "PayOrderDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/PaymentProviderType"
+          }
+        },
+        "required": [
+          "provider"
         ]
       },
       "CreateCheckInDto": {
@@ -6125,6 +6784,79 @@
           "minSupportedVersion",
           "latestVersion"
         ]
+      },
+      "AddTrendingPickDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "until": {
+            "type": "string",
+            "description": "Shown until (YYYY-MM-DD = the end of that day). Default and latest: the end of the event.",
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "eventId"
+        ]
+      },
+      "UpdateTrendingPickDto": {
+        "type": "object",
+        "properties": {
+          "until": {
+            "type": "string",
+            "description": "Shown until (YYYY-MM-DD = the end of that day); never later than the end of the event",
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "until"
+        ]
+      },
+      "ReorderTrendingPicksDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "description": "Every current pick's id, first to last",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "HideTrendingEventDto": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventId"
+        ]
+      },
+      "TrendingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "number",
+            "description": "Cards in the row: 4, 6 or 8",
+            "enum": [
+              4,
+              6,
+              8
+            ]
+          },
+          "onePerHost": {
+            "type": "boolean",
+            "description": "At most one event per host across the row"
+          }
+        }
       }
     }
   }

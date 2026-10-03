@@ -21,6 +21,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { EventStaffModule } from './event-staff/event-staff.module';
 import { ScannerModule } from './scanner/scanner.module';
 import { AppConfigModule } from './app-config/app-config.module';
+import { StorefrontModule } from './storefront/storefront.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { AppConfigModule } from './app-config/app-config.module';
     EventStaffModule,
     ScannerModule,
     AppConfigModule,
+    StorefrontModule,
   ],
 })
 export class AppModule {}

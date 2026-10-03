@@ -56,6 +56,7 @@ export class NotificationsController {
     if (!n) throw new NotFoundException('Notification not found');
     if (n.status !== 'FAILED' && n.status !== 'CANCELLED') throw new BadRequestException(`Only failed or cancelled messages can be retried (this one is ${n.status})`);
     if (n.type === 'password_reset') throw new BadRequestException('Password reset emails can’t be resent; ask the person to request a new link');
+    if (n.type === 'login_code') throw new BadRequestException('Sign-in codes can’t be resent; ask the person to request a new one');
     return this.prisma.notification.update({
       where: { id },
       data: { status: 'PENDING', attempts: 0, sendAfter: new Date(), lockedUntil: null, lastError: null },

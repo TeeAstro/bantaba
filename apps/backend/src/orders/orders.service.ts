@@ -5,10 +5,13 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { UserRole, EventStatus, EventSeatStatus } from '@prisma/client';
+import { UserRole, EventStatus, EventSeatStatus, PaymentProviderType, Prisma } from '@prisma/client';
+import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
-import { CheckoutDto } from './dto/checkout.dto';
+import { generateRandomToken, hashToken } from '../common/token.util';
+import { RateLimiter } from '../common/rate-limit';
+import { CheckoutDto, GuestCheckoutDto } from './dto/checkout.dto';
 
 interface AuthenticatedUser {
   id: string;
@@ -20,7 +23,21 @@ const PLATFORM_FEE_MINOR_UNITS = Number(
   process.env.TICKET_PLATFORM_FEE_MINOR_UNITS ?? 5000,
 ); // D50.00 default
 
-const RESERVATION_TTL_MINUTES = Number(process.env.RESERVATION_TTL_MINUTES ?? 15);
+// Phase 16: tickets (and seats) are held for 5 minutes while the buyer
+// chooses how to pay; starting a payment extends the hold
+// (PaymentsService.initiatePayment).
+const RESERVATION_TTL_MINUTES = Number(process.env.RESERVATION_TTL_MINUTES ?? 5);
+const MAX_TICKETS_PER_ORDER = Number(process.env.MAX_TICKETS_PER_ORDER ?? 10);
+
+// Guest checkout and paying an order are public; keep bots from holding
+// every ticket (per IP).
+const guestLimiter = new RateLimiter(10, 10 * 60_000);
+const ORDER_INCLUDE = {
+  items: { include: { ticketType: true } },
+  tickets: { include: { seat: { include: { section: true } }, ticketType: true } },
+  payments: true,
+  event: { include: { venue: true } },
+} satisfies Prisma.TicketOrderInclude;
 
 @Injectable()
 export class OrdersService {
@@ -30,6 +47,53 @@ export class OrdersService {
   ) {}
 
   async checkout(user: AuthenticatedUser, dto: CheckoutDto) {
+    return this.placeOrder({ id: user.id, email: user.email }, dto, null);
+  }
+
+  // Phase 16: buying without signing in (docs/storefront.md, "Guest
+  // checkout"). The order belongs to the account with that email, made
+  // quietly if there isn't one (no password: they sign in later with an
+  // email code). The guest gets a private key to this one order instead
+  // of a session, so they can pay it and see its tickets, never anything
+  // else in that account.
+  async guestCheckout(dto: GuestCheckoutDto, ip: string) {
+    guestLimiter.check(`guest:${ip}`);
+    const email = dto.email.trim().toLowerCase();
+    let customer = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
+    if (customer && customer.role !== UserRole.CUSTOMER) {
+      throw new ConflictException('This email is used for Bantaba Host. Use another email to buy tickets.');
+    }
+    if (!customer) {
+      const phone = dto.phone?.replace(/[^0-9+]/g, '') || null;
+      const phoneFree = phone ? !(await this.prisma.user.findUnique({ where: { phone }, select: { id: true } })) : false;
+      try {
+        customer = await this.prisma.user.create({
+          data: {
+            email,
+            fullName: dto.fullName.trim(),
+            phone: phoneFree ? phone : null,
+            role: UserRole.CUSTOMER,
+            // No password yet: an unguessable one nobody knows. They sign in
+            // with an email code, or set one with "Forgot password".
+            passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }),
+          },
+        });
+        await this.prisma.auditLog.create({
+          data: { actorId: customer.id, actorRole: customer.role, action: 'guest_account_created', entityType: 'User', entityId: customer.id },
+        });
+      } catch (err) {
+        // Two checkouts with the same new email at once: use the one that won.
+        if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err;
+        customer = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
+        if (!customer || customer.role !== UserRole.CUSTOMER) throw err;
+      }
+    }
+    const orderToken = generateRandomToken();
+    const result = await this.placeOrder({ id: customer.id, email: customer.email }, dto, orderToken);
+    return { ...result, orderToken };
+  }
+
+  private async placeOrder(customer: { id: string; email: string }, dto: CheckoutDto, guestToken: string | null) {
     // Release anyone else's lapsed reservations before checking
     // availability. A timer does this every minute too (Phase 12,
     // PaymentsService.onApplicationBootstrap); this keeps checkout correct
@@ -73,6 +137,19 @@ export class OrdersService {
     if (new Set(allSeatIds).size !== allSeatIds.length) {
       throw new BadRequestException('The same seat was requested more than once');
     }
+    const totalQuantity = [...quantitiesByType.values()].reduce((a, b) => a + b, 0);
+    if (totalQuantity > MAX_TICKETS_PER_ORDER) {
+      throw new BadRequestException(`At most ${MAX_TICKETS_PER_ORDER} tickets per order`);
+    }
+
+    // Phase 16: one unpaid hold per buyer per event. Going back and
+    // choosing again replaces the earlier hold instead of piling them up.
+    // Orders with a payment already started are left alone.
+    const earlier = await this.prisma.ticketOrder.findMany({
+      where: { customerId: customer.id, eventId: dto.eventId, status: 'PENDING', payments: { none: {} } },
+      select: { id: true },
+    });
+    for (const o of earlier) await this.paymentsService.failOrder(o.id, null, 'replaced_by_new_checkout');
 
     // Step 1: reserve inventory and create a PENDING order, all inside one
     // DB transaction. No external network call happens in here — that's
@@ -173,8 +250,9 @@ export class OrdersService {
 
       const created = await tx.ticketOrder.create({
         data: {
-          customerId: user.id,
+          customerId: customer.id,
           eventId: dto.eventId,
+          guestTokenHash: guestToken ? hashToken(guestToken) : null,
           subtotal,
           platformFee,
           total,
@@ -223,6 +301,38 @@ export class OrdersService {
       return created;
     });
 
+    // Phase 16: no provider yet — the tickets are only held while the buyer
+    // chooses how to pay (POST /orders/:id/pay).
+    if (!dto.provider) {
+      const held = await this.prisma.ticketOrder.findUnique({ where: { id: order.id }, include: ORDER_INCLUDE });
+      return { order: held ? this.present(held) : held };
+    }
+
+    return this.startPayment(order, dto.provider, customer.email);
+  }
+
+  // Phase 16: pay an order that's being held. The buyer who placed it
+  // (signed in), or a guest with the order's private key.
+  async pay(viewer: AuthenticatedUser | null, orderId: string, guestToken: string | undefined, provider: PaymentProviderType, ip: string) {
+    if (!viewer) guestLimiter.check(`pay:${ip}`);
+    const order = await this.prisma.ticketOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { email: true } }, payments: true } });
+    if (!order || !this.canSee(order, viewer, guestToken)) throw new NotFoundException('Order not found');
+    if (order.status !== 'PENDING') throw new ConflictException(order.status === 'PAID' ? 'This order is already paid' : 'This order is closed. Choose your tickets again.');
+    if (order.expiresAt && order.expiresAt <= new Date()) {
+      await this.paymentsService.failOrder(order.id, null, 'reservation_expired');
+      throw new ConflictException('Your hold ran out. Choose your tickets again.');
+    }
+    // Changing your mind (say bank transfer, then Wave): the earlier
+    // payment that never finished is called off. If it still completes,
+    // the order is paid by whichever comes first.
+    await this.prisma.payment.updateMany({ where: { orderId: order.id, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+    return this.startPayment(order, provider, order.customer.email, false);
+  }
+
+  // releaseOnFail: the old one-step checkout gives the tickets back if the
+  // provider can't start; paying a held order keeps the hold, so the buyer
+  // can choose another way to pay.
+  private async startPayment(order: { id: string; total: number; currency: string; customerId: string }, provider: PaymentProviderType, email: string, releaseOnFail = true) {
     // Step 2: hand off to the chosen payment provider, outside the DB
     // transaction. If this throws (e.g. Wave isn't configured, or Wave's
     // API itself errors), the reservation from step 1 must not be left
@@ -230,8 +340,8 @@ export class OrdersService {
     try {
       const { completedOrder, ...paymentResult } = await this.paymentsService.initiatePayment(
         order,
-        dto.provider,
-        user.email,
+        provider,
+        email,
       );
       // `order` above is a snapshot from BEFORE payment ran. For a
       // provider that auto-completes (MOCK today; conceivably others
@@ -253,9 +363,9 @@ export class OrdersService {
           where: { id: order.id },
           include: { items: true, tickets: true },
         }));
-      return { order: finalOrder, ...paymentResult };
+      return { order: finalOrder ? this.present(finalOrder as typeof finalOrder & { guestTokenHash: string | null }) : finalOrder, ...paymentResult };
     } catch (err) {
-      await this.paymentsService.failOrder(order.id, null, 'initiate_payment_failed');
+      if (releaseOnFail) await this.paymentsService.failOrder(order.id, null, 'initiate_payment_failed');
       throw err;
     }
   }
@@ -272,20 +382,26 @@ export class OrdersService {
     });
   }
 
-  async findOne(user: AuthenticatedUser, orderId: string) {
+  // The buyer (signed in), an admin, or a guest with the order's key.
+  async findOne(user: AuthenticatedUser | null, orderId: string, guestToken?: string) {
     const order = await this.prisma.ticketOrder.findUnique({
       where: { id: orderId },
-      include: {
-        items: { include: { ticketType: true } },
-        tickets: { include: { seat: { include: { section: true } } } },
-        payments: true,
-        event: true,
-      },
+      include: ORDER_INCLUDE,
     });
-    if (!order) throw new NotFoundException('Order not found');
-    if (order.customerId !== user.id && user.role !== UserRole.ADMIN) {
+    if (!order || !this.canSee(order, user, guestToken)) {
       throw new NotFoundException('Order not found'); // 404, not 403 — same reasoning as event visibility
     }
-    return order;
+    return this.present(order);
+  }
+
+  private canSee(order: { customerId: string; guestTokenHash: string | null }, user: AuthenticatedUser | null, guestToken?: string) {
+    if (user && (order.customerId === user.id || user.role === UserRole.ADMIN)) return true;
+    return !!guestToken && !!order.guestTokenHash && order.guestTokenHash === hashToken(guestToken);
+  }
+
+  // The order without its private key's hash.
+  private present<T extends { guestTokenHash: string | null }>(order: T) {
+    const { guestTokenHash: _h, ...rest } = order;
+    return rest;
   }
 }

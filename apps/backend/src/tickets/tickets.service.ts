@@ -15,7 +15,8 @@ export class TicketsService {
     return this.prisma.ticket.findMany({
       where: { ownerId: user.id },
       include: {
-        ticketType: { include: { event: true } },
+        // Phase 16: the venue too, for My tickets on the storefront
+        ticketType: { include: { event: { include: { venue: true } } } },
         seat: { include: { section: true } },
       },
       orderBy: { purchasedAt: 'desc' },

@@ -956,6 +956,37 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 10 | Phone | All three pages in a narrow window | No sideways scrolling; chart labels readable; cards stack |
 | 11 | Automated | `node dashboard-stats-test.js` in `apps/backend` | `8/8 passed`; all other suites unchanged |
 
+## Storefront (Phase 16), part 1: the server
+
+**Read `docs/storefront.md`.** This part is the server side of the Bantaba storefront; the web screens come next. The design is on the "Bantaba storefront" and "Bantaba Host screens" (Trending) canvases.
+
+- **Discover:** `GET /storefront/discover` lists events grouped by host, at most two each, with date buttons, search and price labels ("D250", "From D200", "Free", "Sold out").
+- **Trending:** up to 3 Bantaba picks (blue-tick hosts only), then the best sellers of the last 7 days, one per host. Admins manage it at `/admin/trending` (API).
+- **Checkout is hold, then pay:**
+  - tickets are held for **5 minutes** while the buyer chooses how to pay;
+  - starting a payment keeps them held (15 minutes for Wave or card, 24 hours for a bank transfer).
+- **Guest checkout:** name, email and phone, no account needed. The order is tied to that email's buyer account, made quietly if needed.
+- **Email-code sign-in:** buyers sign in or sign up with a 6-digit code instead of a password.
+- **Migration:** `20261003100000_storefront` adds 4 tables and 1 column.
+
+1. In `apps/backend`: `npx prisma migrate dev` (applies the migration), then `npm run build`.
+2. In `apps/backend/.env`, set `RESERVATION_TTL_MINUTES=5` or delete that line. An older `.env` copied from the example has 15.
+3. Restart the backend.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Discover | Open `http://localhost:4000/api/v1/storefront/discover` | `trending` and `hosts`; each host has at most 2 `events` and a `total`; each event has `price.label` |
+| 2 | Date buttons | Add `?when=week`, then `?when=date&date=` with a day that has an event | Only events in the next 7 days / that day |
+| 3 | Price labels | An event with two ticket types at D200 and D500 | `"From D200"`; with only one type, `"D200"` |
+| 4 | Trending, as admin | `GET /api/v1/admin/trending` with an admin token | `row`, `picks`, `next`, `hidden`, `settings` (6 cards, one per host) |
+| 5 | Hold only | `POST /orders/checkout` as a customer without `provider` | Order `PENDING`, `expiresAt` 5 minutes from now, no payment |
+| 6 | Pay it | `POST /orders/<id>/pay` with `{"provider":"MOCK"}` | Order `PAID` with tickets |
+| 7 | Guest | `POST /orders/guest-checkout` with `fullName`, `email`, `items` | Reply has `orderToken`; `GET /orders/<id>` works only with header `X-Order-Token` |
+| 8 | Email code | `POST /auth/email-code` with a new email, then open the newest `mail-previews/*login_code*` file | "Your Bantaba code: 123456"; `POST /auth/email-code/verify` with it signs in (`created: true`) |
+| 9 | Automated | `node storefront-test.js` in `apps/backend` (backend started with `TRENDING_CACHE_SECONDS=0 RATE_LIMITS=off`) | `16/16 passed`; all other suites unchanged |
+
 ## Project structure
 
 ```

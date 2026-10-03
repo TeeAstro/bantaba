@@ -1,6 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
-import { InitiatePaymentInput, InitiatePaymentResult, PaymentProvider } from './payment-provider.interface';
+import { InitiatePaymentInput, InitiatePaymentResult, PaymentProvider, returnUrl } from './payment-provider.interface';
 
 // Visa / Mastercard (debit and credit) through Modem Pay, a Gambian payment
 // gateway (https://docs.modempay.com). See docs/payments.md, "Card payments".
@@ -60,7 +60,6 @@ export class CardProvider implements PaymentProvider {
     // Our own reference, sent as metadata and matched when the webhook
     // arrives: the create response doesn't document a stable payment id.
     const reference = `card_${randomUUID()}`;
-    const frontend = process.env.FRONTEND_URL ?? 'http://localhost:3000';
     const res = await fetch(`${BASE()}/payments`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.MODEMPAY_SECRET_KEY}`, 'Content-Type': 'application/json' },
@@ -72,8 +71,8 @@ export class CardProvider implements PaymentProvider {
           title: process.env.APP_NAME ?? 'Bantaba',
           description: `Tickets, order ${input.orderId.slice(0, 8).toUpperCase()}`,
           metadata: { reference, orderId: input.orderId },
-          return_url: process.env.CARD_RETURN_URL ?? `${frontend}/checkout/success?order=${input.orderId}`,
-          cancel_url: process.env.CARD_CANCEL_URL ?? `${frontend}/checkout/error?order=${input.orderId}`,
+          return_url: returnUrl(process.env.CARD_RETURN_URL, '/checkout/success', input.orderId),
+          cancel_url: returnUrl(process.env.CARD_CANCEL_URL, '/checkout/error', input.orderId),
           from_sdk: false,
         },
       }),

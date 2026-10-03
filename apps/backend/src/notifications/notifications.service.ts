@@ -23,6 +23,7 @@ export const NotificationType = {
   EVENT_REMINDER: 'event_reminder',
   STAFF_ASSIGNED: 'staff_assigned',
   PASSWORD_RESET: 'password_reset',
+  LOGIN_CODE: 'login_code', // Phase 16: sent straight away, never stored or resent
   // Phase 13
   REFUND_REQUESTED: 'refund_requested', // to the organizer
   REFUND_APPROVED: 'refund_approved', // manual refunds: approved, money to follow
@@ -369,6 +370,37 @@ export class NotificationsService {
         lastError: error,
         toAddress: user.email,
         subject: msg.subject,
+      },
+    });
+  }
+
+  // Phase 16: a buyer's sign-in code, sent straight away like a password
+  // reset (the code must never be stored). For an email with no account
+  // yet there's no one to record it against, so nothing is recorded.
+  async sendLoginCode(email: string, user: { id: string; fullName: string | null; role: string } | null, code: string | null, minutes: number) {
+    const msg = code
+      ? T.loginCode({ code, minutes })
+      : T.loginCodeRefused({ name: user?.fullName ?? null, loginUrl: `${this.frontendUrl}/login` });
+    let error: string | null = null;
+    try {
+      await this.mail.send({ to: email, subject: msg.subject, html: msg.html, text: msg.text, tag: NotificationType.LOGIN_CODE });
+    } catch (err) {
+      error = (err as Error).message.slice(0, 500);
+      this.logger.warn(`Sign-in code email failed: ${error}`);
+    }
+    if (!user) return;
+    await this.prisma.notification.create({
+      data: {
+        userId: user.id,
+        channel: NotificationChannel.EMAIL,
+        type: NotificationType.LOGIN_CODE,
+        status: error ? 'FAILED' : 'SENT',
+        sentAt: error ? null : new Date(),
+        attempts: 1,
+        lastError: error,
+        toAddress: email,
+        // Not the subject: it contains the code.
+        subject: code ? 'Sign-in code' : 'Sign in with your password',
       },
     });
   }

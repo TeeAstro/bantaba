@@ -80,7 +80,7 @@ Without the keys, a card checkout answers 503 "Card payments are not configured 
 
 ## Inventory reservation and expiry
 
-A `PENDING` order holds its inventory reservation (the same `quantitySold` increment from Phase 5) for `RESERVATION_TTL_MINUTES` (default 15). If payment never completes, that hold needs releasing eventually or a customer who abandons checkout permanently locks tickets away from everyone else.
+A `PENDING` order holds its inventory reservation (the same `quantitySold` increment from Phase 5) for `RESERVATION_TTL_MINUTES` (default 5 since Phase 16; it was 15). Starting a payment extends the hold: 15 minutes for Wave and card, 24 hours for a bank transfer. See `docs/storefront.md`, "Checkout: hold, then pay". If payment never completes, that hold needs releasing eventually or a customer who abandons checkout permanently locks tickets away from everyone else.
 
 **How this is triggered:** every minute by a timer in the backend (Phase 12, `RESERVATION_SWEEP_SECONDS`), and still at the start of every `POST /orders/checkout` before that request's availability check, so inventory is correct even between runs. Before Phase 12 only the checkout trigger existed, so an expired reservation wasn't released until someone else tried to check out. When a lapsed reservation was a bank transfer, the customer is emailed that it expired (`docs/notifications.md`).
 

@@ -7,6 +7,7 @@ import { EventImagesService } from '../events/event-images.service';
 import { CropDto } from '../events/dto/event-image.dto';
 import { UpdateOrganizerProfileDto } from './dto/organizer-profile.dto';
 import { normalizeSocial, normalizeWebsite, SOCIAL_PLATFORMS } from './social-links';
+import { priceLabel } from '../storefront/price-label';
 
 type Actor = { id: string; role: UserRole };
 export type ProfileImageKind = 'logo' | 'banner';
@@ -46,7 +47,7 @@ export class OrganizerProfileService {
       id: true, slug: true, name: true, startDate: true, endDate: true, posterUrl: true, bannerUrl: true, status: true,
       venue: { select: { name: true, city: true } },
       category: { select: { name: true, slug: true } },
-      ticketTypes: { select: { price: true } },
+      ticketTypes: { select: { price: true, currency: true, quantityTotal: true, quantitySold: true, isActive: true, salesStart: true, salesEnd: true } },
     } satisfies Prisma.EventSelect;
     const [upcoming, past, pastCount] = await Promise.all([
       this.prisma.event.findMany({ where: { organizerId: o.id, status: { in: SHOWN }, endDate: { gte: now } }, orderBy: { startDate: 'asc' }, take: 50, select: eventSelect }),
@@ -57,6 +58,8 @@ export class OrganizerProfileService {
       id: e.id, slug: e.slug, name: e.name, startDate: e.startDate, endDate: e.endDate, posterUrl: e.posterUrl, bannerUrl: e.bannerUrl,
       soldOut: e.status === EventStatus.SOLD_OUT, venue: e.venue, category: e.category,
       priceFrom: e.ticketTypes.length ? Math.min(...e.ticketTypes.map((t) => t.price)) : null,
+      // Phase 16: the storefront's price label (docs/storefront.md)
+      price: (({ label, kind, min, currency }) => ({ label, kind, min, currency }))(priceLabel(e.ticketTypes, now)),
     });
     return {
       ...this.presentPublic(o),

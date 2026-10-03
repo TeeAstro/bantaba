@@ -483,15 +483,17 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ticketTypes TicketType[]
-  orders      TicketOrder[]
-  promoCodes  PromoCode[]
-  eventStaff  EventStaff[]
-  reviews     Review[]
-  favorites   FavoriteEvent[]
-  eventSeats  EventSeat[]
-  checkIns    CheckIn[]
+  ticketTypes    TicketType[]
+  orders         TicketOrder[]
+  promoCodes     PromoCode[]
+  eventStaff     EventStaff[]
+  reviews        Review[]
+  favorites      FavoriteEvent[]
+  eventSeats     EventSeat[]
+  checkIns       CheckIn[]
   changeRequests EventChangeRequest[]
+  trendingPick   TrendingPick?
+  trendingHidden TrendingHidden?
 
   @@index([organizerId])
   @@index([categoryId])
@@ -611,14 +613,17 @@ model TicketOrder {
   promoCodeId String?
   promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
 
-  subtotal    Int
-  discount    Int         @default(0)
-  platformFee Int         @default(0)
-  paymentFee  Int         @default(0)
-  total       Int
-  currency    String      @default("GMD")
-  status      OrderStatus @default(PENDING)
-  expiresAt   DateTime? // while PENDING: when the inventory hold lapses if never paid
+  subtotal       Int
+  discount       Int         @default(0)
+  platformFee    Int         @default(0)
+  paymentFee     Int         @default(0)
+  total          Int
+  currency       String      @default("GMD")
+  status         OrderStatus @default(PENDING)
+  expiresAt      DateTime? // while PENDING: when the inventory hold lapses if never paid
+  // Phase 16: a guest checkout's private key to this one order (pay it,
+  // see its tickets) without signing in. Only the hash is stored.
+  guestTokenHash String?     @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1032,4 +1037,56 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@map("audit_logs")
+}
+
+// ---------- Phase 16: storefront (docs/storefront.md) ----------
+
+// Trending, the first row on the Bantaba home page: admin picks first,
+// then the best sellers of the last 7 days.
+model TrendingPick {
+  id          String   @id @default(uuid())
+  eventId     String   @unique
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  position    Int // 1 = first
+  until       DateTime // shown until then (at the latest until the event ends)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@map("trending_picks")
+}
+
+// Events an admin took out of Trending's automatic part.
+model TrendingHidden {
+  eventId    String   @id
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  hiddenById String?
+  hiddenAt   DateTime @default(now())
+
+  @@map("trending_hidden")
+}
+
+// Small platform-wide settings an admin can change, by key, e.g.
+// "trending" = { "count": 6, "onePerHost": true }.
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+// Buyers sign in with a 6-digit code sent to their email (no password
+// needed). Only the hash is stored; 10 minutes, 5 tries.
+model EmailLoginCode {
+  id        String    @id @default(uuid())
+  email     String // lower case
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email, createdAt])
+  @@map("email_login_codes")
 }

@@ -5,6 +5,7 @@ import {
   InitiatePaymentInput,
   InitiatePaymentResult,
   WebhookEvent,
+  returnUrl,
 } from './payment-provider.interface';
 
 const WAVE_API_BASE_URL = process.env.WAVE_API_BASE_URL ?? 'https://api.wave.com/v1';
@@ -46,8 +47,8 @@ export class WaveProvider implements PaymentProvider {
         amount: String(input.amount),
         currency: input.currency,
         client_reference: input.orderId,
-        success_url: process.env.WAVE_SUCCESS_URL ?? 'http://localhost:3000/checkout/success',
-        error_url: process.env.WAVE_ERROR_URL ?? 'http://localhost:3000/checkout/error',
+        success_url: returnUrl(process.env.WAVE_SUCCESS_URL, '/checkout/success', input.orderId),
+        error_url: returnUrl(process.env.WAVE_ERROR_URL, '/checkout/error', input.orderId),
       }),
     });
 

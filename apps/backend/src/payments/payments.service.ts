@@ -123,6 +123,21 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       };
     }
 
+    // Phase 16: the short hold (RESERVATION_TTL_MINUTES, 5 by default) is
+    // for choosing and starting to pay. Once a payment has started, the
+    // tickets stay held long enough to finish it: PAYMENT_WINDOW_MINUTES
+    // (15) for Wave and card, BANK_TRANSFER_HOLD_HOURS (24) for a bank
+    // transfer. Only ever extended, never shortened.
+    const holdMs =
+      providerType === PaymentProviderType.BANK_TRANSFER
+        ? Number(process.env.BANK_TRANSFER_HOLD_HOURS ?? 24) * 3_600_000
+        : Number(process.env.PAYMENT_WINDOW_MINUTES ?? 15) * 60_000;
+    const holdUntil = new Date(Date.now() + holdMs);
+    await this.prisma.$executeRaw`
+      UPDATE ticket_orders SET "expiresAt" = GREATEST("expiresAt", ${holdUntil})
+      WHERE id = ${order.id} AND status = 'PENDING'::"OrderStatus"
+    `;
+
     // Bank transfer: the customer has to act, so email them the payment
     // details and deadline (Phase 12). Wave redirects them to pay straight away.
     if (providerType === PaymentProviderType.BANK_TRANSFER && result.instructions) {

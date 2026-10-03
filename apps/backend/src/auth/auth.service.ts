@@ -3,6 +3,8 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
@@ -11,6 +13,8 @@ import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { generateRandomToken, hashToken } from '../common/token.util';
+import { RateLimiter } from '../common/rate-limit';
+import { randomInt } from 'crypto';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterOrganizerDto } from './dto/register-organizer.dto';
 import { LoginDto } from './dto/login.dto';
@@ -19,6 +23,11 @@ import { JwtPayload } from './jwt-payload.interface';
 const ACCESS_TOKEN_EXPIRY = process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Phase 16: email sign-in codes for buyers (docs/storefront.md)
+const CODE_TTL_MINUTES = 10;
+const CODE_MAX_TRIES = 5;
+const codeIpLimiter = new RateLimiter(20, 60 * 60_000, 'Too many codes asked for. Wait a while and try again.');
 
 @Injectable()
 export class AuthService {
@@ -218,6 +227,95 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
     return { success: true };
+  }
+
+  // ---------- Phase 16: sign in with an email code (buyers) ----------
+
+  // Sends a 6-digit code. For an organizer, staff or admin email, sends a
+  // note to sign in with the password instead (same response, so this
+  // can't be used to find out which emails are Host accounts).
+  async requestEmailCode(rawEmail: string, ip: string) {
+    codeIpLimiter.check(`code:${ip}`);
+    const email = rawEmail.trim().toLowerCase();
+    const response = { sent: true, minutes: CODE_TTL_MINUTES };
+
+    const recent = await this.prisma.emailLoginCode.findMany({
+      where: { email, createdAt: { gt: new Date(Date.now() - 60 * 60_000) } },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+    if (recent[0] && Date.now() - recent[0].createdAt.getTime() < 60_000) {
+      throw new HttpException('A code was just sent. Wait a minute before asking for another.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    if (recent.length >= 5) {
+      throw new HttpException('Too many codes for this email. Try again in an hour.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    const user = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
+    const code = user && user.role !== UserRole.CUSTOMER ? null : String(randomInt(0, 1_000_000)).padStart(6, '0');
+    await this.prisma.emailLoginCode.create({
+      data: {
+        email,
+        // A Host account gets no usable code.
+        codeHash: code ? hashToken(`${email}:${code}`) : hashToken(generateRandomToken()),
+        expiresAt: new Date(Date.now() + CODE_TTL_MINUTES * 60_000),
+      },
+    });
+    // Not awaited: the response takes the same time either way.
+    void this.notifications.sendLoginCode(email, user, code, CODE_TTL_MINUTES).catch(() => undefined);
+    return response;
+  }
+
+  // Checks the latest code for that email. Right: signed in, and a buyer
+  // account is made if there isn't one (this is also how buyers sign up).
+  async verifyEmailCode(rawEmail: string, rawCode: string) {
+    const email = rawEmail.trim().toLowerCase();
+    const code = rawCode.trim();
+    const wrong = () => new BadRequestException('That code isn’t right. Check the email or ask for a new one.');
+
+    const latest = await this.prisma.emailLoginCode.findFirst({ where: { email }, orderBy: { createdAt: 'desc' } });
+    if (!latest || latest.usedAt || latest.expiresAt <= new Date()) {
+      throw new BadRequestException('That code has expired. Ask for a new one.');
+    }
+    if (latest.attempts >= CODE_MAX_TRIES) {
+      throw new BadRequestException('Too many wrong tries. Ask for a new code.');
+    }
+    // Counted before checking, so parallel guesses can't get extra tries.
+    const counted = await this.prisma.emailLoginCode.updateMany({
+      where: { id: latest.id, attempts: { lt: CODE_MAX_TRIES }, usedAt: null },
+      data: { attempts: { increment: 1 } },
+    });
+    if (counted.count === 0) throw new BadRequestException('Too many wrong tries. Ask for a new code.');
+    if (latest.codeHash !== hashToken(`${email}:${code}`)) throw wrong();
+
+    const used = await this.prisma.emailLoginCode.updateMany({ where: { id: latest.id, usedAt: null }, data: { usedAt: new Date() } });
+    if (used.count === 0) throw new BadRequestException('That code has already been used. Ask for a new one.');
+
+    let user = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
+    if (user && user.role !== UserRole.CUSTOMER) throw wrong(); // Host accounts never get a working code
+    let created = false;
+    if (!user) {
+      try {
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            role: UserRole.CUSTOMER,
+            emailVerifiedAt: new Date(),
+            passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }),
+          },
+        });
+        created = true;
+      } catch {
+        user = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
+        if (!user || user.role !== UserRole.CUSTOMER) throw wrong();
+      }
+    } else if (!user.emailVerifiedAt) {
+      user = await this.prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+    }
+
+    await this.audit(user.id, user.role, created ? 'register_email_code' : 'login_email_code', 'User', user.id);
+    const tokens = await this.issueTokenPair(user.id, user.role);
+    return { user: this.toPublicUser(user), ...tokens, created };
   }
 
   async forgotPassword(email: string) {

@@ -268,6 +268,31 @@ export function passwordReset(d: { name: string | null; resetUrl: string; minute
   return { subject, html: layout({ preheader: 'Choose a new password', title: subject, body }), text };
 }
 
+// ---------- Phase 16: buyers sign in with an email code ----------
+
+export function loginCode(d: { code: string; minutes: number }): Rendered {
+  const subject = `Your ${APP()} code: ${d.code}`;
+  const body =
+    p('Enter this code to sign in:') +
+    `<p style="margin:8px 0 20px;font-size:32px;font-weight:700;letter-spacing:8px;font-family:Menlo,Consolas,monospace">${h(d.code)}</p>` +
+    muted(`It works once and expires in ${d.minutes} minutes. If you didn't ask for it, ignore this email.`);
+  const text = ['Enter this code to sign in:', '', d.code, '', `It works once and expires in ${d.minutes} minutes. If you didn't ask for it, ignore this email.`].join('\n');
+  return { subject, html: layout({ preheader: `Your code is ${d.code}`, title: subject, body }), text };
+}
+
+// Someone asked for a code for an organizer, staff or admin account:
+// those sign in with their password only.
+export function loginCodeRefused(d: { name: string | null; loginUrl: string }): Rendered {
+  const subject = `Sign in to ${APP()} Host with your password`;
+  const body =
+    p(greet(d.name)) +
+    p('Someone (hopefully you) asked for a sign-in code for this email. This is a Bantaba Host account, which signs in with its password only.') +
+    button(d.loginUrl, 'Sign in') +
+    muted("If you didn't ask for this, ignore this email.");
+  const text = [greet(d.name), '', 'Someone (hopefully you) asked for a sign-in code for this email. This is a Bantaba Host account, which signs in with its password only.', d.loginUrl].join('\n');
+  return { subject, html: layout({ preheader: 'Use your password', title: subject, body }), text };
+}
+
 // ---------- Phase 13: refunds ----------
 
 export interface RefundInfo {

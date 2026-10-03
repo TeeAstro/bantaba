@@ -1,3 +1,11 @@
+// Phase 16: where the payment page sends the buyer back to, with the order
+// id, so the storefront can show that order's tickets
+// (FRONTEND_URL/checkout/success?order=…).
+export function returnUrl(configured: string | undefined, path: '/checkout/success' | '/checkout/error', orderId: string) {
+  const base = configured ?? `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}${path}`;
+  return `${base}${base.includes('?') ? '&' : '?'}order=${encodeURIComponent(orderId)}`;
+}
+
 export interface InitiatePaymentInput {
   orderId: string;
   amount: number; // minor units

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards, HttpCode } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Post, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { RequestEmailCodeDto, VerifyEmailCodeDto } from './dto/email-code.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthSessionDto, CurrentUserDto, SuccessDto, TokenPairDto } from './dto/auth-responses.dto';
@@ -45,6 +46,21 @@ export class AuthController {
   @HttpCode(200)
   logout(@Body() dto: RefreshDto) {
     return this.authService.logout(dto.refreshToken);
+  }
+
+  /** Buyers (Phase 16): email me a 6-digit sign-in code. Host accounts get a note to use their password instead. */
+  @Post('email-code')
+  @HttpCode(200)
+  requestEmailCode(@Body() dto: RequestEmailCodeDto, @Ip() ip: string) {
+    return this.authService.requestEmailCode(dto.email, ip);
+  }
+
+  /** Sign in with the code; makes a buyer account if there isn't one (`created: true`). */
+  @ApiOkResponse({ type: AuthSessionDto })
+  @Post('email-code/verify')
+  @HttpCode(200)
+  verifyEmailCode(@Body() dto: VerifyEmailCodeDto) {
+    return this.authService.verifyEmailCode(dto.email, dto.code);
   }
 
   @Post('forgot-password')

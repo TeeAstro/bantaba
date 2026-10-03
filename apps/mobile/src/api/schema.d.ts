@@ -1278,6 +1278,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/email-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Buyers (Phase 16): email me a 6-digit sign-in code. Host accounts get a note to use their password instead. */
+        post: operations["Auth_requestEmailCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/email-code/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Sign in with the code; makes a buyer account if there isn't one (`created: true`). */
+        post: operations["Auth_verifyEmailCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/forgot-password": {
         parameters: {
             query?: never;
@@ -1662,8 +1696,29 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** CUSTOMER */
+        /**
+         * @description Signed-in buyer. Without `provider`, only holds the tickets (pay with POST /orders/:id/pay).
+         *
+         *     **Roles:** CUSTOMER
+         */
         post: operations["Orders_checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/guest-checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Buying without signing in. Returns `orderToken`, the guest's private key to this order (send it as X-Order-Token). */
+        post: operations["Orders_guestCheckout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1693,9 +1748,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description The buyer, an admin, or a guest with X-Order-Token. */
         get: operations["Orders_findOne"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Pay a held order: Wave, card or bank transfer. Starting a payment keeps the tickets held while it's finished. */
+        post: operations["Orders_pay"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1955,6 +2028,192 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/storefront/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Discover: Trending, then events grouped by host (at most two each), with price labels. */
+        get: operations["Storefront_discover"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/trending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The row as buyers see it, the picks, what's next in line and hidden events.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["AdminTrending_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/trending/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Events on sale that could be picked (canPick: the host has a blue tick).
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["AdminTrending_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/trending/picks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Pick an event (up to 3, blue-tick hosts only).
+         *
+         *     **Roles:** ADMIN
+         */
+        post: operations["AdminTrending_addPick"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/trending/picks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description **Roles:** ADMIN */
+        delete: operations["AdminTrending_removePick"];
+        options?: never;
+        head?: never;
+        /**
+         * @description Change how long a pick is shown.
+         *
+         *     **Roles:** ADMIN
+         */
+        patch: operations["AdminTrending_updatePick"];
+        trace?: never;
+    };
+    "/api/v1/admin/trending/picks/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Put the picks in a new order.
+         *
+         *     **Roles:** ADMIN
+         */
+        put: operations["AdminTrending_reorder"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/trending/hidden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Take an event out of the best sellers.
+         *
+         *     **Roles:** ADMIN
+         */
+        post: operations["AdminTrending_hide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/trending/hidden/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * @description Let a hidden event back in.
+         *
+         *     **Roles:** ADMIN
+         */
+        delete: operations["AdminTrending_unhide"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/trending/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * @description Cards in the row (4, 6 or 8) and one event per host.
+         *
+         *     **Roles:** ADMIN
+         */
+        patch: operations["AdminTrending_settings"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2200,6 +2459,14 @@ export interface components {
         SuccessDto: {
             success: boolean;
         };
+        RequestEmailCodeDto: {
+            email: string;
+        };
+        VerifyEmailCodeDto: {
+            email: string;
+            /** @description The 6 digits from the email */
+            code: string;
+        };
         ForgotPasswordDto: {
             email: string;
         };
@@ -2280,9 +2547,21 @@ export interface components {
             seatIds?: string[];
         };
         CheckoutDto: {
-            provider: components["schemas"]["PaymentProviderType"];
+            provider?: components["schemas"]["PaymentProviderType"];
             eventId: string;
             items: components["schemas"]["CheckoutItemDto"][];
+        };
+        GuestCheckoutDto: {
+            provider?: components["schemas"]["PaymentProviderType"];
+            eventId: string;
+            items: components["schemas"]["CheckoutItemDto"][];
+            fullName: string;
+            email: string;
+            /** @description e.g. +220 301 2345 */
+            phone?: string;
+        };
+        PayOrderDto: {
+            provider: components["schemas"]["PaymentProviderType"];
         };
         CreateCheckInDto: {
             qrToken: string;
@@ -2394,6 +2673,31 @@ export interface components {
             minSupportedVersion: components["schemas"]["PlatformVersionsDto"];
             /** @description Newest released version. An app below this (but above the minimum) may suggest updating. */
             latestVersion: components["schemas"]["PlatformVersionsDto"];
+        };
+        AddTrendingPickDto: {
+            eventId: string;
+            /** @description Shown until (YYYY-MM-DD = the end of that day). Default and latest: the end of the event. */
+            until?: string;
+        };
+        UpdateTrendingPickDto: {
+            /** @description Shown until (YYYY-MM-DD = the end of that day); never later than the end of the event */
+            until: string;
+        };
+        ReorderTrendingPicksDto: {
+            /** @description Every current pick's id, first to last */
+            ids: string[];
+        };
+        HideTrendingEventDto: {
+            eventId: string;
+        };
+        TrendingSettingsDto: {
+            /**
+             * @description Cards in the row: 4, 6 or 8
+             * @enum {number}
+             */
+            count?: 4 | 6 | 8;
+            /** @description At most one event per host across the row */
+            onePerHost?: boolean;
         };
     };
     responses: never;
@@ -4796,6 +5100,50 @@ export interface operations {
             };
         };
     };
+    Auth_requestEmailCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestEmailCodeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Auth_verifyEmailCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyEmailCodeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthSessionDto"];
+                };
+            };
+        };
+    };
     Auth_forgotPassword: {
         parameters: {
             query?: never;
@@ -5511,6 +5859,29 @@ export interface operations {
             };
         };
     };
+    Orders_guestCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestCheckoutDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     Orders_findMine: {
         parameters: {
             query?: never;
@@ -5540,7 +5911,11 @@ export interface operations {
     Orders_findOne: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "x-order-token": string;
+                /** @description A guest checkout’s private key to this order (Phase 16, docs/storefront.md) */
+                "X-Order-Token"?: string;
+            };
             path: {
                 id: string;
             };
@@ -5556,12 +5931,34 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
+        };
+    };
+    Orders_pay: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-order-token": string;
+                /** @description A guest checkout’s private key to this order (Phase 16, docs/storefront.md) */
+                "X-Order-Token"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayOrderDto"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -6119,6 +6516,343 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AppConfigDto"];
                 };
+            };
+        };
+    };
+    Storefront_discover: {
+        parameters: {
+            query?: {
+                /** @description Date buttons on Discover: all (default), weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`) */
+                when?: "all" | "weekend" | "week" | "date";
+                /** @description With when=date: YYYY-MM-DD */
+                date?: string;
+                /** @description Search: event, artist (in the description), host, venue or town */
+                q?: string;
+                page?: number;
+                /** @description Hosts per page (default 12) */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_search: {
+        parameters: {
+            query?: {
+                /** @description Part of the event's or host's name */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_addPick: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTrendingPickDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_removePick: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_updatePick: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTrendingPickDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderTrendingPicksDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_hide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HideTrendingEventDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_unhide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminTrending_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrendingSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

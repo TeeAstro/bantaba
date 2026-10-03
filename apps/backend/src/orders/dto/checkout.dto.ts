@@ -3,15 +3,20 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsEmail,
   IsEnum,
   IsInt,
   IsOptional,
+  IsString,
   IsUUID,
+  Matches,
+  MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { PaymentProviderType } from '@prisma/client';
-import { ApiEnum } from '../../common/api-enum';
+import { ApiEnum, ApiEnumOptional } from '../../common/api-enum';
 
 export class CheckoutItemDto {
   @IsUUID()
@@ -44,6 +49,33 @@ export class CheckoutDto {
 
   // No default on purpose — which provider handles real money should
   // always be an explicit choice by the caller, never a silent fallback.
+  // Phase 16: leave it out to only hold the tickets (RESERVATION_TTL_MINUTES,
+  // 5 by default) and pay with POST /orders/:id/pay once the buyer has chosen.
+  @ApiEnumOptional(PaymentProviderType, 'PaymentProviderType')
+  @IsOptional()
+  @IsEnum(PaymentProviderType)
+  provider?: PaymentProviderType;
+}
+
+// Phase 16: buying without signing in (docs/storefront.md, "Guest checkout").
+export class GuestCheckoutDto extends CheckoutDto {
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  fullName!: string;
+
+  @IsEmail()
+  @MaxLength(200)
+  email!: string;
+
+  /** e.g. +220 301 2345 */
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+?[0-9 ()-]{7,20}$/, { message: 'phone must be a phone number' })
+  phone?: string;
+}
+
+export class PayOrderDto {
   @ApiEnum(PaymentProviderType, 'PaymentProviderType')
   @IsEnum(PaymentProviderType)
   provider!: PaymentProviderType;
