@@ -7,6 +7,7 @@ import { AttendeeRow, Paged } from '@/lib/types';
 import { dateTime, label, money } from '@/lib/format';
 import { ErrorNotice, Loading, Pager, StatusBadge } from '@/components/ui';
 import { useDebounced } from './OrdersTab';
+import { seatLong } from '@/lib/seating';
 
 const STATUSES = ['', 'ACTIVE', 'USED', 'CANCELLED', 'REFUNDED'];
 
@@ -97,7 +98,7 @@ export function AttendeesTab({ eventId, onChange }: { eventId: string; onChange?
                       <td>{refundable(t) && <input type="checkbox" aria-label={`Select ticket of ${t.owner.email}`} checked={selected.has(t.id)} onChange={() => toggle(t.id)} style={{ width: 'auto' }} />}</td>
                       <td>{t.owner.fullName ?? t.owner.email}<span className="cell-sub">{t.owner.fullName ? t.owner.email : ''}</span></td>
                       <td>{t.ticketType.name}<span className="cell-sub">Bought {dateTime(t.purchasedAt)}</span></td>
-                      <td>{t.seat ? `${t.seat.section}, row ${t.seat.row}, seat ${t.seat.number}` : <span className="faint">—</span>}</td>
+                      <td>{t.seat ? `${t.seat.section}, ${seatLong(t.seat.row, t.seat.number)}` : <span className="faint">—</span>}</td>
                       <td><StatusBadge status={t.status} /></td>
                       <td className="small">{t.checkedInAt ? <>{dateTime(t.checkedInAt)}{t.checkedInGate && <span className="cell-sub">{t.checkedInGate}</span>}</> : <span className="faint">Not yet</span>}</td>
                     </tr>

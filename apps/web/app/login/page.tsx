@@ -2,6 +2,7 @@
 
 import { FormEvent, Suspense, useState } from 'react';
 import { Logo } from '@/components/Logo';
+import { BackLink } from '@/components/BackLink';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ApiError, login } from '@/lib/api';
@@ -29,7 +30,8 @@ function LoginForm() {
       } else if (user.role === 'STAFF') {
         router.replace(next.startsWith('/scan') ? next : '/scan');
       } else {
-        setError('This sign-in is for event organizers, their staff and platform admins. Customer accounts will use the storefront, coming in a later phase.');
+        // Phase 16: buyers go back to the storefront (only a path on this site).
+        router.replace(next.startsWith('/') && !next.startsWith('//') && !/^\/(organizer|admin|scan)/.test(next) ? next : '/tickets');
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Sign-in failed');
@@ -57,6 +59,7 @@ function LoginForm() {
         </div>
         <button className="btn" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
         <p className="small"><Link href="/forgot-password">Forgot your password?</Link></p>
+        <p className="small"><BackLink fallback="/">← Back</BackLink></p>
       </form>
     </main>
   );

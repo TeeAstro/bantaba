@@ -9,7 +9,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { assertWithinLimits, organizerPermissions } from '../organizers/organizer-permissions';
 import { CreateTicketTypeDto } from './dto/create-ticket-type.dto';
 import { UpdateTicketTypeDto } from './dto/update-ticket-type.dto';
-import { VenuesService } from '../venues/venues.service';
 
 interface AuthenticatedUser {
   id: string;
@@ -18,26 +17,12 @@ interface AuthenticatedUser {
 
 @Injectable()
 export class TicketTypesService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly venuesService: VenuesService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private async assertZoneInVenue(accessZoneId: string, venueId: string) {
     const zone = await this.prisma.accessZone.findUnique({ where: { id: accessZoneId } });
     if (!zone || zone.venueId !== venueId) {
       throw new BadRequestException("accessZoneId must belong to this event's venue");
-    }
-  }
-
-  // A seated ticket type can never promise more tickets than its section
-  // has sellable (non-blocked) seats.
-  private async assertFitsSection(sectionId: string, quantityTotal: number) {
-    const sellable = await this.venuesService.countSellableSeats(sectionId);
-    if (quantityTotal > sellable) {
-      throw new BadRequestException(
-      `quantityTotal (${quantityTotal}) exceeds the ${sellable} sellable seats in this section`,
-      );
     }
   }
 
@@ -82,16 +67,6 @@ export class TicketTypesService {
 
     if (dto.accessZoneId) await this.assertZoneInVenue(dto.accessZoneId, event.venueId);
 
-    if (dto.sectionId) {
-      const section = await this.prisma.venueSection.findUnique({
-        where: { id: dto.sectionId },
-      });
-      if (!section || section.venueId !== event.venueId) {
-        throw new BadRequestException("sectionId must belong to this event's venue");
-      }
-      await this.assertFitsSection(dto.sectionId, dto.quantityTotal);
-    }
-
     return this.prisma.ticketType.create({
       data: {
         eventId: dto.eventId,
@@ -100,7 +75,6 @@ export class TicketTypesService {
         price: dto.price,
         quantityTotal: dto.quantityTotal,
         accessZoneId: dto.accessZoneId,
-        sectionId: dto.sectionId,
         salesStart: dto.salesStart ? new Date(dto.salesStart) : undefined,
         salesEnd: dto.salesEnd ? new Date(dto.salesEnd) : undefined,
         isActive: dto.isActive ?? true,
@@ -125,18 +99,25 @@ export class TicketTypesService {
       }
     }
 
-    return this.prisma.ticketType.findMany({
+    // seated: sold by seat (it has sections on the event's Seating page).
+    const types = await this.prisma.ticketType.findMany({
       where: { eventId },
-      include: { section: { select: { id: true, name: true, isVip: true } } },
+      include: { _count: { select: { eventSections: true } } },
       orderBy: { price: 'asc' },
     });
+    return types.map(({ _count, ...t }) => ({ ...t, seated: _count.eventSections > 0, sections: _count.eventSections }));
   }
 
   async update(user: AuthenticatedUser, ticketTypeId: string, dto: UpdateTicketTypeDto) {
     const ticketType = await this.prisma.ticketType.findUnique({
       where: { id: ticketTypeId },
+      include: { _count: { select: { eventSections: true } } },
     });
     if (!ticketType) throw new NotFoundException('Ticket type not found');
+    // Reserved seating sells exactly its open seats (Phase 17).
+    if (ticketType._count.eventSections > 0 && dto.quantityTotal !== undefined && dto.quantityTotal !== ticketType.quantityTotal) {
+      throw new BadRequestException('This ticket type is sold by seat: its seats set how many there are. Change them on the Seating page.');
+    }
 
     const event = await this.assertOwnsEvent(ticketType.eventId, user);
     if (dto.quantityTotal !== undefined || dto.price !== undefined) {
@@ -147,9 +128,6 @@ export class TicketTypesService {
     // type point at another venue's zone. That starts to matter in
     // Phase 8, since check-in now enforces zone levels at gates.
     if (dto.accessZoneId) await this.assertZoneInVenue(dto.accessZoneId, event.venueId);
-    if (ticketType.sectionId && dto.quantityTotal !== undefined) {
-      await this.assertFitsSection(ticketType.sectionId, dto.quantityTotal);
-    }
 
     if (
       dto.quantityTotal !== undefined &&

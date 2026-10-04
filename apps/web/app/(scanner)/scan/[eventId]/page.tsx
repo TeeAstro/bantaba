@@ -8,6 +8,7 @@ import { useApi } from '@/lib/hooks';
 import { ScannerEvent, ScanProgress, ScanResult } from '@/lib/types';
 import { dateTime } from '@/lib/format';
 import { useQrScanner } from '@/lib/useQrScanner';
+import { seatLabel, seatLong } from '@/lib/seating';
 
 type Tone = 'ok' | 'warn' | 'bad';
 
@@ -173,7 +174,7 @@ export default function ScanPage() {
           <div className={`result result-${v.tone}`} data-result={last!.result}>
             <h2>{v.title}</h2>
             <p>{v.detail}</p>
-            {seat && <p className="seat-line">{seat.section}, row {seat.row}, seat {seat.number}</p>}
+            {seat && <p className="seat-line">{seat.section}, {seatLong(seat.row, seat.number)}</p>}
           </div>
         )}
       </div>
@@ -200,7 +201,7 @@ export default function ScanPage() {
                 <span>
                   <i className={`dot dot-${DOT[s.result] ?? 'bad'}`} />
                   {verdict({ result: s.result, gate: null, ticket: null }).title}
-                  <span className="faint">, {s.ticketType}{s.seat ? `, ${s.seat.row}${s.seat.number}` : ''}</span>
+                  <span className="faint">, {s.ticketType}{s.seat ? `, ${seatLabel(s.seat.row, s.seat.number)}` : ''}</span>
                 </span>
                 <span className="faint small num">{dateTime(s.scannedAt).split(', ').pop()}</span>
               </li>

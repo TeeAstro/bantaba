@@ -3430,17 +3430,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
-                }
-              }
-            }
+            "description": ""
           }
         },
         "tags": [
@@ -3497,345 +3487,6 @@
           }
         ],
         "description": "**Roles:** ORGANIZER, ADMIN"
-      }
-    },
-    "/api/v1/venues": {
-      "get": {
-        "operationId": "Venues_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Venues"
-        ]
-      },
-      "post": {
-        "operationId": "Venues_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateVenueDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
-          }
-        },
-        "tags": [
-          "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
-      }
-    },
-    "/api/v1/venues/{id}": {
-      "get": {
-        "operationId": "Venues_findOne",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Venues"
-        ]
-      }
-    },
-    "/api/v1/venues/{id}/sections": {
-      "post": {
-        "operationId": "Venues_createSection",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSectionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
-          }
-        },
-        "tags": [
-          "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
-      }
-    },
-    "/api/v1/venues/{id}/access-zones": {
-      "post": {
-        "operationId": "Venues_createAccessZone",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAccessZoneDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
-          }
-        },
-        "tags": [
-          "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
-      }
-    },
-    "/api/v1/venues/{id}/gates": {
-      "post": {
-        "operationId": "Venues_createGate",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateGateDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
-          }
-        },
-        "tags": [
-          "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
-      }
-    },
-    "/api/v1/gates/{id}": {
-      "put": {
-        "operationId": "Venues_updateGate",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateGateDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
-          }
-        },
-        "tags": [
-          "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
-      }
-    },
-    "/api/v1/sections/{id}/seats/blocked": {
-      "post": {
-        "operationId": "Venues_setSeatsBlocked",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetSeatsBlockedDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
-          }
-        },
-        "tags": [
-          "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
-      }
-    },
-    "/api/v1/events/{id}/seat-map": {
-      "get": {
-        "operationId": "Venues_seatMap",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Venues"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
-        ]
       }
     },
     "/api/v1/orders/checkout": {
@@ -4254,6 +3905,827 @@
           }
         ],
         "description": "**Roles:** ORGANIZER, ADMIN"
+      }
+    },
+    "/api/v1/venues": {
+      "get": {
+        "operationId": "Venues_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Venues"
+        ]
+      },
+      "post": {
+        "operationId": "Venues_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVenueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/venues/{id}": {
+      "get": {
+        "operationId": "Venues_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Venues"
+        ]
+      }
+    },
+    "/api/v1/venues/{id}/sections": {
+      "post": {
+        "operationId": "Venues_createSection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/venues/{id}/access-zones": {
+      "post": {
+        "operationId": "Venues_createAccessZone",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccessZoneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/venues/{id}/gates": {
+      "post": {
+        "operationId": "Venues_createGate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/gates/{id}": {
+      "put": {
+        "operationId": "Venues_updateGate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/sections/{id}/seats/blocked": {
+      "post": {
+        "operationId": "Venues_setSeatsBlocked",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSeatsBlockedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/admin/venues": {
+      "get": {
+        "operationId": "AdminVenues_list",
+        "summary": "",
+        "description": "Every venue with its sections, seats, whether it has a drawing and its coming events.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/venues/{id}": {
+      "get": {
+        "operationId": "AdminVenues_detail",
+        "summary": "",
+        "description": "A venue with its drawing, gates and each section's seat grid.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "AdminVenues_update",
+        "summary": "",
+        "description": "Rename a venue, or change what its seats face (\"Stage\", \"Pitch\"…).\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVenueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/venues/{id}/gates": {
+      "post": {
+        "operationId": "AdminVenues_addGate",
+        "summary": "",
+        "description": "Add a gate. Returns { id, name }.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVenueGateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/venues/{id}/drawing/check": {
+      "post": {
+        "operationId": "AdminVenues_check",
+        "summary": "",
+        "description": "Read an SVG drawing without saving it: its sections, which match the\nvenue's and which are new, sections it would remove (and whether they\ncan go), and the cleaned SVG for a preview.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/venues/{id}/drawing": {
+      "put": {
+        "operationId": "AdminVenues_apply",
+        "summary": "",
+        "description": "Save an SVG drawing as the venue's map. Returns the venue.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/venue-sections/{id}": {
+      "put": {
+        "operationId": "AdminVenues_updateSection",
+        "summary": "",
+        "description": "Set a section's rows, seats per row, taken-out places and gate.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionLayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Admin Venues"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/events/{id}/seat-map": {
+      "get": {
+        "operationId": "Seating_seatMap",
+        "summary": "",
+        "description": "For buyers: the venue drawing, seated ticket types and every section with its price and free seats.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Seating"
+        ],
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/events/{id}/seat-map/sections/{sectionId}": {
+      "get": {
+        "operationId": "Seating_sectionSeats",
+        "summary": "",
+        "description": "For buyers: one section's seats, row by row (closed seats show as BLOCKED).",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Seating"
+        ],
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/events/{id}/seating": {
+      "get": {
+        "operationId": "Seating_view",
+        "summary": "",
+        "description": "For the organizer: every section, what it's sold as and its seat counts, plus the ticket types.\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Seating"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/events/{id}/seating/sections/{sectionId}": {
+      "get": {
+        "operationId": "Seating_ownerSectionSeats",
+        "summary": "",
+        "description": "For the organizer: one section's seats, with seats closed for this event as CLOSED.\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Seating"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "Seating_updateSection",
+        "summary": "",
+        "description": "Set what a section is sold as (null = not on sale) and its closed seats. Returns the event's seating.\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventSectionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Seating"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
       }
     },
     "/api/v1/organizer/overview": {
@@ -6070,9 +6542,6 @@
           "accessZoneId": {
             "type": "string"
           },
-          "sectionId": {
-            "type": "string"
-          },
           "salesStart": {
             "type": "string"
           },
@@ -6120,132 +6589,6 @@
             "type": "boolean"
           }
         }
-      },
-      "CreateVenueDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 200
-          },
-          "address": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "country": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "address",
-          "city"
-        ]
-      },
-      "SectionRowDto": {
-        "type": "object",
-        "properties": {
-          "label": {
-            "type": "string",
-            "pattern": "/^[A-Za-z0-9]{1,4}$/"
-          },
-          "seats": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 200
-          }
-        },
-        "required": [
-          "label",
-          "seats"
-        ]
-      },
-      "CreateSectionDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "isVip": {
-            "type": "boolean"
-          },
-          "rows": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SectionRowDto"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "rows"
-        ]
-      },
-      "CreateAccessZoneDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "level": {
-            "type": "number",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "name",
-          "level"
-        ]
-      },
-      "CreateGateDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "accessZoneId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ]
-      },
-      "UpdateGateDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 100
-          },
-          "accessZoneId": {
-            "type": "string",
-            "nullable": true
-          }
-        }
-      },
-      "SetSeatsBlockedDto": {
-        "type": "object",
-        "properties": {
-          "seatIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "isBlocked": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "seatIds",
-          "isBlocked"
-        ]
       },
       "PaymentProviderType": {
         "type": "string",
@@ -6496,6 +6839,232 @@
         "required": [
           "result",
           "ticket"
+        ]
+      },
+      "CreateVenueDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "address",
+          "city"
+        ]
+      },
+      "SectionRowDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "pattern": "/^[A-Za-z0-9]{1,4}$/"
+          },
+          "seats": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 200
+          }
+        },
+        "required": [
+          "label",
+          "seats"
+        ]
+      },
+      "CreateSectionDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "isVip": {
+            "type": "boolean"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SectionRowDto"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "rows"
+        ]
+      },
+      "CreateAccessZoneDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "level": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "name",
+          "level"
+        ]
+      },
+      "CreateGateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "accessZoneId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateGateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "accessZoneId": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "SetSeatsBlockedDto": {
+        "type": "object",
+        "properties": {
+          "seatIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isBlocked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "seatIds",
+          "isBlocked"
+        ]
+      },
+      "UpdateVenueDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "frontLabel": {
+            "type": "string",
+            "description": "What the seats face, shown above every seat grid: \"Stage\", \"Pitch\"…",
+            "minLength": 2,
+            "maxLength": 20
+          }
+        }
+      },
+      "CreateVenueGateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "SectionLayoutDto": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "number",
+            "description": "Rows A to Z (26), or up to 60 with \"seats\".",
+            "minimum": 1,
+            "maximum": 60
+          },
+          "numbering": {
+            "type": "string",
+            "description": "\"letters\" (the default): each row from 1, A1–A30, B1–B20. \"running\": the numbers run on through the section, A1–A30, B31–B50. \"seats\": one number per seat, no row letters, 1–144.",
+            "enum": [
+              "letters",
+              "running",
+              "seats"
+            ]
+          },
+          "perRow": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "removed": {
+            "description": "Places with no seat, as \"row-place\" counted from 1: [\"1-12\", \"2-12\"] for an aisle.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "/^[1-9]\\d?-[1-9]\\d{0,2}$/"
+            }
+          },
+          "gateId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The gate its ticket holders go in by. null = none; leave out to keep it."
+          }
+        },
+        "required": [
+          "rows",
+          "perRow",
+          "removed"
+        ]
+      },
+      "EventSectionDto": {
+        "type": "object",
+        "properties": {
+          "ticketTypeId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The ticket type the section is sold as; null = not on sale."
+          },
+          "closedSeatIds": {
+            "description": "Every seat in the section that is closed for this event (cameras, sound desk). Leave out to keep them.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ticketTypeId"
         ]
       },
       "OrderStatus": {

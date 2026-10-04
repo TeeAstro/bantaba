@@ -24,6 +24,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { policyText, refundEligibility } from './refund-rules';
+import { seatLabel } from '../venues/seating-rules';
 
 // Refunds (Phase 13, docs/refunds-transfers.md).
 //
@@ -161,7 +162,7 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
       tickets: r.items.map((i) => ({
         id: i.ticket.id,
         ticketType: i.ticket.ticketType.name,
-        seat: i.ticket.seat ? `${i.ticket.seat.section.name} ${i.ticket.seat.row}${i.ticket.seat.number}` : null,
+        seat: i.ticket.seat ? `${i.ticket.seat.section.name} ${seatLabel(i.ticket.seat.row, i.ticket.seat.number)}` : null,
         status: i.ticket.status,
         amount: i.amount,
       })),

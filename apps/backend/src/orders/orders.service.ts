@@ -12,6 +12,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { generateRandomToken, hashToken } from '../common/token.util';
 import { RateLimiter } from '../common/rate-limit';
 import { CheckoutDto, GuestCheckoutDto } from './dto/checkout.dto';
+import { seatLabel } from '../venues/seating-rules';
 
 interface AuthenticatedUser {
   id: string;
@@ -190,11 +191,14 @@ export class OrdersService {
         }
         currency = ticketType.currency;
 
-        // Reserved seating (Phase 8): validate the requested seats up
-        // front. The actual claim happens below, once the order row exists
-        // for the holds to point at.
+        // Reserved seating (Phase 8; sections per event since Phase 17):
+        // validate the requested seats up front. The actual claim happens
+        // below, once the order row exists for the holds to point at.
         const requestedSeatIds = seatIdsByType.get(ticketTypeId);
-        if (ticketType.sectionId) {
+        const sectionIds = (
+          await tx.eventSection.findMany({ where: { ticketTypeId }, select: { sectionId: true } })
+        ).map((s) => s.sectionId);
+        if (sectionIds.length > 0) {
           if (!requestedSeatIds) {
             throw new BadRequestException(
               `"${ticketType.name}" is reserved seating — choose seats (seatIds) to buy it`,
@@ -202,20 +206,21 @@ export class OrdersService {
           }
           const seats = await tx.seat.findMany({
             where: { id: { in: requestedSeatIds } },
-            include: { section: true },
+            include: { section: true, closedSeats: { where: { eventId: dto.eventId }, select: { seatId: true } } },
           });
           if (
             seats.length !== requestedSeatIds.length ||
-            seats.some((seat) => seat.sectionId !== ticketType.sectionId)
+            seats.some((seat) => !sectionIds.includes(seat.sectionId))
           ) {
             throw new BadRequestException(
-              `Every seat for "${ticketType.name}" must be in its section`,
+              `Every seat for "${ticketType.name}" must be in one of its sections`,
             );
           }
-          const blocked = seats.filter((seat) => seat.isBlocked);
+          // Blocked at the venue, or closed for this event by the organizer.
+          const blocked = seats.filter((seat) => seat.isBlocked || seat.closedSeats.length > 0);
           if (blocked.length > 0) {
             throw new ConflictException(
-              `Seat(s) not available: ${blocked.map((x) => `${x.row}${x.number}`).join(', ')}`,
+              `Seat(s) not available: ${blocked.map((x) => seatLabel(x.row, x.number)).join(', ')}`,
             );
           }
           for (const seatId of requestedSeatIds) seatClaims.push({ seatId, ticketTypeId });
@@ -293,7 +298,7 @@ export class OrdersService {
             include: { seat: true },
           });
           throw new ConflictException(
-            `Seat(s) no longer available: ${taken.map((t) => `${t.seat.row}${t.seat.number}`).join(', ')}`,
+            `Seat(s) no longer available: ${taken.map((t) => seatLabel(t.seat.row, t.seat.number)).join(', ')}`,
           );
         }
       }

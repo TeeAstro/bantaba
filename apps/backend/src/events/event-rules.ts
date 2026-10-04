@@ -7,13 +7,13 @@ export const LIVE_STATUSES: EventStatus[] = [EventStatus.PUBLISHED, EventStatus.
 
 // Sections and access zones belong to a venue. Moving an event to a
 // different venue would leave its seated/zoned ticket types pointing at
-// the old venue's seats and zones (Phase 8), so that's refused until those
-// ticket types are gone. Gates belong to a venue too. Used when editing an
+// the old venue's seats and zones (Phase 8), so that's refused until its
+// sections are off sale (Seating page) and no ticket type uses a zone. Gates belong to a venue too. Used when editing an
 // event and again when an admin approves a held venue change.
 export async function assertVenueChangeAllowed(db: Db, eventId: string, venueId: string) {
-  const venueBound = await db.ticketType.count({
-    where: { eventId, OR: [{ sectionId: { not: null } }, { accessZoneId: { not: null } }] },
-  });
+  const venueBound =
+    (await db.eventSection.count({ where: { eventId } })) +
+    (await db.ticketType.count({ where: { eventId, accessZoneId: { not: null } } }));
   if (venueBound > 0) {
     throw new BadRequestException(
       "Can't change the venue: this event has ticket types tied to the current venue's sections or access zones",

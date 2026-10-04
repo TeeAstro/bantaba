@@ -1,127 +1,203 @@
-# Venues & Reserved Seating — Phase 8
+# Seating
 
-Phase 8 adds reserved seating on top of the general-admission ticketing from Phases 5–7: venue layouts (sections, rows, seats), ticket types sold against a section, customers choosing specific seats at checkout, seat-bound QR tickets, and access-zone enforcement at gates. Backend only, like Phases 4–7 — the interactive SVG seat picker from `docs/architecture.md` Section 6 is frontend work; `GET /events/:id/seat-map` is the data it will render.
+Reserved seating at Bantaba: venue drawings, sections and seats, gates, what
+each section is sold as for an event, and how buyers pick seats. Phase 8 added
+sections and seats; Phase 17 added venue drawings, gates per section and
+seating per event. Designed on the "Bantaba Host screens" canvas (VenueUpload,
+VenueMap, EventSeating) and the storefront canvas (Seats).
 
 ## Who manages venue layouts
 
-**Admins.** Venues are shared platform data — two organizers can run events at the same stadium on different nights — so a venue's sections, seats, gates and zones aren't owned by whichever organizer used it first. Every layout write is `ADMIN`-only; every layout read is public, because organizers need section/zone IDs to set up ticket types, and scanner staff need gate IDs (this also closes the gap noted after Phase 7, where no endpoint exposed gate IDs).
+Venues are shared: two organizers can run events at the same stadium. So a
+venue's drawing, sections, seats and gates are managed by **admins** (Admin →
+System → Venues). Organizers only choose, per event, what each section is sold
+as and which seats are closed for that event.
+
+## Venue drawings
+
+A venue's map is an SVG drawing an admin makes in Figma, Inkscape, Illustrator
+or any drawing app, then uploads on **Venues → venue → Replace** (or
+**Upload**). `apps/web/public/templates/independence-stadium.svg` is a
+starting point, linked from the upload page.
+
+The rules for a drawing:
+
+- **Every section's shape goes in a group called `sections`.** In Figma, name
+  the group "sections"; in Inkscape, the layer or group label.
+- **Each shape (or group, e.g. a shape with its label) directly in
+  `sections` is one section, named after its layer name:** "Section 5A",
+  "VIP Green". Figma's `Section_5A` and Illustrator's `_x35_A` are read as
+  "Section 5A" and "5A". Groups with no real name ("Group 3") are looked
+  inside, so a stand's sections can be grouped.
+- Shapes in `sections` with no real name ("Rectangle 12", "path381") stay as
+  drawing and are counted as a warning. Two sections with the same name are
+  refused.
+- Everything else (pitch, track, labels, gates) shows exactly as drawn.
+  Bantaba only paints the sections: grey or amber for admins, the ticket
+  type's colour for organizers and buyers.
+- **SVG, up to 1 MB**, with a viewBox or a width and height. Pictures inside
+  it must be embedded PNG, JPEG, GIF or WebP.
+
+**Cleaning.** The upload is parsed (`@xmldom/xmldom`) and rebuilt from an
+allowlist of drawing elements and attributes (`venues/venue-drawing.ts`), so
+it can go straight into a web page: scripts, event handlers, `foreignObject`,
+links to other pages or files and entity declarations are removed or refused;
+ids are prefixed (`bt-`) so they can't clash with the page's; CSS in `<style>`
+is scoped to the drawing. Each section shape gets
+`data-bt-section="<lower-cased name>"` and `data-name="<name>"`. The cleaned
+SVG is stored in `venue_maps`; the download button on the venue page gives
+back that file, which can be edited and uploaded again.
+
+**Checking before saving.** `POST /admin/venues/:id/drawing/check` reads a file
+without saving it: the sections found, which match the venue's and which are
+new, sections that would be removed and whether they can go. The page shows
+a preview and only saves on **Use this drawing**
+(`PUT /admin/venues/:id/drawing`).
+
+**Re-uploading.** Sections are matched to the venue's by name (lower-cased),
+so their seats stay. New names become new sections with no seats yet (amber
+on the venue page). A section missing from the new drawing is removed, unless
+its seats have tickets or it's on sale for an event that hasn't ended; then
+the whole upload is refused with the reason ("Section 5A has tickets sold.
+Keep it in the drawing."). Sections made before drawings existed (no
+`mapKey`) are matched by name too.
+
+## Seats
+
+On the venue page an admin taps a section and sets **rows** (A to Z, up to
+26; up to 60 with **1, 2, 3…**), **seats per row** (1 to 100), the places taken out (aisles, pillars,
+the end of a short row), which show as gaps, and the **seat numbers**:
+
+- **Each row from 1** (the default): A1–A30, B1–B20. A place taken out
+  keeps its number, so A1, A2, A4 around an aisle.
+- **Keep counting**: the numbers run on through the section, row after row:
+  A1–A30, then B31–B50. Numbers count seats, not places, so the seat after
+  an aisle takes the next number. Grids label each row with its numbers
+  ("B 31–50") and leave out the column numbers.
+- **1, 2, 3…**: one number per seat with no row letters, numbered by
+  position: 12 rows of 12 are seats 1 to 144, written "Seat 14". A place
+  taken out keeps its number. The rows are stored as `#1`, `#2`… and never
+  shown; grids label each row with its numbers ("13–24").
+
+With rows, a seat is written row then number: "B31".
+
+**Each row its own size.** The box at the end of each row is how many seats
+it has: row A 50, row B 20, row C 45. Changing it takes out (or puts back)
+places at the end of that row, keeping any gaps inside it; a row longer than
+**Seats per row** widens the grid, and the other rows keep their size. Places
+can also be tapped one by one, or dragged across to take out (or put back) a
+run of them (aisles). Organizers close
+seats for an event the same way.
+
+Every seat keeps its **place** in the row (`Seat.place`, from 1, counting
+places taken out), so the grid lines up whatever the numbers are; seats made
+before Phase 17 have no place and sit at their number.
+
+`PUT /admin/venue-sections/:id` replaces the section's seats with that grid.
+Taken-out places are given as "row-place" counted from 1 ("2-21" = row B,
+place 21). Seats are matched to the grid by row and place, so they keep
+their ids, and switching numbering renumbers them:
+
+- Seats already sold or held for an event can't be taken out ("B1, B2 have
+  tickets. Keep them in the layout.") or renumbered ("B1, B2 have tickets.
+  Their numbers can’t change."): with tickets sold in row B, switching to
+  **Keep counting** or taking out a place before them is refused.
+- Seats made before Phase 17 with other row labels show a warning; saving
+  replaces them with the grid.
+- Ticket types selling the section are resized to match (see below).
+
+The `20261004120000_seat_numbering` migration adds `venue_sections.numbering`
+and `seats.place`, and marks sections already saved with **1, 2, 3…** (rows
+`#1`, `#2`…) as `seats`, working out each seat's place from its number.
+
+`Seat.isBlocked` (a broken seat, a camera position) still exists for
+venue-wide blocks (`POST /sections/:id/seats/blocked`).
+
+**What the seats face.** `Venue.frontLabel` ("Stage", "Pitch"…) is shown
+above every seat grid, so buyers know which way row A is. Set on the venue
+page (**Seats face**).
+
+## Gates
+
+A section's number is its gate at Independence Stadium: 5A, 5B and 5C go in
+by Gate 5. So when a drawing is saved, a new section named like "5A" or
+"Section 5A" gets the venue's "Gate 5", made if missing. Other sections (VIP
+Green) have no gate until an admin picks one; **New gate…** in the Gate list
+adds one ("VIP entrance").
+
+The gate shows on the buyer's section card ("Gate 5 · D250 · 363 seats
+free"), in the organizer's section heading and on the ticket (My tickets,
+`GET /tickets/mine`, `GET /tickets/:id/qr`). Scanners don't check it yet.
+
+## Seating for an event
+
+On the event's **Tickets → Seating** page, the organizer sees the venue map
+coloured by ticket type, taps a section and chooses what it's **sold as**: one
+of the event's ticket types, or **Not on sale**. Many sections can be sold as
+one ticket type ("Grandstand" for 5A to 6C). They can also tap seats to
+**close them for this event** (cameras, sound desk). Stored in
+`event_sections` (event, section → ticket type) and `closed_seats`.
+
+- A ticket type with at least one section is **reserved seating**: buyers
+  pick seats. Its `quantityTotal` is kept equal to the open seats in its
+  sections (not blocked, not closed) and can't be edited by hand.
+- A section with sold or held seats keeps its ticket type, and those seats
+  can't be closed.
+- A ticket type that already sold tickets without seats can't start selling
+  seats ("Make a new ticket type for these seats").
+- When its last section is taken off sale, a ticket type drops to what it has
+  sold, so it's off sale until the organizer gives it a quantity.
+- Organizers who aren't trusted yet keep their ticket limit
+  (`docs/organizer-trust.md`): a seating change that goes over it is refused.
+- The event can't move to another venue while any section is on sale.
+
+Before Phase 17 a ticket type pointed at one section (`ticket_types.sectionId`).
+The migration copies those into `event_sections` and drops the column.
+
+## Buyers
+
+On the event page, a seated ticket type shows **Choose seats**, which opens
+`/e/<slug>/seats`: the venue map coloured by ticket type (greyer when sold out,
+grey when not on sale), the prices, then a section's card with its gate, price
+and free seats. **Choose seats** shows the section's grid with seat numbers;
+buyers can pick seats in several sections and ticket types, up to 6 in an
+order. Checkout holds them for 5 minutes while paying (`docs/storefront.md`).
+
+`POST /orders/checkout` checks that every seat is in one of its ticket type's
+sections and isn't blocked or closed; claiming seats is atomic on
+`(eventId, seatId)` so two buyers can't get the same seat.
+
+### Colours
+
+Every screen colours ticket types the same way: by their place in the
+event's ticket types by price, highest first (`tone` in the replies,
+`toneColour` in `apps/web/lib/seating.ts`).
+
+## API
 
 | Endpoint | Who | What |
 |---|---|---|
-| `GET /venues`, `GET /venues/:id` | anyone | Venue list; one venue with sections (+ `seatCount`), access zones, gates (+ zone) |
-| `POST /venues` | admin | Create a venue |
-| `POST /venues/:id/sections` | admin | Create a section **and all its seats** from a row spec: `{ name, isVip?, rows: [{ label: "A", seats: 20 }, …] }` — seats are numbered 1..n per row |
-| `POST /venues/:id/access-zones` | admin | `{ name, level }` — higher level = more access |
-| `POST /venues/:id/gates` | admin | `{ name, accessZoneId? }` |
-| `PUT /gates/:id` | admin | Rename, or set/clear (`null`) the gate's zone |
-| `POST /sections/:id/seats/blocked` | admin | `{ seatIds, isBlocked }` — venue-wide block/unblock |
-| `GET /events/:id/seat-map` | anyone (drafts: owner/admin) | Live per-seat status for the event |
+| `GET /admin/venues` | admin | Venues with sections, seats, drawing yes/no, coming events |
+| `POST /venues` | admin | New venue |
+| `GET /admin/venues/:id` | admin | Drawing, gates, every section's grid |
+| `PATCH /admin/venues/:id` | admin | Name, address, town, `frontLabel` |
+| `POST /admin/venues/:id/gates` | admin | Add a gate |
+| `POST /admin/venues/:id/drawing/check` | admin | Read an SVG (multipart `file`) without saving |
+| `PUT /admin/venues/:id/drawing` | admin | Save an SVG as the venue's drawing |
+| `PUT /admin/venue-sections/:id` | admin | `{ rows, perRow, numbering: "letters" \| "running" \| "seats", removed: ["2-21"], gateId }` |
+| `GET /events/:id/seating` | owner, admin | Sections with what they're sold as and counts; ticket types |
+| `GET /events/:id/seating/sections/:sectionId` | owner, admin | Seats row by row (`row`, `label` "B 31–50" when counting on; each seat's `label` "B31" and `col` = place), closed seats as `CLOSED` |
+| `PUT /events/:id/seating/sections/:sectionId` | owner, admin | `{ ticketTypeId \| null, closedSeatIds? }` |
+| `GET /events/:id/seat-map` | public* | Drawing, seated ticket types, every section with its price and free seats |
+| `GET /events/:id/seat-map/sections/:sectionId` | public* | Seats row by row (closed seats as `BLOCKED`) |
 
-If per-organizer venue ownership turns out to be needed (e.g. organizers who run their own private halls), it can be added later with an `ownerOrganizerId` column without changing any of the seat logic below.
+\* Published events; drafts only for their owner and admins (404 otherwise).
 
-## The core problem: seats belong to venues, sales belong to events
+Every admin change is in the audit log (`venue_drawing_uploaded`,
+`venue_section_layout_changed`, `venue_gate_added`, `venue_updated`).
 
-Before Phase 8, `Seat` hung off `VenueSection` and `Ticket.seatId` pointed at it — but nothing tied a seat's sale to a specific **event**. Seat A-12 at the stadium is sold once for the December concert and again, separately, for the January match; nothing in the Phase 2 schema could say "A-12 is taken *for this event*", so nothing could stop it being sold twice for the same one.
+## Testing
 
-**New table: `event_seats`** — one row per seat that is held or sold for one event:
-
-```
-event_seats (eventId, seatId)  UNIQUE
-  status        HELD | SOLD
-  orderId       the order holding/owning it
-  ticketTypeId  which seated ticket type it was bought as (decides the price)
-  ticketId      set once SOLD
-```
-
-There is deliberately **no `AVAILABLE` status**: a seat with no row for an event is available. Releasing a hold deletes the row. That means no per-event seat generation step (nothing to create when an event is published, nothing stale when an admin adds a row to a section later), and "is this seat free?" is just "does a row exist?".
-
-## Seated ticket types
-
-`TicketType.sectionId` (new, optional): set it and the ticket type becomes reserved seating in that section; leave it null and it's general admission exactly as before.
-
-- The section must belong to the event's venue (400 otherwise).
-- `quantityTotal` can't exceed the section's sellable (non-blocked) seats — on create and on update.
-- `sectionId` is fixed at creation (not in the update DTO, so sending it is a 400 via `forbidNonWhitelisted`). Switching a type between GA and seated, or between sections, after sales started would leave existing tickets bound to seats the type no longer describes.
-- Several ticket types may share one section (e.g. Adult and Student pricing in the same stand). The seat's `event_seats.ticketTypeId` records which one it was bought as.
-- An event's venue can't be changed while it has ticket types bound to that venue's sections or access zones (400). Previously unguarded — for zones too.
-- Also fixed while here: `accessZoneId` was only venue-checked on ticket-type **create**, not update, so an update could point a ticket type at another venue's zone. That starts to matter now that zones are enforced at gates.
-
-## Checkout with seats
-
-Checkout items take an optional `seatIds` array:
-
-```json
-{ "eventId": "…", "provider": "MOCK",
-  "items": [{ "ticketTypeId": "<Lower Bowl Reserved>", "quantity": 2, "seatIds": ["<A1>", "<A2>"] }] }
-```
-
-Rules (all 400 unless noted): a seated type **requires** `seatIds`; a GA type **forbids** them; `quantity` must equal the number of seats; every seat must be in the ticket type's section; a seat can't appear twice in one order; a blocked seat is **409**.
-
-### How double-selling is prevented
-
-Inside the same transaction that reserves inventory and creates the `PENDING` order (Phase 5/6), seats are claimed with one statement:
-
-```sql
-INSERT INTO event_seats (…) VALUES (…), (…) ON CONFLICT DO NOTHING   -- Prisma: createMany + skipDuplicates
-```
-
-against the `(eventId, seatId)` unique index. If two customers try to buy seat C8 at the same instant, both transactions try to insert the same `(event, C8)` pair; Postgres makes the second one wait for the first, then skips its insert. The loser sees it inserted fewer rows than it asked for and throws **409 "Seat(s) no longer available: C8"** — which rolls back its entire transaction: the order row, the `quantitySold` increment, and any of *its* other seats. It's the same principle as the Phase 5 inventory `UPDATE … WHERE` and the Phase 6/7 status claims: let one atomic database operation decide the winner, never a read-then-write in application code. Tested with 10 simultaneous buyers for one seat: exactly one 201, nine 409s, one ticket, `quantitySold` +1.
-
-### Holds, payment, expiry
-
-- **MOCK**: order goes straight to `PAID`; each held seat becomes a ticket with `seatId` set and its `event_seats` row flips to `SOLD`.
-- **BANK_TRANSFER / WAVE**: seats stay `HELD` (shown as `HELD` on the seat map, unbuyable by anyone else) until the payment is confirmed or the reservation expires (`RESERVATION_TTL_MINUTES`, Phase 6).
-- **Expiry / failure**: `failOrder` (unchanged trigger points: payment failure, provider error, lazy expiry cleanup at the start of each checkout) now also deletes the order's `HELD` rows. The seat map already shows a seat whose hold has expired as `AVAILABLE`, since the next checkout will release it before claiming.
-- **Late payment on an expired order**: once `failOrder` has moved the order to `CANCELLED`, `completeOrder`'s conditional `PENDING → PAID` claim no longer matches, so no ticket is minted — and the seat, possibly already resold, can't be double-issued. (The customer's money arriving for a cancelled order is the pre-existing Phase 6 gap that refunds, Phase 13, will handle.)
-- `completeOrder` cross-checks that the number of held seats matches each seated item's quantity and refuses to mint (rolling back) if not, rather than issuing tickets that don't match what's actually held.
-
-## Seat-bound QR tickets
-
-This is the Phase 7 → Phase 8 extension `docs/architecture.md` Section 14 called for. The QR token itself is unchanged (random, hashed, never the seat or ticket ID). What's new is that the ticket it resolves to now carries a seat, and every place a ticket is shown includes it:
-
-- checkout / bank-transfer confirmation response: `tickets[].seat = { section, row, number }`
-- `GET /tickets/mine`, `GET /tickets/:id`: `seat` with its `section`
-- `GET /tickets/:id/qr`: `{ ticketId, svg, status, seat }` — for printing next to the QR
-- `POST /check-ins`: `ticket.seat` and `ticket.accessZone`, so gate staff can direct people to their seat
-
-General-admission tickets have `seat: null` everywhere.
-
-## Access zones at gates (`NO_ACCESS`)
-
-Phase 7 left `NO_ACCESS` reachable in the enum but never returned, because gates had no zone. New column `Gate.accessZoneId`: the zone a gate admits into (null = open gate).
-
-When a scan includes a `gateId` whose gate has a zone:
-
-```
-ticket level = ticketType.accessZone.level  (no zone → 0, general access)
-gate level   = gate.accessZone.level
-ticket level < gate level  →  NO_ACCESS
-```
-
-Seeded example: `Main` (level 0) and `VIP` (level 10) zones; `Gate 1` is open, `VIP Gate` is VIP. A Lower Bowl ticket (Main) scanned at the VIP Gate gets `NO_ACCESS`; the same ticket at Gate 1 gets `VALID`; a VIP Box ticket gets `VALID` at the VIP Gate (and would at Gate 1 too — higher levels include lower ones).
-
-`NO_ACCESS` is logged to `check_ins` like any other resolved scan, and the ticket **stays `ACTIVE`** — the holder is at the wrong gate, not using an invalid ticket. The check runs after status and date checks and before the atomic `ACTIVE → USED` claim, matching the Section 10 pipeline order.
-
-## Seat map response
-
-`GET /events/:id/seat-map` returns only sections that have a seated ticket type for this event:
-
-```json
-{ "eventId": "…", "venue": { "id": "…", "name": "Independence Stadium" },
-  "sections": [{
-    "id": "…", "name": "Lower Bowl", "isVip": false,
-    "ticketTypes": [{ "id": "…", "name": "Lower Bowl Reserved", "price": 30000, "currency": "GMD", "isActive": true, "accessZone": { "name": "Main" } }],
-    "counts": { "AVAILABLE": 21, "HELD": 1, "SOLD": 2, "BLOCKED": 0 },
-    "rows": [{ "label": "A", "seats": [{ "id": "…", "number": "1", "status": "SOLD" }, …] }, …]
-  }] }
-```
-
-Rows and seat numbers are naturally sorted (seat 2 before seat 10). A seat that's `SOLD`/`HELD` stays that even if it's later blocked — someone holds a real ticket for it. No positions/coordinates yet: the frontend will lay seats out from row and number; a geometry column is a later addition if venues need curved or irregular layouts.
-
-## Known simplifications (not hidden)
-
-- **No per-event seat blocks.** Blocking is venue-wide (`Seat.isBlocked`). Holding back specific seats for one event only (press, production) would be an `event_seats` status like `BLOCKED` set by the organizer — easy to add, not built.
-- **Blocking doesn't affect existing holders.** Blocking a seat that's already sold for an event leaves that ticket alone; moving or refunding it is Phase 13.
-- **Seat map is polled, not pushed.** Architecture Section 6 allows either; a WebSocket feed can come with the frontend.
-- **Expiry cleanup is still lazy** (runs at the start of each checkout), as documented in `docs/payments.md` — held seats count as available on the seat map once their order has expired, so customers aren't misled in the meantime.
-- **Organizers pick seats only through checkout.** There's no "comp seat" / box-office flow yet (Phase 9, organizer dashboard).
+`apps/backend/seating-test.js` (backend running with `RATE_LIMITS=off`, seed
+data loaded) checks drawings, cleaning, re-uploads, seats, gates, seating per
+event, buying seats and what can't change once seats are sold.

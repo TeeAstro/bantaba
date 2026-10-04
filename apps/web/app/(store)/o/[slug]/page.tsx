@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useApi } from '@/lib/hooks';
 import { ProfileEventCard, PublicOrganizerProfile, SocialPlatform } from '@/lib/types';
-import { dayParts, money } from '@/lib/format';
-import { VerifiedBadge } from '@/components/VerifiedBadge';
+import { StoreEventCard } from '@/lib/store';
+import { StoreFooter, StoreHeader, Tick } from '@/components/store/Chrome';
+import { EventCard as StoreCard } from '@/components/store/Cards';
 
-// An organizer's public profile (docs/organizer-profiles.md). The first
-// customer-facing page; the storefront's event pages will link here from
-// the organizer's name. Styling follows the organizer UI until the brand
-// foundations are done.
+// A host's public page (docs/organizer-profiles.md), part of the Bantaba
+// storefront since Phase 16: Discover's "See all" and the event page's
+// "Hosted by" open it.
 
 const SOCIAL_LABEL: Record<SocialPlatform, string> = { instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', x: 'X', youtube: 'YouTube', whatsapp: 'WhatsApp' };
 const SOCIAL_ORDER: SocialPlatform[] = ['instagram', 'facebook', 'tiktok', 'x', 'youtube', 'whatsapp'];
@@ -25,48 +25,32 @@ const initials = (name: string) =>
 
 const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Africa/Banjul', month: 'long', year: 'numeric' });
 
-function EventCard({ e, past = false }: { e: ProfileEventCard; past?: boolean }) {
-  const d = dayParts(e.startDate);
-  const picture = e.posterUrl ?? e.bannerUrl;
-  return (
-    <article className={`pcard${past ? ' pcard-past' : ''}`}>
-      <div className="pcard-media">
-        {picture ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={picture} alt="" loading="lazy" className={e.posterUrl ? '' : 'pcard-wide'} />
-        ) : (
-          <div className="pcard-noimg" aria-hidden="true">{e.name.slice(0, 1)}</div>
-        )}
-        <div className="pcard-date" aria-hidden="true">
-          <span>{d.month}</span>
-          <strong>{d.day}</strong>
-        </div>
-        {e.soldOut && !past && <span className="pcard-flag">Sold out</span>}
-      </div>
-      <div className="pcard-body">
-        <h3>{e.name}</h3>
-        <p className="small muted">{d.weekday} {d.day} {d.month} · {d.time}</p>
-        <p className="small muted">{e.venue.name}, {e.venue.city}</p>
-        {!past && e.priceFrom !== null && <p className="pcard-price">{e.priceFrom === 0 ? 'Free' : `From ${money(e.priceFrom)}`}</p>}
-      </div>
-    </article>
-  );
-}
+// The profile's event rows as storefront cards.
+const asCard = (e: ProfileEventCard, p: PublicOrganizerProfile): StoreEventCard => ({
+  ...e,
+  price: e.price ?? { label: null, kind: 'none', min: null, currency: 'GMD' },
+  flag: null,
+  host: { id: p.id, slug: p.slug, businessName: p.businessName, logoUrl: p.logoUrl, verified: p.verified, location: p.location },
+});
 
 export default function OrganizerProfilePage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: p, error, loading } = useApi<PublicOrganizerProfile>(`/organizers/${encodeURIComponent(slug)}`);
 
-  if (loading) return <main className="profile-shell"><p className="muted" style={{ padding: 24 }}>Loading…</p></main>;
+  if (loading) return <><StoreHeader back="/" /><main className="profile-shell s-main"><p className="s-empty">Loading…</p></main></>;
   if (error || !p) {
     return (
-      <main className="profile-shell">
-        <div className="profile-missing">
-          <h1>Organizer not found</h1>
-          <p className="muted">This page doesn’t exist, or the organizer isn’t active right now.</p>
-          <Link href="/">Go to the home page</Link>
-        </div>
-      </main>
+      <>
+        <StoreHeader back="/" />
+        <main className="profile-shell s-main">
+          <div className="profile-missing">
+            <h1>Host not found</h1>
+            <p className="muted">This page doesn’t exist, or the host isn’t active right now.</p>
+            <Link href="/">See what’s on</Link>
+          </div>
+        </main>
+        <StoreFooter />
+      </>
     );
   }
 
@@ -74,7 +58,9 @@ export default function OrganizerProfilePage() {
   const hasContact = p.website || p.contactEmail || p.contactPhone || socials.length > 0;
 
   return (
-    <main className="profile-shell">
+    <>
+    <StoreHeader back="/" />
+    <main className="profile-shell s-main">
       {p.preview && (
         <div className="profile-preview" role="status">
           Preview: only you and the platform team can see this page until your account is approved.
@@ -102,14 +88,13 @@ export default function OrganizerProfilePage() {
         <div className="profile-title">
           <h1 className="title-with-badge">
             {p.businessName}
-            {p.verified && <VerifiedBadge size={24} />}
+            {p.verified && <Tick size={24} />}
           </h1>
           <p className="muted">
-            {[p.location, `Organizer since ${monthYear(p.memberSince)}`, `${p.stats.upcomingEvents} upcoming ${p.stats.upcomingEvents === 1 ? 'event' : 'events'}`, p.stats.pastEvents ? `${p.stats.pastEvents} past` : null]
+            {[p.location, `Hosting since ${monthYear(p.memberSince)}`, `${p.stats.upcomingEvents} upcoming ${p.stats.upcomingEvents === 1 ? 'event' : 'events'}`, p.stats.pastEvents ? `${p.stats.pastEvents} past` : null]
               .filter(Boolean)
               .join(' · ')}
           </p>
-          {p.verified && <p className="small profile-verified-note">Verified: the platform team has confirmed this is the official account of {p.businessName}.</p>}
         </div>
       </header>
 
@@ -120,14 +105,14 @@ export default function OrganizerProfilePage() {
             {p.upcoming.length === 0 ? (
               <p className="muted">No upcoming events right now. Check back soon.</p>
             ) : (
-              <div className="pcards">{p.upcoming.map((e) => <EventCard key={e.id} e={e} />)}</div>
+              <div className="s-cards">{p.upcoming.map((e) => <StoreCard key={e.id} e={asCard(e, p)} />)}</div>
             )}
           </section>
 
           {p.past.length > 0 && (
             <section aria-labelledby="past-h">
               <h2 id="past-h">Past events</h2>
-              <div className="pcards pcards-small">{p.past.map((e) => <EventCard key={e.id} e={e} past />)}</div>
+              <div className="s-cards s-cards-past">{p.past.map((e) => <StoreCard key={e.id} e={{ ...asCard(e, p), price: { label: null, kind: 'none', min: null, currency: 'GMD' } }} />)}</div>
             </section>
           )}
         </div>
@@ -158,9 +143,11 @@ export default function OrganizerProfilePage() {
               )}
             </section>
           )}
-          <p className="small faint profile-safety">Only buy tickets through this site. Organizers will never ask you to pay them directly.</p>
+          <p className="small faint profile-safety">Only buy tickets on Bantaba. Hosts never ask you to pay them directly.</p>
         </aside>
       </div>
     </main>
+    <StoreFooter />
+    </>
   );
 }

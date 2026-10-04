@@ -88,7 +88,8 @@ export interface TicketTypeStat {
   isActive: boolean;
   salesStart?: string | null;
   salesEnd?: string | null;
-  section: { id: string; name: string } | null;
+  seated: boolean; // sold by seat: has sections on the Seating page (docs/seating.md)
+  sections: number;
   accessZone: { id: string; name: string } | null;
 }
 
@@ -188,17 +189,6 @@ export interface StaffAssignment {
   role: string;
   user: { id: string; email: string; fullName: string | null };
   assignedGate: { id: string; name: string } | null;
-}
-
-export interface SeatMap {
-  sections: {
-    id: string;
-    name: string;
-    isVip: boolean;
-    counts: Record<'AVAILABLE' | 'HELD' | 'SOLD' | 'BLOCKED', number>;
-    ticketTypes: { id: string; name: string; price: number; currency: string }[];
-    rows: { label: string; seats: { id: string; number: string; status: 'AVAILABLE' | 'HELD' | 'SOLD' | 'BLOCKED' }[] }[];
-  }[];
 }
 
 export interface ScannerEvent {
@@ -400,6 +390,8 @@ export interface ProfileEventCard {
   venue: { name: string; city: string };
   category: { name: string; slug: string };
   priceFrom: number | null;
+  // Phase 16: the storefront's price label (docs/storefront.md)
+  price?: { label: string | null; kind: 'price' | 'from' | 'free' | 'soldOut' | 'ended' | 'soon' | 'none'; min: number | null; currency: string };
 }
 
 export interface PublicOrganizerProfile extends OrganizerProfile {

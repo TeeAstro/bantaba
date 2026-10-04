@@ -100,9 +100,9 @@ async function refreshSession(): Promise<boolean> {
 
 export async function api<T>(
   path: string,
-  options: { method?: string; body?: unknown; auth?: boolean } = {},
+  options: { method?: string; body?: unknown; auth?: boolean; headers?: Record<string, string> } = {},
 ): Promise<T> {
-  const { method = 'GET', body, auth = true } = options;
+  const { method = 'GET', body, auth = true, headers = {} } = options;
 
   // FormData (file uploads) goes as multipart; the browser sets the
   // Content-Type with its boundary itself.
@@ -114,6 +114,7 @@ export async function api<T>(
       headers: {
         ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
         ...(session ? { Authorization: `Bearer ${session.accessToken}` } : {}),
+        ...headers,
       },
       body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
@@ -156,6 +157,21 @@ export async function register(email: string, password: string, fullName?: strin
   const data = await api<{ user: SessionUser; accessToken: string; refreshToken: string }>(
     '/auth/register',
     { method: 'POST', body: { email, password, ...(fullName ? { fullName } : {}) }, auth: false },
+  );
+  saveSession({ user: data.user, accessToken: data.accessToken, refreshToken: data.refreshToken });
+  return data.user;
+}
+
+// Phase 16: buyers sign in with a 6-digit code sent to their email
+// (docs/storefront.md). Signing in with a code also signs a new buyer up.
+export async function requestCode(email: string): Promise<{ sent: boolean; minutes: number }> {
+  return api('/auth/email-code', { method: 'POST', body: { email }, auth: false });
+}
+
+export async function signInWithCode(email: string, code: string): Promise<SessionUser> {
+  const data = await api<{ user: SessionUser; accessToken: string; refreshToken: string }>(
+    '/auth/email-code/verify',
+    { method: 'POST', body: { email, code }, auth: false },
   );
   saveSession({ user: data.user, accessToken: data.accessToken, refreshToken: data.refreshToken });
   return data.user;

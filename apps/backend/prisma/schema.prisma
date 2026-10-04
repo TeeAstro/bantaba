@@ -354,14 +354,17 @@ model Organizer {
 // ---------- Venues ----------
 
 model Venue {
-  id        String   @id @default(uuid())
-  name      String
-  address   String
-  city      String
-  country   String   @default("The Gambia")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  address    String
+  city       String
+  country    String   @default("The Gambia")
+  // What the seats face, shown above every seat grid: "Stage", "Pitch"…
+  frontLabel String   @default("Stage")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
+  map         VenueMap?
   sections    VenueSection[]
   gates       Gate[]
   accessZones AccessZone[]
@@ -370,18 +373,77 @@ model Venue {
   @@map("venues")
 }
 
+// The venue's drawing (Phase 17, docs/seating.md): an SVG an admin drew in
+// Figma, Inkscape… with every section's shape in a group called
+// "sections". Stored already cleaned (no scripts, links or outside
+// files), with each section shape tagged data-bt-section="<mapKey>".
+model VenueMap {
+  venueId      String   @id
+  venue        Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  svg          String   @db.Text
+  fileName     String
+  sizeBytes    Int
+  uploadedAt   DateTime @default(now())
+  uploadedById String?
+
+  @@map("venue_maps")
+}
+
 model VenueSection {
-  id      String  @id @default(uuid())
-  venueId String
-  venue   Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  name    String
-  isVip   Boolean @default(false)
+  id        String  @id @default(uuid())
+  venueId   String
+  venue     Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name      String
+  isVip     Boolean @default(false)
+  // The section's shape in the venue drawing: its name, lower-cased.
+  // Re-uploading a drawing matches sections by this. Null = not drawn.
+  mapKey    String?
+  // The gate its ticket holders go in by ("Gate 5" for 5A, 5B, 5C).
+  gateId    String?
+  gate      Gate?   @relation(fields: [gateId], references: [id], onDelete: SetNull)
+  // How its seats are numbered: "letters" = each row from 1 (A1–A30,
+  // B1–B20); "running" = on through the section (A1–A30, B31–B50);
+  // "seats" = one number per seat, no row letters (1–144; rows stored as
+  // "#1", "#2"…).
+  numbering String  @default("letters")
 
-  seats       Seat[]
-  ticketTypes TicketType[] // seated ticket types sold against this section (Phase 8)
+  seats         Seat[]
+  eventSections EventSection[]
 
+  @@unique([venueId, mapKey])
   @@index([venueId])
   @@map("venue_sections")
+}
+
+// Which ticket type a section is sold as, per event (Phase 17). A ticket
+// type with at least one section is reserved seating; its quantityTotal is
+// kept equal to the open seats in its sections. No row = not on sale.
+model EventSection {
+  eventId      String
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sectionId    String
+  section      VenueSection @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  ticketTypeId String
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, sectionId])
+  @@index([ticketTypeId])
+  @@index([sectionId])
+  @@map("event_sections")
+}
+
+// A seat the organizer took off sale for one event (camera, stage, sound
+// desk). Venue-wide blocks are Seat.isBlocked instead.
+model ClosedSeat {
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seatId    String
+  seat      Seat     @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([eventId, seatId])
+  @@index([seatId])
+  @@map("closed_seats")
 }
 
 model Seat {
@@ -390,10 +452,14 @@ model Seat {
   section   VenueSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   row       String
   number    String
+  // Where it sits in its row, from 1, counting places taken out (aisles).
+  // Null for seats made before Phase 17: their number is their place.
+  place     Int?
   isBlocked Boolean      @default(false) // venue-wide: never sellable for any event (broken seat, camera position…)
 
-  tickets    Ticket[]
-  eventSeats EventSeat[]
+  tickets     Ticket[]
+  eventSeats  EventSeat[]
+  closedSeats ClosedSeat[]
 
   @@unique([sectionId, row, number])
   @@map("seats")
@@ -412,6 +478,7 @@ model Gate {
 
   checkIns     CheckIn[]
   staffDefault EventStaff[]
+  sections     VenueSection[]
 
   @@index([venueId])
   @@map("gates")
@@ -490,6 +557,8 @@ model Event {
   reviews        Review[]
   favorites      FavoriteEvent[]
   eventSeats     EventSeat[]
+  eventSections  EventSection[]
+  closedSeats    ClosedSeat[]
   checkIns       CheckIn[]
   changeRequests EventChangeRequest[]
   trendingPick   TrendingPick?
@@ -550,10 +619,6 @@ model TicketType {
   quantitySold  Int                @default(0)
   accessZoneId  String?
   accessZone    AccessZone?        @relation(fields: [accessZoneId], references: [id], onDelete: SetNull)
-  // Phase 8: set = reserved seating. Buyers must pick specific seats in
-  // this section; null = general admission (quantity only).
-  sectionId     String?
-  section       VenueSection?      @relation(fields: [sectionId], references: [id], onDelete: Restrict)
   salesStart    DateTime?
   salesEnd      DateTime?
   isActive      Boolean            @default(true)
@@ -561,12 +626,14 @@ model TicketType {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tickets    Ticket[]
-  orderItems OrderItem[]
-  eventSeats EventSeat[]
+  tickets       Ticket[]
+  orderItems    OrderItem[]
+  eventSeats    EventSeat[]
+  // Phase 17: the sections sold as this ticket type. Any = reserved
+  // seating (buyers pick seats); none = general admission.
+  eventSections EventSection[]
 
   @@index([eventId])
-  @@index([sectionId])
   @@map("ticket_types")
 }
 

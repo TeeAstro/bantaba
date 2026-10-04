@@ -1,0 +1,95 @@
+'use client';
+
+import Link from 'next/link';
+import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { api, ApiError } from '@/lib/api';
+import { useApi } from '@/lib/hooks';
+import { AdminVenueRow } from '@/lib/seating';
+import { Icon } from '@/components/Icon';
+import { ErrorNotice, Loading } from '@/components/ui';
+
+// Venues and their seat maps (Phase 17, docs/seating.md).
+
+export default function AdminVenuesPage() {
+  const router = useRouter();
+  const { data, error, reload } = useApi<AdminVenueRow[]>('/admin/venues');
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ name: '', address: '', city: '' });
+  const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setFormError(null);
+    try {
+      const v = await api<{ id: string }>('/venues', { method: 'POST', body: { name: form.name.trim(), address: form.address.trim(), city: form.city.trim() } });
+      router.push(`/admin/venues/${v.id}/drawing`);
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : 'Could not add the venue');
+      setBusy(false);
+    }
+  }
+
+  if (error) return <ErrorNotice message={error} onRetry={reload} />;
+  if (!data) return <Loading />;
+
+  return (
+    <div className="stack">
+      <div className="page-head" style={{ marginBottom: 0 }}>
+        <h1>Venues</h1>
+        {!adding && (
+          <button className="btn" onClick={() => setAdding(true)}>
+            <Icon name="plus" size={16} /> New venue
+          </button>
+        )}
+      </div>
+
+      {adding && (
+        <form className="panel panel-pad stack" onSubmit={create} style={{ maxWidth: 620 }}>
+          <div className="vm-fields">
+            <div className="field">
+              <label htmlFor="v-name">Name</label>
+              <input id="v-name" required minLength={2} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="field">
+              <label htmlFor="v-address">Address</label>
+              <input id="v-address" required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+            <div className="field">
+              <label htmlFor="v-city">Town</label>
+              <input id="v-city" required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+            </div>
+          </div>
+          {formError && <div className="notice notice-error" role="alert">{formError}</div>}
+          <div className="row">
+            <button className="btn" disabled={busy}>Add and upload its drawing</button>
+            <button type="button" className="btn btn-quiet" onClick={() => setAdding(false)}>Cancel</button>
+          </div>
+        </form>
+      )}
+
+      <div className="panel table-wrap">
+        <table>
+          <thead>
+            <tr><th>Venue</th><th>Town</th><th className="right">Sections</th><th className="right">Seats</th><th>Drawing</th><th className="right">Coming events</th></tr>
+          </thead>
+          <tbody>
+            {data.map((v) => (
+              <tr key={v.id}>
+                <td><Link href={`/admin/venues/${v.id}`}>{v.name}</Link></td>
+                <td>{v.city}</td>
+                <td className="right num">{v.sections}</td>
+                <td className="right num">{v.seats.toLocaleString('en-GB')}</td>
+                <td>{v.hasDrawing ? 'Yes' : <Link href={`/admin/venues/${v.id}/drawing`}>Upload</Link>}</td>
+                <td className="right num">{v.upcomingEvents}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {data.length === 0 && <p className="empty">No venues yet.</p>}
+      </div>
+    </div>
+  );
+}

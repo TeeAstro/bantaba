@@ -260,8 +260,8 @@ export class DashboardService {
           where: { eventId },
           orderBy: { price: 'asc' },
           include: {
-            section: { select: { id: true, name: true } },
             accessZone: { select: { id: true, name: true } },
+            _count: { select: { eventSections: true } },
           },
         }),
         this.prisma.ticket.groupBy({
@@ -404,7 +404,9 @@ export class DashboardService {
           isActive: t.isActive,
           salesStart: t.salesStart,
           salesEnd: t.salesEnd,
-          section: t.section,
+          // Sold by seat: it has sections on the event's Seating page (docs/seating.md).
+          seated: t._count.eventSections > 0,
+          sections: t._count.eventSections,
           accessZone: t.accessZone,
         };
       }),

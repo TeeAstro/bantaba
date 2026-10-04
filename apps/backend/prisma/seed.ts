@@ -138,6 +138,7 @@ async function main() {
         sectionId: section.id,
         row: 'A',
         number: String(i + 1),
+        place: i + 1,
       })),
     });
 
@@ -277,7 +278,7 @@ async function main() {
   // Grow the Phase 2 section (row A, seats 1–5) into rows A–C × 8 seats.
   await prisma.seat.createMany({
     data: ['A', 'B', 'C'].flatMap((row) =>
-      Array.from({ length: 8 }, (_, i) => ({ sectionId: lowerBowl.id, row, number: String(i + 1) })),
+      Array.from({ length: 8 }, (_, i) => ({ sectionId: lowerBowl.id, row, number: String(i + 1), place: i + 1 })),
     ),
     skipDuplicates: true,
   });
@@ -294,7 +295,7 @@ async function main() {
   const vipBoxId = vipBox.id;
   await prisma.seat.createMany({
     data: ['A', 'B'].flatMap((row) =>
-      Array.from({ length: 4 }, (_, i) => ({ sectionId: vipBoxId, row, number: String(i + 1) })),
+      Array.from({ length: 4 }, (_, i) => ({ sectionId: vipBoxId, row, number: String(i + 1), place: i + 1 })),
     ),
     skipDuplicates: true,
   });
@@ -325,15 +326,20 @@ async function main() {
       },
     });
   }
+  // Since Phase 17 a ticket type is seated by having sections for the
+  // event (event_sections); its quantity is the open seats in them.
   const seatedTypes = [
     { name: 'Lower Bowl Reserved', category: 'REGULAR' as const, price: 30000, quantityTotal: 24, sectionId: lowerBowl.id, accessZoneId: mainZone.id },
     { name: 'VIP Box', category: 'VIP' as const, price: 100000, quantityTotal: 8, sectionId: vipBoxId, accessZoneId: vipZone.id },
   ];
-  for (const t of seatedTypes) {
-    const exists = await prisma.ticketType.findFirst({ where: { eventId: seatedEvent.id, name: t.name } });
-    if (!exists) {
-      await prisma.ticketType.create({ data: { eventId: seatedEvent.id, currency: 'GMD', ...t } });
-    }
+  for (const { sectionId, ...t } of seatedTypes) {
+    let type = await prisma.ticketType.findFirst({ where: { eventId: seatedEvent.id, name: t.name } });
+    if (!type) type = await prisma.ticketType.create({ data: { eventId: seatedEvent.id, currency: 'GMD', ...t } });
+    await prisma.eventSection.upsert({
+      where: { eventId_sectionId: { eventId: seatedEvent.id, sectionId } },
+      create: { eventId: seatedEvent.id, sectionId, ticketTypeId: type.id },
+      update: {},
+    });
   }
 
   console.log({

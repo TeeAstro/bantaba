@@ -3,8 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EventSeatStatus, EventStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { recomputeSeatedTotals } from './seating-rules';
 import {
   CreateAccessZoneDto,
   CreateGateDto,
@@ -13,18 +13,6 @@ import {
   SetSeatsBlockedDto,
   UpdateGateDto,
 } from './dto/venue.dto';
-
-interface AuthenticatedUser {
-  id: string;
-  role: UserRole;
-}
-
-export type SeatMapStatus = 'AVAILABLE' | 'HELD' | 'SOLD' | 'BLOCKED';
-
-// Natural ordering for row labels and seat numbers: "2" before "10",
-// "B" before "AA". Plain string sort would put seat 10 before seat 2.
-const naturalCompare = (a: string, b: string) =>
-  a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 
 @Injectable()
 export class VenuesService {
@@ -94,6 +82,7 @@ export class VenuesService {
             sectionId: section.id,
             row: r.label.toUpperCase(),
             number: String(i + 1),
+            place: i + 1,
           })),
         ),
       });
@@ -158,108 +147,9 @@ export class VenuesService {
       where: { id: { in: ids }, sectionId },
       data: { isBlocked: dto.isBlocked },
     });
+    // Seated ticket types sell exactly their open seats (Phase 17).
+    const types = await this.prisma.eventSection.findMany({ where: { sectionId }, select: { ticketTypeId: true } });
+    await recomputeSeatedTotals(this.prisma, types.map((t) => t.ticketTypeId));
     return { updated: result.count, isBlocked: dto.isBlocked };
   }
-
-  // ---------- Per-event seat map ----------
-
-  // Returns every section that has at least one seated ticket type for
-  // this event, with each seat's live status. Visibility matches the
-  // event itself: published events are public; drafts are owner/admin
-  // only, and a 404 (not 403) otherwise.
-  async getSeatMap(eventId: string, viewer: AuthenticatedUser | null) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      include: { organizer: true, venue: true },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-    if (event.status !== EventStatus.PUBLISHED) {
-      const isOwner = viewer && event.organizer.userId === viewer.id;
-      if (!isOwner && viewer?.role !== UserRole.ADMIN) {
-        throw new NotFoundException('Event not found');
-      }
-    }
-
-    const seatedTypes = await this.prisma.ticketType.findMany({
-      where: { eventId, sectionId: { not: null } },
-      include: { accessZone: true },
-      orderBy: { price: 'asc' },
-    });
-    const sectionIds = [...new Set(seatedTypes.map((t) => t.sectionId as string))];
-
-    const [sections, eventSeats] = await Promise.all([
-      this.prisma.venueSection.findMany({
-        where: { id: { in: sectionIds } },
-        include: { seats: true },
-        orderBy: { name: 'asc' },
-      }),
-      this.prisma.eventSeat.findMany({
-        where: { eventId },
-        include: { order: { select: { expiresAt: true, status: true } } },
-      }),
-    ]);
-
-    const now = new Date();
-    const stateBySeat = new Map<string, SeatMapStatus>();
-    for (const es of eventSeats) {
-      if (es.status === EventSeatStatus.SOLD) {
-        stateBySeat.set(es.seatId, 'SOLD');
-      } else if (!(es.order.expiresAt && es.order.expiresAt < now)) {
-        // A hold whose order has already expired is shown as available:
-        // the next checkout releases it before claiming seats (see
-        // OrdersService.checkout), so it genuinely is buyable.
-        stateBySeat.set(es.seatId, 'HELD');
-      }
-    }
-
-    return {
-      eventId: event.id,
-      venue: { id: event.venue.id, name: event.venue.name },
-      sections: sections.map((section) => {
-        const counts = { AVAILABLE: 0, HELD: 0, SOLD: 0, BLOCKED: 0 };
-        const rowMap = new Map<string, { id: string; number: string; status: SeatMapStatus }[]>();
-
-        for (const seat of section.seats) {
-          const live = stateBySeat.get(seat.id);
-          // SOLD/HELD win over BLOCKED: a seat blocked after it was sold
-          // still has a real ticket holder sitting in it.
-          const status: SeatMapStatus = live ?? (seat.isBlocked ? 'BLOCKED' : 'AVAILABLE');
-          counts[status] += 1;
-          if (!rowMap.has(seat.row)) rowMap.set(seat.row, []);
-          rowMap.get(seat.row)!.push({ id: seat.id, number: seat.number, status });
-        }
-
-        const rows = [...rowMap.entries()]
-          .sort(([a], [b]) => naturalCompare(a, b))
-          .map(([label, seats]) => ({
-            label,
-            seats: seats.sort((a, b) => naturalCompare(a.number, b.number)),
-          }));
-
-        return {
-          id: section.id,
-          name: section.name,
-          isVip: section.isVip,
-          ticketTypes: seatedTypes
-            .filter((t) => t.sectionId === section.id)
-            .map((t) => ({
-              id: t.id,
-              name: t.name,
-              price: t.price,
-              currency: t.currency,
-              isActive: t.isActive,
-              accessZone: t.accessZone ? { id: t.accessZone.id, name: t.accessZone.name } : null,
-            })),
-          counts,
-          rows,
-        };
-      }),
-    };
-  }
-
-  // Used by TicketTypesService when a ticket type is bound to a section.
-  async countSellableSeats(sectionId: string) {
-    return this.prisma.seat.count({ where: { sectionId, isBlocked: false } });
-  }
 }
-

@@ -11,19 +11,14 @@ import {
 } from './dto/venue.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-
-interface AuthenticatedUser {
-  id: string;
-  role: UserRole;
-}
 
 // Reads are public: organizers need venue/section IDs to set up events,
 // and staff need gate IDs to scan (this also closes the gap noted after
 // Phase 7, where no endpoint exposed gate IDs). Every write is ADMIN-only
-// — see docs/seating.md, "Who manages venue layouts".
+// — see docs/seating.md, "Who manages venue layouts". Drawings, section
+// grids and gates have their own admin endpoints (admin-venues.controller);
+// event seat maps are in seating.controller.
 @Controller()
 export class VenuesController {
   constructor(private readonly venuesService: VenuesService) {}
@@ -78,15 +73,5 @@ export class VenuesController {
   @Post('sections/:id/seats/blocked')
   setSeatsBlocked(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetSeatsBlockedDto) {
     return this.venuesService.setSeatsBlocked(id, dto);
-  }
-
-  // Per-event seat availability, polled by the checkout seat picker.
-  @UseGuards(OptionalJwtAuthGuard)
-  @Get('events/:id/seat-map')
-  seatMap(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthenticatedUser | null,
-  ) {
-    return this.venuesService.getSeatMap(id, user);
   }
 }

@@ -27,6 +27,8 @@ export class CreateTicketTypeDto {
   @Min(0)
   price!: number; // minor units (butut)
 
+  // For reserved seating this is set from the seats instead: give the
+  // ticket type sections on the event's Seating page (docs/seating.md).
   @IsInt()
   @Min(1)
   quantityTotal!: number;
@@ -34,13 +36,6 @@ export class CreateTicketTypeDto {
   @IsOptional()
   @IsUUID()
   accessZoneId?: string;
-
-  // Phase 8: bind this ticket type to a venue section for reserved
-  // seating. Buyers then pick specific seats (checkout `seatIds`) instead
-  // of just a quantity. Fixed at creation — see UpdateTicketTypeDto.
-  @IsOptional()
-  @IsUUID()
-  sectionId?: string;
 
   @IsOptional()
   @IsDateString()

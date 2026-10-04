@@ -17,7 +17,7 @@ export class TicketsService {
       include: {
         // Phase 16: the venue too, for My tickets on the storefront
         ticketType: { include: { event: { include: { venue: true } } } },
-        seat: { include: { section: true } },
+        seat: { include: { section: { include: { gate: { select: { name: true } } } } } },
       },
       orderBy: { purchasedAt: 'desc' },
     });
@@ -28,7 +28,7 @@ export class TicketsService {
       where: { id: ticketId },
       include: {
         ticketType: { include: { event: true } },
-        seat: { include: { section: true } },
+        seat: { include: { section: { include: { gate: { select: { name: true } } } } } },
       },
     });
     if (!ticket) throw new NotFoundException('Ticket not found');
@@ -62,9 +62,9 @@ export class TicketsService {
       ticketId: ticket.id,
       svg: ticket.qrCodeSvg,
       status: ticket.status,
-      // Printed next to the QR on a seat-bound ticket (Phase 8).
+      // Printed next to the QR on a seat-bound ticket (Phase 8), with its gate (Phase 17).
       seat: ticket.seat
-        ? { section: ticket.seat.section.name, row: ticket.seat.row, number: ticket.seat.number }
+        ? { section: ticket.seat.section.name, row: ticket.seat.row, number: ticket.seat.number, gate: ticket.seat.section.gate?.name ?? null }
         : null,
     };
   }

@@ -16,10 +16,12 @@ const NAV: { href: string; label: string; icon: IconName; exact?: boolean; count
   { href: '/admin/attention', label: 'Needs attention', icon: 'attention', count: (c) => Object.entries(c).filter(([k]) => k !== 'payoutsToSendAuto').reduce((n, [, v]) => n + v, 0) },
   { group: 'Review', href: '/admin/events', label: 'Event review', icon: 'review', count: (c) => c.eventsInReview + c.eventChangesInReview },
   { href: '/admin/organizers', label: 'Organizers', icon: 'organizers', count: (c) => c.organizersPending + c.payoutAccountsToCheck + c.lookalikeWarnings },
+  { group: 'Storefront', href: '/admin/trending', label: 'Trending', icon: 'trending' },
   { group: 'Money', href: '/admin/payouts', label: 'Payouts', icon: 'payouts', count: (c) => c.payoutRequests + c.payoutsToSend },
   { href: '/admin/refunds', label: 'Refunds', icon: 'refunds', count: (c) => c.manualRefundsToPay + c.failedProviderRefunds },
   { href: '/admin/card-payments', label: 'Card payments', icon: 'card', count: (c) => c.cardPaymentsFlagged },
-  { group: 'System', href: '/admin/emails', label: 'Emails', icon: 'emails', count: (c) => c.failedEmails },
+  { group: 'System', href: '/admin/venues', label: 'Venues', icon: 'venue' },
+  { href: '/admin/emails', label: 'Emails', icon: 'emails', count: (c) => c.failedEmails },
   { href: '/admin/audit', label: 'Audit log', icon: 'audit' },
 ];
 

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { api, ApiError, loadSession, login, logout, register, SessionUser } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { Logo } from '@/components/Logo';
+import { BackLink } from '@/components/BackLink';
 
 // Phase 13: someone sent you a ticket. Opened from the email link
 // (/transfer#token=…). The token sits in the #fragment, so it never reaches
@@ -181,6 +182,7 @@ export default function TransferPage() {
             )}
           </>
         )}
+        <p className="small"><BackLink fallback="/">← Back</BackLink></p>
       </div>
     </main>
   );

@@ -211,7 +211,7 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       const seatedTypeIds = new Set(
         (
           await tx.ticketType.findMany({
-            where: { id: { in: order.items.map((i) => i.ticketTypeId) }, sectionId: { not: null } },
+            where: { id: { in: order.items.map((i) => i.ticketTypeId) }, eventSections: { some: {} } },
             select: { id: true },
           })
         ).map((t) => t.id),

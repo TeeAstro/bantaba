@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { useApi } from '@/lib/hooks';
@@ -12,7 +13,7 @@ const CATEGORIES = [
   'GENERAL_ADMISSION', 'BACKSTAGE', 'MEET_AND_GREET', 'SEASON_PASS', 'DAY_PASS',
 ];
 
-const EMPTY = { name: '', category: 'REGULAR', price: '', quantity: '', sectionId: '', accessZoneId: '', salesStart: '', salesEnd: '' };
+const EMPTY = { name: '', category: 'REGULAR', price: '', quantity: '', accessZoneId: '', salesStart: '', salesEnd: '' };
 
 export function TicketsTab({ d, onChange }: { d: EventDashboard; onChange: () => void }) {
   const venue = useApi<Venue>(`/venues/${d.event.venue.id}`);
@@ -22,7 +23,6 @@ export function TicketsTab({ d, onChange }: { d: EventDashboard; onChange: () =>
   const [busy, setBusy] = useState(false);
   const editable = d.event.status !== 'CANCELLED' && d.event.status !== 'COMPLETED';
   const set = (k: keyof typeof EMPTY) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
-  const section = venue.data?.sections.find((s) => s.id === form.sectionId);
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -42,7 +42,6 @@ export function TicketsTab({ d, onChange }: { d: EventDashboard; onChange: () =>
           category: form.category,
           price,
           quantityTotal,
-          ...(form.sectionId ? { sectionId: form.sectionId } : {}),
           ...(form.accessZoneId ? { accessZoneId: form.accessZoneId } : {}),
           ...(form.salesStart ? { salesStart: localInputToIso(form.salesStart) } : {}),
           ...(form.salesEnd ? { salesEnd: localInputToIso(form.salesEnd) } : {}),
@@ -84,7 +83,7 @@ export function TicketsTab({ d, onChange }: { d: EventDashboard; onChange: () =>
                 {d.ticketTypes.map((t) => (
                   <tr key={t.id}>
                     <td>{t.name}<span className="cell-sub">{label(t.category)}{t.accessZone ? `, ${t.accessZone.name} zone` : ''}</span></td>
-                    <td>{t.section ? `Reserved: ${t.section.name}` : 'General admission'}</td>
+                    <td>{t.seated ? <Link href={`?tab=seating`} scroll={false}>Seats in {t.sections} {t.sections === 1 ? 'section' : 'sections'}</Link> : 'General admission'}</td>
                     <td className="right num">{money(t.price, t.currency)}</td>
                     <td className="right num">{t.sold}</td>
                     <td className="right num">{t.quantityTotal}</td>
@@ -138,20 +137,10 @@ export function TicketsTab({ d, onChange }: { d: EventDashboard; onChange: () =>
               <div className="field">
                 <label htmlFor="tt-qty">How many</label>
                 <input id="tt-qty" required inputMode="numeric" placeholder="100" value={form.quantity} onChange={set('quantity')} />
-                {section && <span className="hint">{section.name} has {section.seatCount} seats</span>}
+                <span className="hint">Selling seats? Seating sets this from the seats.</span>
               </div>
             </div>
             <div className="form-grid">
-              <div className="field">
-                <label htmlFor="tt-section">Seating</label>
-                <select id="tt-section" value={form.sectionId} onChange={set('sectionId')}>
-                  <option value="">General admission (no seat numbers)</option>
-                  {venue.data?.sections.map((s) => (
-                    <option key={s.id} value={s.id}>Reserved seats in {s.name} ({s.seatCount})</option>
-                  ))}
-                </select>
-                <span className="hint">Can’t be changed after the ticket type is created.</span>
-              </div>
               <div className="field">
                 <label htmlFor="tt-zone">Access zone <span className="faint">(optional)</span></label>
                 <select id="tt-zone" value={form.accessZoneId} onChange={set('accessZoneId')}>
@@ -160,8 +149,6 @@ export function TicketsTab({ d, onChange }: { d: EventDashboard; onChange: () =>
                 </select>
                 <span className="hint">Decides which gates let this ticket in.</span>
               </div>
-            </div>
-            <div className="form-grid">
               <div className="field">
                 <label htmlFor="tt-start">Sales open <span className="faint">(optional)</span></label>
                 <input id="tt-start" type="datetime-local" value={form.salesStart} onChange={set('salesStart')} />

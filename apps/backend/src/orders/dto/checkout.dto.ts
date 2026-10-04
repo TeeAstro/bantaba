@@ -26,9 +26,10 @@ export class CheckoutItemDto {
   @Min(1)
   quantity!: number;
 
-  // Phase 8: required for a reserved-seating ticket type (one with a
-  // sectionId), forbidden for general admission. Must contain exactly
-  // `quantity` distinct seats from that ticket type's section.
+  // Required for a reserved-seating ticket type (one with sections on the
+  // event's Seating page, docs/seating.md), forbidden for general
+  // admission. Must contain exactly `quantity` distinct open seats from
+  // that ticket type's sections.
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1)

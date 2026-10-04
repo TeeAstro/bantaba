@@ -985,7 +985,67 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 6 | Pay it | `POST /orders/<id>/pay` with `{"provider":"MOCK"}` | Order `PAID` with tickets |
 | 7 | Guest | `POST /orders/guest-checkout` with `fullName`, `email`, `items` | Reply has `orderToken`; `GET /orders/<id>` works only with header `X-Order-Token` |
 | 8 | Email code | `POST /auth/email-code` with a new email, then open the newest `mail-previews/*login_code*` file | "Your Bantaba code: 123456"; `POST /auth/email-code/verify` with it signs in (`created: true`) |
-| 9 | Automated | `node storefront-test.js` in `apps/backend` (backend started with `TRENDING_CACHE_SECONDS=0 RATE_LIMITS=off`) | `16/16 passed`; all other suites unchanged |
+| 9 | Automated | `node storefront-test.js` in `apps/backend` (backend started with `TRENDING_CACHE_SECONDS=0 RATE_LIMITS=off`) | `17/17 passed`; all other suites unchanged |
+
+## Storefront (Phase 16), part 2: the web screens
+
+**Read `docs/storefront.md`, "Web screens".** These are the buyer pages from the "Bantaba storefront" canvas, plus the admin Trending screen from the Host canvas. No migration.
+
+- **`/` is now Discover.** Organizers, staff and admins still sign in at `/login`; the footer link "Sell tickets with Bantaba" goes there.
+- **Pages:** event page `/e/<slug>`, seats, checkout with the 5-minute countdown, the success page with QR codes, `/signin` with an email code, My tickets `/tickets`, and host pages `/o/<slug>` in the storefront look.
+- **Admin:** **Storefront → Trending** in the admin menu.
+- **Organizers:** **⋯ → View public page** on a live event.
+
+1. Restart the frontend (`npm run dev` in `apps/web`).
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Discover | Open `http://localhost:3000` | Plum header, search, date buttons, Trending row, then hosts with at most 2 events each and "See all N" |
+| 2 | Filters | Tap **Next 7 days**, then **Pick a date**; type a host's name in the search | Only matching events; a search hides Trending |
+| 3 | Event page | Open an event | Colour band with poster, date with **Add to calendar**, **Directions**, "Hosted by", tickets with + and −, refund line; bottom bar total updates |
+| 4 | Guest checkout | Pick 2 tickets → **Get tickets** → fill name and email → **Continue** | "Held for 4:59" counting down; Wave, Card, Bank transfer and Test payment |
+| 5 | Pay | Choose **Test payment** → **Pay** | "Paid · 2 tickets", the QR codes, and **Keep them in My tickets** |
+| 6 | Email code | **Keep them in My tickets** → **Email me a code**; open the newest `apps/backend/mail-previews/*login_code*` file | "Your Bantaba code: 123456"; entering it opens My tickets with those tickets |
+| 7 | Seats | An event with reserved seating → **Choose seats** → tap 2 free seats → **Continue** | Checkout lists "(C3, C4)"; after **Continue** the seats show as on hold for other buyers |
+| 8 | Hold runs out | On checkout, wait 5 minutes without paying | "Your hold ran out" with **Choose again**; the tickets are back on sale |
+| 9 | Bank transfer | Pay with **Bank transfer** | Bank details and "We hold your tickets until …" (24 hours) |
+| 10 | Admin Trending | Sign in as admin → **Storefront → Trending** | Showing now, Bantaba picks (add, reorder, until, remove), Best sellers (cards, one per host, hide / show again) |
+| 11 | Organizer link | As organizer, open a live event → **⋯** | **View public page** opens `/e/<slug>` |
+| 12 | Phone | Every storefront page in a narrow window | No sideways scrolling; bottom bars don't cover the buttons |
+
+## Seating (Phase 17): venue drawings and seats per event
+
+**Read `docs/seating.md`.** Designed on the "Bantaba Host screens" canvas (VenueUpload, VenueMap, EventSeating) and the storefront canvas (Seats).
+
+- **Admins draw venues.** A venue's map is an SVG drawn in Figma, Inkscape… with the section shapes in a group called "sections", each named after its section. **Admin → System → Venues** uploads it, checks it first, then sets each section's rows, seats per row, taken-out places and gate. Sections numbered like "5A" go in by "Gate 5", made automatically.
+- **Organizers sell sections.** On an event's **Tickets → Seating**, tap a section on the map and choose what it's sold as (any ticket type, or Not on sale), and close seats for that event. A ticket type with sections is sold by seat; its number of tickets follows the open seats. The old **At the gate → Seats** page is replaced by this one.
+- **Buyers pick on the map.** **Choose seats** opens the venue map coloured by price; tap a section (with its gate and free seats), then seats. Tickets show the section and gate.
+- **Migration:** `20261004100000_venue_maps` adds 3 tables and 3 columns, copies each ticket type's old single section into the new `event_sections`, then drops `ticket_types.sectionId`.
+- **New package:** `@xmldom/xmldom` (reads the SVG on the server).
+
+1. In `apps/backend`: `npm install`, then `npx prisma migrate dev`, then `npm run build`. Restart the backend.
+2. Delete `apps/web/components/SeatMapView.tsx` (replaced). Restart the frontend.
+3. The seed's sample "Independence Stadium" has test sections ("Lower Bowl", "VIP Box") that the sample seated show uses, so a drawing without them is refused there. Add the real stadium as a new venue.
+
+### Checklist
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | New venue | Admin → **Venues** → **New venue** → name, address, town → **Add and upload its drawing** | The upload page with 3 steps and **Our stadium drawing, to start from** |
+| 2 | Check a drawing | **Choose file** → `apps/web/public/templates/independence-stadium.svg` | "23 sections found", an amber preview (all new) and **Use this drawing** |
+| 3 | Bad drawing | Upload an SVG without a "sections" group | "No group called “sections” in the drawing…" and nothing saved |
+| 4 | Save it | **Use this drawing** | The venue page: the map in amber, "Needs seats · 23", Gates 1–8 made |
+| 5 | Seats | Tap 5A on the map → Rows 10, Seats per row 14 → tap 2 seats to take them out → **Save** | "Saved.", 138 seats, 5A turns grey; its Gate shows "Gate 5" |
+| 6 | Gate | Tap VIP Green → Gate → **New gate…** → "VIP entrance" → **Add** → **Save** | VIP Green goes in by VIP entrance |
+| 6b | Seat numbers | Tap 5B → Rows 2, Seats per row 30 → Seat numbers **Keep counting** → type 50 in row A's box and 20 in row B's → **Save** | Rows labelled "A 1–50", "B 51–70"; 70 seats; buyers see "5B B31". **1, 2, 3…** with 12 rows of 12 gives seats 1–144, buyers see "5B Seat 14" |
+| 7 | Seating | As organizer, make an event at that venue with ticket types "VIP" D1,500 and "Grandstand" D250 → **Tickets → Seating** → tap 5A → **Grandstand** → **Save seating** | 5A takes Grandstand's colour; Ticket types shows "Seats in 1 section" and a total of 138 |
+| 8 | Close seats | Tap two seats in 5A (or drag across them) → **Save seating** | They turn dark; Grandstand's total drops by 2 |
+| 9 | Buy | Publish → open the event as a buyer → **Choose seats** → tap 5A → **Choose seats** → tap 2 seats → **Continue** | Checkout lists "Grandstand (5A A3, 5A A4)"; closed seats can't be tapped |
+| 10 | Sold seats stay | After paying, try to switch 5A to VIP, or (as admin) give 5A fewer rows | Refused: "already sold as Grandstand" / "… have tickets. Keep them in the layout." |
+| 11 | Ticket | My tickets | Seat "5A · A3" and Gate "5" |
+| 12 | Automated | `node seating-test.js` in `apps/backend` (backend started with `RATE_LIMITS=off`) | `17/17 passed`; all other suites unchanged |
 
 ## Project structure
 
@@ -1002,7 +1062,7 @@ event-ticketing-platform/
 │   │   │   ├── orders/        # checkout, atomic inventory locking, order history
 │   │   │   ├── tickets/       # ticket listing, QR display (seat-bound since Phase 8)
 │   │   │   ├── check-ins/     # scan validation pipeline, check-in log
-│   │   │   ├── venues/        # venue layouts (admin), seat maps per event
+│   │   │   ├── venues/        # venues, drawings, sections, gates (admin); seating and seat maps per event
 │   │   │   ├── dashboard/     # organizer overview, event stats, orders, attendees
 │   │   │   ├── event-staff/   # staff accounts and event assignments
 │   │   │   ├── scanner/       # scanner app reads: my events, door progress

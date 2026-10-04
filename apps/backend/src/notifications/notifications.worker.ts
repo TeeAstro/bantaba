@@ -9,6 +9,7 @@ import * as T from './templates';
 import { describeFields } from '../events/event-rules';
 import { refundEligibility } from '../refunds/refund-rules';
 import { lookalikeOf } from '../organizers/public-organizer';
+import { seatLong } from '../venues/seating-rules';
 
 // Sends what's in the outbox (docs/notifications.md → "How sending works").
 //
@@ -195,7 +196,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
       attachments.push({ filename: `ticket-${i + 1}.png`, content: png, contentType: 'image/png', cid });
       infos.push({
         typeName: t.ticketType.name,
-        seat: t.seat ? `${t.seat.section.name}, row ${t.seat.row}, seat ${t.seat.number}` : null,
+        seat: t.seat ? `${t.seat.section.name}, ${seatLong(t.seat.row, t.seat.number)}` : null,
         cid,
       });
     }
@@ -424,7 +425,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
       note: r.decisionNote,
       tickets: r.items.map((i) => ({
         typeName: i.ticket.ticketType.name,
-        seat: i.ticket.seat ? `${i.ticket.seat.section.name}, row ${i.ticket.seat.row}, seat ${i.ticket.seat.number}` : null,
+        seat: i.ticket.seat ? `${i.ticket.seat.section.name}, ${seatLong(i.ticket.seat.row, i.ticket.seat.number)}` : null,
         amount: i.amount,
       })),
     };

@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { generateRandomToken, hashToken } from '../common/token.util';
 import { generateQrCodeSvg } from '../common/qr.util';
+import { seatLong } from '../venues/seating-rules';
 
 // Ticket transfers (Phase 13, docs/refunds-transfers.md).
 //
@@ -126,7 +127,7 @@ export class TransfersService implements OnApplicationBootstrap, OnApplicationSh
       fromName: t.fromUser.fullName ? t.fromUser.fullName.split(' ')[0] : null,
       expiresAt: t.expiresAt,
       event: { name: e.name, startDate: e.startDate, endDate: e.endDate, venue: e.venue.name, city: e.venue.city, posterUrl: e.posterUrl },
-      ticket: { type: t.ticket.ticketType.name, seat: t.ticket.seat ? `${t.ticket.seat.section.name}, row ${t.ticket.seat.row}, seat ${t.ticket.seat.number}` : null },
+      ticket: { type: t.ticket.ticketType.name, seat: t.ticket.seat ? `${t.ticket.seat.section.name}, ${seatLong(t.ticket.seat.row, t.ticket.seat.number)}` : null },
     };
   }
 

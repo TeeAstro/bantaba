@@ -5,12 +5,11 @@ import { Suspense, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { useApi } from '@/lib/hooks';
-import { EventDashboard, EventRecord, SeatMap } from '@/lib/types';
+import { EventDashboard, EventRecord } from '@/lib/types';
 import { PendingChanges } from '@/components/event/PendingChanges';
 import { Icon, IconName } from '@/components/Icon';
 import { dateTime, dayParts } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
-import { SeatMapView } from '@/components/SeatMapView';
 import { OverviewTab } from '@/components/event/OverviewTab';
 import { TicketsTab } from '@/components/event/TicketsTab';
 import { OrdersTab } from '@/components/event/OrdersTab';
@@ -18,13 +17,7 @@ import { AttendeesTab } from '@/components/event/AttendeesTab';
 import { CheckInsTab } from '@/components/event/CheckInsTab';
 import { StaffTab } from '@/components/event/StaffTab';
 import { RefundsTab } from '@/components/event/RefundsTab';
-
-function SeatsTab({ eventId }: { eventId: string }) {
-  const { data, error, reload } = useApi<SeatMap>(`/events/${eventId}/seat-map`);
-  if (error) return <ErrorNotice message={error} onRetry={reload} />;
-  if (!data) return <Loading />;
-  return <SeatMapView map={data} />;
-}
+import { SeatingTab } from '@/components/event/SeatingTab';
 
 function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -45,13 +38,12 @@ function EventDetail() {
   const { event } = data;
   const d = dayParts(event.startDate);
   const editable = event.status !== 'CANCELLED' && event.status !== 'COMPLETED';
-  const hasSeating = data.ticketTypes.some((t) => t.section);
 
   // Five groups instead of eight tabs (Phase 15). Each sub-page keeps its
   // own ?tab= key, so links like ?tab=refunds still work.
   const groups: { key: string; label: string; icon: IconName; badge?: number; subs: { key: string; label: string; badge?: number }[] }[] = [
     { key: 'overview', label: 'Overview', icon: 'dashboard', subs: [{ key: 'overview', label: 'Overview' }] },
-    { key: 'tickets', label: 'Tickets', icon: 'tickets', subs: [{ key: 'tickets', label: 'Ticket types' }] },
+    { key: 'tickets', label: 'Tickets', icon: 'tickets', subs: [{ key: 'tickets', label: 'Ticket types' }, { key: 'seating', label: 'Seating' }] },
     {
       key: 'sales', label: 'Sales', icon: 'orders', badge: data.refunds.requests,
       subs: [{ key: 'orders', label: 'Orders' }, { key: 'refunds', label: 'Refunds', badge: data.refunds.requests }],
@@ -59,7 +51,7 @@ function EventDetail() {
     { key: 'people', label: 'People', icon: 'attendees', subs: [{ key: 'attendees', label: 'Attendees' }, { key: 'staff', label: 'Gate staff' }] },
     {
       key: 'gate', label: 'At the gate', icon: 'checkins',
-      subs: [{ key: 'checkins', label: 'Check-ins' }, ...(hasSeating ? [{ key: 'seats', label: 'Seats' }] : [])],
+      subs: [{ key: 'checkins', label: 'Check-ins' }],
     },
   ];
   const group = groups.find((g) => g.subs.some((x) => x.key === tab)) ?? groups[0];
@@ -121,6 +113,9 @@ function EventDetail() {
             <details className="menu">
               <summary className="btn btn-quiet" aria-label="More actions"><Icon name="more" /></summary>
               <div className="menu-pop" role="menu">
+                {(event.status === 'PUBLISHED' || event.status === 'SOLD_OUT') && (
+                  <a role="menuitem" href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer">View public page</a>
+                )}
                 <Link role="menuitem" href={`/scan/${event.id}`}>Open the scanner</Link>
                 <button role="menuitem" className="menu-danger" disabled={busy} onClick={(e) => { (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; setCancelOpen(true); }}>Cancel event…</button>
               </div>
@@ -203,7 +198,7 @@ function EventDetail() {
       <div className="ev-body">
       {tab === 'overview' && <OverviewTab d={data} />}
       {tab === 'tickets' && <TicketsTab d={data} onChange={reload} />}
-      {tab === 'seats' && <SeatsTab eventId={event.id} />}
+      {(tab === 'seating' || tab === 'seats') && <SeatingTab eventId={event.id} onChange={reload} />}
       {tab === 'orders' && <OrdersTab eventId={event.id} />}
       {tab === 'attendees' && <AttendeesTab eventId={event.id} onChange={reload} />}
       {tab === 'refunds' && <RefundsTab d={data} onChange={reload} />}

@@ -90,7 +90,7 @@ export default function EditEventPage() {
   const reviewed = !!event.editsNeedReview;
   const reload = () => { setEvent(null); setForm(null); loaded.reload(); };
   const sold = dash.data?.summary.ticketsSold ?? 0;
-  const venueLocked = !!dash.data?.ticketTypes.some((t) => t.section || t.accessZone);
+  const venueLocked = !!dash.data?.ticketTypes.some((t) => t.seated || t.accessZone);
   const datesChanged = form.start !== original.start || form.end !== original.end;
   const venueChanged = form.venueId !== original.venueId;
 

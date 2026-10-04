@@ -7,7 +7,9 @@ services:
       POSTGRES_PASSWORD: ticketing_dev_password
       POSTGRES_DB: ticketing_dev
     ports:
-      - '5432:5432'
+      # Host port 5433, not 5432, so it can't clash with a Postgres installed
+      # on the computer itself (README, Getting started).
+      - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

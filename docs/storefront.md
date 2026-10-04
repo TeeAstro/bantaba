@@ -2,7 +2,7 @@
 
 **Bantaba** is the buyer side of the platform: Discover, the event page, choosing seats, checkout and My tickets. It was designed on the "Bantaba storefront" canvas (five phone screens). The admin **Trending** screen was designed on the "Bantaba Host screens" canvas.
 
-This page covers the server side, built first. The web screens come next.
+Part 1 built the server side; part 2 built the web screens (below).
 
 ## Words buyers see
 
@@ -150,10 +150,35 @@ The in-memory limits (`src/common/rate-limit.ts`) are per server process. `RATE_
 
 `GET /tickets/mine` now includes each event's venue. Every ticket already carries its QR (`qrCodeSvg`).
 
+## Web screens (part 2)
+
+All in `apps/web/app/(store)`, with the buyer look in `store.css`: plum, coral buy buttons, Bricolage for big headings and Inter for the rest. They're built for phones first and widen on a computer.
+
+| Page | What it does |
+|---|---|
+| `/` | Discover: search, date buttons, Trending, then "Hosts on Bantaba" (2 events each, "See all N", "More hosts"). It replaces the old sign-in landing page. |
+| `/e/<slug>` | The event page. The event's colour frames the top. Date with "Add to calendar", venue with "Directions", "Hosted by", ticket types with + and −, the refund rule, About. The bar at the bottom shows the total and **Get tickets**. |
+| `/e/<slug>/seats?type=` | Choosing seats on the venue map (Phase 17, `docs/seating.md`): tap a section, then seats, up to 6, in any seated ticket type. Seat states use the brand rule. "We hold your seats for 5 minutes while you pay." |
+| `/checkout` | **Signed in:** the tickets are held as soon as the page opens. **Guest:** name, email and phone, then **Continue** holds them. Then the "Held for 4:59" countdown, Wave, card or bank transfer, and **Pay**. When the hold runs out, "Choose again". |
+| `/checkout/success?order=` | Where Wave and card send the buyer back. It waits for the payment to be confirmed, then shows the tickets with their QR codes. A bank transfer shows the bank details and the deadline. |
+| `/checkout/error?order=` | The payment didn't go through; try again. |
+| `/signin` | Buyers sign in with an email code ("Use a password instead" is there too). A new email signs up. |
+| `/tickets` | My tickets. The next event's tickets with QR codes, one at a time, with Send to a friend, Directions and Ask for a refund. Later events are below, and past ones are on their own tab. |
+| `/o/<slug>` | A host's page, now in the storefront look. |
+| `/admin/trending` | The admin Trending screen from the Host canvas, under **Storefront** in the admin menu. |
+
+How it works underneath:
+- **The cart** (event, ticket types, chosen seats) is kept in the browser tab until checkout.
+- **A guest's key** to their order is kept in the browser, so the success page works on the same device. On another device they sign in with their email to see the tickets.
+- **Test payment:** outside production, checkout also offers "Test payment" (MOCK), so the whole flow can be tried without Wave or a card account. `NEXT_PUBLIC_TEST_PAYMENTS=1` shows it in a production build too; leave it unset for real sales.
+- **Event colours:** until hosts can choose their own colour, each event gets one of eight dark colours from its id, always the same for that event.
+- **Other links:** **View public page** is in the organizer's event menu (⋯) for live events. A buyer who signs in at `/login` goes to My tickets.
+- **Back buttons:** every storefront page except Discover has a back arrow left of the logo; checkout has **Back**. It goes to the previous page on this site, or to the page's parent (Discover, or the event for seats) when there isn't one: a link opened from an email, or a return from Wave or a card payment page. The pages visited in the tab are tracked by `components/NavTracker.tsx` and `lib/nav.ts`. `/login` and `/transfer` have **← Back** too.
+
 ## Not built yet
 
-- The web screens (next).
-- Apple Wallet and Google Wallet passes need an Apple Developer account and a Google Wallet issuer account.
+- **Wallet passes:** the Apple Wallet and Google Wallet buttons from the canvas aren't on My tickets yet. They need an Apple Developer account and a Google Wallet issuer account.
+- **Hosts choosing their event colour.**
 
 ## Tests
 

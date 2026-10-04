@@ -171,7 +171,7 @@ export function OverviewTab({ d }: { d: EventDashboard }) {
                   <span className="dash-event-name">
                     <strong>{t.name}</strong>
                     <span className="cell-sub">
-                      {!t.isActive ? 'Hidden' : ended ? 'Sales ended' : t.section ? `Reserved seats, ${t.section.name}` : 'General admission'}
+                      {!t.isActive ? 'Hidden' : ended ? 'Sales ended' : t.seated ? `Seats in ${t.sections} ${t.sections === 1 ? 'section' : 'sections'}` : 'General admission'}
                     </span>
                   </span>
                   <strong className="num tt-price">{money(t.price, t.currency).replace('.00', '')}</strong>
