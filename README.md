@@ -1045,7 +1045,7 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 9 | Buy | Publish → open the event as a buyer → **Choose seats** → tap 5A → **Choose seats** → tap 2 seats → **Continue** | Checkout lists "Grandstand (5A A3, 5A A4)"; closed seats can't be tapped |
 | 10 | Sold seats stay | After paying, try to switch 5A to VIP, or (as admin) give 5A fewer rows | Refused: "already sold as Grandstand" / "… have tickets. Keep them in the layout." |
 | 11 | Ticket | My tickets | Seat "5A · A3" and Gate "5" |
-| 11b | Stadium seats | With the stadium drawing uploaded to "Independence Stadium": `node scripts/independence-seats.js "Independence Stadium"` in `apps/backend` | 23 sections listed, "13,598 seats"; 2B shows rows D–G; VIP Blue, VVIP 1 and 2 reserved |
+| 11b | Stadium seats | With the stadium drawing uploaded to "Independence Stadium": `node scripts/independence-seats.js "Independence Stadium"` in `apps/backend` | 23 sections listed, "13,588 seats"; 2B shows rows D–G; VIP Blue, VVIP 1 and 2 reserved |
 | 12 | Automated | `node seating-test.js` in `apps/backend` (backend started with `RATE_LIMITS=off`) | `18/18 passed`; all other suites unchanged |
 
 ## Project structure

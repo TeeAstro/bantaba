@@ -24,7 +24,7 @@ const ROWS = {
   'Section 5C': { M: 380, N: 280, O: 325 },
   'Section 6A': { A: 275, B: 330, C: 380 },
   'Section 6B': { D: 380, E: 380 },
-  'Section 6C': { F: 38, G: 330, H: 360 }, // 728; the stadium's total says 718
+  'Section 6C': { F: 38, G: 330, H: 350 },
   'Section 3A': { K: 133, L: 136, M: 155, N: 154, O: 177, P: 156 },
   'Section 3B': { Q: 149, R: 110, S: 142 },
   'Section 4A': { A: 118, B: 123, C: 162, D: 156 },
