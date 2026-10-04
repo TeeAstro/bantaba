@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, logout } from '@/lib/api';
 import { useSessionUser } from '@/lib/hooks';
-import { eventColour, mapsUrl, soon, when } from '@/lib/store';
-import { seatLabel, shortName } from '@/lib/seating';
+import { dalasi, eventColour, mapsUrl, soon, when } from '@/lib/store';
+import { shortName } from '@/lib/seating';
 import { Icon } from '@/components/Icon';
 import { StoreFooter, StoreHeader } from '@/components/store/Chrome';
 
@@ -21,6 +21,8 @@ interface MyTicket {
   seat: { row: string; number: string; section: { name: string; gate: { name: string } | null } } | null;
   ticketType: {
     name: string;
+    price: number;
+    currency: string;
     event: { id: string; slug: string; name: string; startDate: string; endDate: string; transfersEnabled: boolean; venue: { name: string; city: string } };
   };
 }
@@ -95,13 +97,24 @@ function TicketCard({ g, holder, offers, reload }: { g: Group; holder: string; o
           <div className="s-qr s-qr-void">QR in your email</div>
         )}
         <dl className="s-dl">
-          <div><dt>Ticket</dt><dd>{t.ticketType.name}</dd></div>
-          <div><dt>{t.seat ? 'Seat' : 'Holder'}</dt><dd>{t.seat ? `${shortName(t.seat.section.name)} · ${seatLabel(t.seat.row, t.seat.number)}` : holder}</dd></div>
-          {t.seat?.section.gate ? (
-            <div><dt>Gate</dt><dd>{t.seat.section.gate.name.replace(/^gate\s+/i, '')}</dd></div>
+          {t.seat ? (
+            <>
+              <div><dt>Section</dt><dd>{shortName(t.seat.section.name)}</dd></div>
+              {/^#\d+$/.test(t.seat.row) ? (
+                <div><dt>Seat</dt><dd>{t.seat.number}</dd></div>
+              ) : (
+                <>
+                  <div><dt>Row</dt><dd>{t.seat.row}</dd></div>
+                  <div><dt>Seat</dt><dd>{t.seat.number}</dd></div>
+                </>
+              )}
+              <div><dt>Gate</dt><dd>{t.seat.section.gate ? t.seat.section.gate.name.replace(/^gate\s+/i, '') : '—'}</dd></div>
+            </>
           ) : (
-            <div><dt>Number</dt><dd>{Math.min(i, live.length - 1) + 1} of {live.length}</dd></div>
+            <div><dt>Holder</dt><dd>{holder}</dd></div>
           )}
+          <div><dt>Ticket</dt><dd>{t.ticketType.name}</dd></div>
+          <div><dt>Price</dt><dd>{t.ticketType.price ? dalasi(t.ticketType.price, t.ticketType.currency) : 'Free'}</dd></div>
         </dl>
         {live.length > 1 && (
           <div className="s-pagerow">

@@ -186,7 +186,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
 
   // QR codes as PNG attachments shown inline: the stored SVG doesn't
   // display in Gmail or Outlook, so it's rasterised here.
-  private async ticketImages(tickets: { id: string; qrCodeSvg: string | null; ticketType: { name: string }; seat: { row: string; number: string; section: { name: string } } | null }[]) {
+  private async ticketImages(tickets: { id: string; qrCodeSvg: string | null; ticketType: { name: string; price?: number; currency?: string }; seat: { row: string; number: string; section: { name: string; gate?: { name: string } | null } } | null }[]) {
     const infos: T.TicketInfo[] = [];
     const attachments: MailAttachment[] = [];
     for (const [i, t] of tickets.entries()) {
@@ -197,6 +197,11 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
       infos.push({
         typeName: t.ticketType.name,
         seat: t.seat ? `${t.seat.section.name}, ${seatLong(t.seat.row, t.seat.number)}` : null,
+        section: t.seat?.section.name ?? null,
+        row: t.seat && !t.seat.row.startsWith('#') ? t.seat.row : null,
+        number: t.seat?.number ?? null,
+        gate: t.seat?.section.gate?.name ?? null,
+        price: t.ticketType.price === undefined ? null : t.ticketType.price ? T.money(t.ticketType.price, t.ticketType.currency) : 'Free',
         cid,
       });
     }
@@ -206,7 +211,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
   private activeTickets(where: Prisma.TicketWhereInput) {
     return this.prisma.ticket.findMany({
       where: { ...where, status: 'ACTIVE' },
-      include: { ticketType: { select: { name: true } }, seat: { select: { row: true, number: true, section: { select: { name: true } } } } },
+      include: { ticketType: { select: { name: true, price: true, currency: true } }, seat: { select: { row: true, number: true, section: { select: { name: true, gate: { select: { name: true } } } } } } },
       orderBy: { createdAt: 'asc' },
     });
   }

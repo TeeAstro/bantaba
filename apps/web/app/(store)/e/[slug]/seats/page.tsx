@@ -15,6 +15,33 @@ import { SectionLook, VenueMap } from '@/components/VenueMap';
 // holds them (5 minutes while paying). Designed on the Bantaba storefront
 // canvas (Seats).
 
+/**
+ * The best `n` seats side by side in a section: the row nearest the front,
+ * then nearest the middle of that row. Seats the buyer already has here
+ * count as free (they're being swapped). Null if no row has `n` together.
+ */
+function bestSeats(section: SectionSeats, n: number, mine: (id: string) => boolean) {
+  let best: { seats: SectionSeats['rows'][number]['seats']; score: number } | null = null;
+  section.rows.forEach((row, ri) => {
+    const seats = [...row.seats].sort((a, b) => a.col - b.col);
+    if (!seats.length) return;
+    const middle = (seats[0].col + seats[seats.length - 1].col) / 2;
+    let run: typeof seats = [];
+    for (const seat of seats) {
+      const free = seat.status === 'AVAILABLE' || mine(seat.id);
+      if (!free || (run.length && seat.col !== run[run.length - 1].col + 1)) run = [];
+      if (!free) continue;
+      run.push(seat);
+      if (run.length >= n) {
+        const window = run.slice(-n);
+        const score = ri * 100000 + Math.abs((window[0].col + window[n - 1].col) / 2 - middle);
+        if (!best || score < best.score) best = { seats: window, score };
+      }
+    }
+  });
+  return (best as { seats: SectionSeats['rows'][number]['seats'] } | null)?.seats ?? null;
+}
+
 interface Pick {
   id: string;
   label: string;
@@ -34,6 +61,8 @@ function SeatsInner() {
   const [view, setView] = useState<'overview' | 'section'>('overview');
   const [seats, setSeats] = useState<Record<string, SectionSeats>>({});
   const [error, setError] = useState<string | null>(null);
+  const [want, setWant] = useState(2);
+  const [bestNote, setBestNote] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,6 +154,22 @@ function SeatsInner() {
     else if (picked.length < max) setPicked([...picked, { id: seat.id, label: `${shortName(sel.name)} ${seat.label}`, ticketTypeId: sel.ticketTypeId }]);
   };
 
+  // Seats picked in other sections stay; this section's are swapped for the best run.
+  const pickedElsewhere = picked.filter((p) => !section?.rows.some((r) => r.seats.some((x) => x.id === p.id)));
+  const room = Math.max(1, max - pickedElsewhere.length);
+  const howMany = Math.min(want, room);
+  const pickBest = () => {
+    if (!section || !sel?.ticketTypeId) return;
+    const run = bestSeats(section, howMany, isMine);
+    if (!run) {
+      setBestNote(`No ${howMany} seats together here. Pick them one by one, or try another section.`);
+      return;
+    }
+    setBestNote(null);
+    setPicked([...pickedElsewhere, ...run.map((x) => ({ id: x.id, label: `${shortName(sel.name)} ${x.label}`, ticketTypeId: sel.ticketTypeId! }))]);
+    setTimeout(() => document.querySelector(`[data-seat="${run[0].id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
+
   const go = () => {
     const rest = cart.items.filter((i) => !seatedIds.has(i.ticketTypeId));
     const byType = new Map<string, Pick[]>();
@@ -138,12 +183,10 @@ function SeatsInner() {
   };
 
   const cols = section?.perRow ?? 0;
-  // Numbers running on through the section ("B 31–50"), or no row letters ("13–24"): rows show their numbers, no column numbers.
-  const running = !!section && section.numbering !== 'letters';
-  const labelWidth = section ? Math.max(18, ...section.rows.map((r) => r.label.length * 7)) : 18;
-  // Seats shrink (down to 20px) so a whole row fits on a phone; wider rows scroll.
-  const room = (typeof window === 'undefined' ? 390 : Math.min(window.innerWidth, 560)) - 36 - 22 - labelWidth - 4;
-  const seatSize = cols ? Math.max(20, Math.min(28, Math.floor(room / cols) - 4)) : 28;
+  // Each row is a block of numbered seats that wraps to the screen width,
+  // so long rows (380 seats) scroll down, not sideways. Rows keep their
+  // letter on the left; "1, 2, 3…" sections have none.
+  const lettered = !!section && section.numbering !== 'seats';
   const seatColour = selType ? toneColour(selType.tone) : '#d97706';
 
   return (
@@ -194,46 +237,56 @@ function SeatsInner() {
             <button type="button" className="s-pillback" onClick={() => setView('overview')}>
               <Icon name="left" size={16} /> All sections
             </button>
+            {section && (
+              <div className="s-box s-best">
+                <div className="s-qty" role="group" aria-label="How many seats">
+                  <button type="button" aria-label="Fewer" disabled={howMany <= 1} onClick={() => setWant(Math.max(1, howMany - 1))}>−</button>
+                  <span aria-live="polite">{howMany}</span>
+                  <button type="button" aria-label="More" disabled={howMany >= room} onClick={() => setWant(Math.min(room, howMany + 1))}>+</button>
+                </div>
+                <button type="button" className="s-btn s-btn-plum" onClick={pickBest}>Best seats</button>
+              </div>
+            )}
+            {bestNote && <p className="s-note" role="status">{bestNote}</p>}
             <div className={`s-stage${/pitch|field/i.test(map.venue.frontLabel) ? ' s-stage-grass' : ''}`}>{(section?.frontLabel ?? map.venue.frontLabel).toUpperCase()}</div>
             <div className="s-box s-seatmap">
               {!section ? (
                 <p className="s-note">Loading…</p>
               ) : (
-                <div className="s-seatgrid" style={{ ['--seat' as string]: `${seatSize}px` }}>
-                  {!running && (
-                    <div className="s-seatrow s-colnums" aria-hidden="true">
-                      <span className="s-rowlabel" style={{ width: labelWidth }} />
-                      {Array.from({ length: cols }, (_, i) => <span key={i}>{i + 1}</span>)}
-                    </div>
-                  )}
+                <div className="s-seatgrid">
                   {section.rows.map((row) => {
                     const byN = new Map(row.seats.map((x) => [x.col, x]));
+                    const free = row.seats.filter((x) => x.status === 'AVAILABLE').length;
                     return (
-                      <div key={row.label} className="s-seatrow">
-                        <span className="s-rowlabel" style={{ width: labelWidth }}>{row.label}</span>
-                        {Array.from({ length: cols }, (_, i) => {
-                          const seat = byN.get(i + 1);
-                          if (!seat) return <span key={i} className="s-seat-gap" />;
-                          const mine = isMine(seat.id);
-                          const taken = !mine && seat.status !== 'AVAILABLE';
-                          const held = !mine && seat.status === 'HELD';
-                          const cls = mine ? 's-seat s-seat-mine' : held ? 's-seat s-seat-held' : taken ? 's-seat s-seat-sold' : 's-seat';
-                          const state = mine ? 'yours' : held ? 'on hold' : taken ? 'not available' : `free, ${selType ? dalasi(selType.price, selType.currency) : ''}`;
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              className={cls}
-                              style={!mine && !taken ? { background: seatColour } : undefined}
-                              disabled={taken}
-                              aria-pressed={mine}
-                              aria-label={`${section.numbering === 'seats' ? seat.label : `Row ${row.row}, seat ${seat.number}`}, ${state}`}
-                              onClick={() => toggle(seat)}
-                            >
-                              {mine ? '✓' : taken && !held ? '×' : ''}
-                            </button>
-                          );
-                        })}
+                      <div key={row.label} className="s-rowblock">
+                        <span className="s-rowlabel" title={`${free} free`}>{lettered ? row.row : ''}</span>
+                        <div className="s-rowseats">
+                          {Array.from({ length: cols }, (_, i) => {
+                            const seat = byN.get(i + 1);
+                            // Places taken out (aisles) only matter inside the row.
+                            if (!seat) return i < (row.seats[row.seats.length - 1]?.col ?? 0) ? <span key={i} className="s-seat-gap" /> : null;
+                            const mine = isMine(seat.id);
+                            const taken = !mine && seat.status !== 'AVAILABLE';
+                            const held = !mine && seat.status === 'HELD';
+                            const cls = mine ? 's-seat s-seat-mine' : held ? 's-seat s-seat-held' : taken ? 's-seat s-seat-sold' : 's-seat';
+                            const state = mine ? 'yours' : held ? 'on hold' : taken ? 'not available' : `free, ${selType ? dalasi(selType.price, selType.currency) : ''}`;
+                            return (
+                              <button
+                                key={i}
+                                type="button"
+                                data-seat={seat.id}
+                                className={cls}
+                                style={!mine && !taken ? { background: seatColour } : undefined}
+                                disabled={taken}
+                                aria-pressed={mine}
+                                aria-label={`${section.numbering === 'seats' ? seat.label : `Row ${row.row}, seat ${seat.number}`}, ${state}`}
+                                onClick={() => toggle(seat)}
+                              >
+                                {mine ? '✓' : taken && !held ? '×' : held ? '' : seat.number}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}

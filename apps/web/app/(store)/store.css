@@ -337,10 +337,22 @@
 .s-seats .s-stage-grass { background: #5fa35f; }
 .s-colnums span:not(.s-rowlabel) { width: 28px; flex-shrink: 0; text-align: center; font-size: 10px; font-weight: 600; color: #71717a; }
 .s-seat-gap { width: 28px; height: 30px; flex-shrink: 0; }
-.s-seats .s-seatmap { display: block; }
-.s-seatgrid { --seat: 28px; width: max-content; margin: 0 auto; display: flex; flex-direction: column; gap: 6px; }
-.s-seatgrid .s-seatrow { margin: 0; justify-content: flex-start; }
-.s-seatgrid .s-seat { width: var(--seat); height: calc(var(--seat) + 2px); }
-.s-seatgrid .s-seat-gap { width: var(--seat); height: calc(var(--seat) + 2px); }
-.s-seatgrid .s-colnums span:not(.s-rowlabel) { width: var(--seat); }
-.s-seatgrid .s-rowlabel { font-size: 11px; text-align: right; padding-right: 2px; flex-shrink: 0; }
+.s-seats .s-seatmap { display: block; overflow: visible; padding: 12px 10px; }
+/* Rows as blocks of numbered seats that wrap: scroll down, not sideways. */
+.s-seatgrid { display: flex; flex-direction: column; }
+.s-rowblock { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 10px 0; border-top: 1px solid #f0f0f2; }
+.s-rowblock:first-child { border-top: 0; padding-top: 2px; }
+.s-seatgrid .s-rowlabel { width: auto; font-size: 15px; font-weight: 800; color: var(--s-soft); text-align: left; line-height: 38px; position: sticky; top: 12px; align-self: start; }
+.s-rowseats { display: grid; grid-template-columns: repeat(auto-fill, 38px); gap: 7px; padding: 4px; justify-content: start; }
+/* The seat shape from before: filled, rounded at the back; free seats carry their number. */
+.s-seatgrid .s-seat { width: 38px; height: 38px; border-radius: 9px 9px 6px 6px; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.s-seatgrid .s-seat-mine { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--coral); }
+.s-seatgrid .s-seat-gap { width: 38px; height: 38px; }
+
+/* Best seats: how many, then the best run side by side (front, middle). */
+.s-best { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
+.s-best .s-btn-plum { flex: 1; }
+.s-qty { display: flex; align-items: center; gap: 4px; }
+.s-qty button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #e4e4e7; background: #fff; font-size: 20px; color: var(--s-ink, #18181b); cursor: pointer; }
+.s-qty button:disabled { opacity: 0.35; cursor: default; }
+.s-qty span { min-width: 28px; text-align: center; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }

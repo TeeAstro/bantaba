@@ -31,6 +31,12 @@ export interface EventInfo {
 export interface TicketInfo {
   typeName: string;
   seat: string | null; // "Lower Bowl, row A, seat 4"
+  // Phase 17: the seat spelled out and what the ticket cost.
+  section?: string | null;
+  row?: string | null; // null when seats have no row letters
+  number?: string | null;
+  gate?: string | null;
+  price?: string | null; // "D300", "Free"
   cid: string; // inline QR image
 }
 
@@ -97,19 +103,30 @@ const eventText = (e: EventInfo) =>
     .filter(Boolean)
     .join('\n');
 
+// Section, row, seat and gate as a small table, the way they're printed on a ticket.
+function ticketFacts(t: TicketInfo) {
+  const facts: [string, string][] = [['Section', t.section!.replace(/^section\s+/i, '')]];
+  if (t.row) facts.push(['Row', t.row]);
+  facts.push(['Seat', t.number ?? '']);
+  if (t.gate) facts.push(['Gate', t.gate.replace(/^gate\s+/i, '')]);
+  return `<table role="presentation" cellpadding="0" cellspacing="0"><tr>${facts
+    .map(([k, v]) => `<td style="padding:0 16px 0 0;vertical-align:top"><div style="font-size:12px;color:${COLORS.faint}">${k}</div><div style="font-size:16px;font-weight:700">${h(v)}</div></td>`)
+    .join('')}</tr></table>`;
+}
+
 function ticketBlocks(tickets: TicketInfo[]) {
   return tickets
     .map(
       (t, i) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px;border:1px dashed ${COLORS.line};border-radius:6px">
 <tr><td style="padding:14px;width:180px;vertical-align:top"><img src="cid:${t.cid}" width="170" height="170" alt="Ticket QR code" style="display:block;width:170px;height:170px"></td>
 <td style="padding:14px 14px 14px 0;vertical-align:top"><div style="font-size:12px;color:${COLORS.faint}">Ticket ${i + 1} of ${tickets.length}</div>
-<div style="font-size:16px;font-weight:700;margin:2px 0 4px">${h(t.typeName)}</div>
-${t.seat ? `<div style="font-size:14px">${h(t.seat)}</div>` : `<div style="font-size:14px;color:${COLORS.soft}">General admission</div>`}</td></tr></table>`,
+<div style="font-size:16px;font-weight:700;margin:2px 0 6px">${h(t.typeName)}${t.price ? ` · ${h(t.price)}` : ''}</div>
+${t.section ? ticketFacts(t) : t.seat ? `<div style="font-size:14px">${h(t.seat)}</div>` : `<div style="font-size:14px;color:${COLORS.soft}">General admission</div>`}</td></tr></table>`,
     )
     .join('');
 }
 const ticketsText = (tickets: TicketInfo[]) =>
-  tickets.map((t, i) => `  ${i + 1}. ${t.typeName}${t.seat ? ` (${t.seat})` : ''}`).join('\n');
+  tickets.map((t, i) => `  ${i + 1}. ${t.typeName}${t.price ? `, ${t.price}` : ''}${t.seat ? ` (${t.seat}${t.gate ? `, ${t.gate}` : ''})` : ''}`).join('\n');
 
 const QR_NOTE =
   'Show the QR code at the gate, on your phone or printed. Each code lets one person in, once, so don’t post it online or share it with anyone who isn’t using that ticket.';
