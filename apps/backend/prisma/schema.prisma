@@ -348,29 +348,77 @@ model Organizer {
   staffAccounts User[]       @relation("OrganizerStaffAccounts")
   payouts       Payout[]
 
+  // Phase 18: venues they made, Bantaba venues shared with them, templates
+  venues         Venue[]         @relation("VenueOwner")
+  venueShares    VenueShare[]
+  eventTemplates EventTemplate[]
+
   @@map("organizers")
 }
 
 // ---------- Venues ----------
 
 model Venue {
-  id         String   @id @default(uuid())
+  id         String     @id @default(uuid())
   name       String
   address    String
   city       String
-  country    String   @default("The Gambia")
+  country    String     @default("The Gambia")
   // What the seats face, shown above every seat grid: "Stage", "Pitch"…
-  frontLabel String   @default("Stage")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  frontLabel String     @default("Stage")
+  // Phase 18 (docs/seating.md, "Who manages venues"): the organizer who
+  // made it, only they (and admins) can use and change it. Null = Bantaba's,
+  // made by admins: "everyone" = any organizer can sell on it, "chosen" =
+  // only the organizers in `shares`. Organizers never change its layout.
+  ownerId    String?
+  owner      Organizer? @relation("VenueOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  sharing    String     @default("everyone")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
+  shares      VenueShare[]
+  templates   EventTemplate[]
   map         VenueMap?
   sections    VenueSection[]
   gates       Gate[]
   accessZones AccessZone[]
   events      Event[]
 
+  @@index([ownerId])
   @@map("venues")
+}
+
+// A Bantaba venue shared with one organizer (Venue.sharing = "chosen").
+model VenueShare {
+  venueId     String
+  venue       Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  organizerId String
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([venueId, organizerId])
+  @@index([organizerId])
+  @@map("venue_shares")
+}
+
+// Phase 18: an event saved to start new ones from (docs/templates.md):
+// details, ticket types and seating, never dates, sales or buyers.
+model EventTemplate {
+  id          String    @id @default(uuid())
+  organizerId String
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  name        String
+  venueId     String
+  venue       Venue     @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  // { event: {…details}, durationMinutes, ticketTypes: [{ key, … }], sections: [{ sectionId, ticketTypeKey }], closedSeatIds }
+  data        Json
+  timesUsed   Int       @default(0)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([organizerId])
+  @@map("event_templates")
 }
 
 // The venue's drawing (Phase 17, docs/seating.md): an SVG an admin drew in

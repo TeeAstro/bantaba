@@ -11,6 +11,8 @@ import {
 } from './dto/venue.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 // Reads are public: organizers need venue/section IDs to set up events,
@@ -23,9 +25,14 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class VenuesController {
   constructor(private readonly venuesService: VenuesService) {}
 
+  /**
+   * Venues to hold an event at: for an organizer, their own and Bantaba's
+   * they can use; for admins, all; for anyone else, Bantaba's open ones.
+   */
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('venues')
-  findAll() {
-    return this.venuesService.findAll();
+  findAll(@CurrentUser() user: { id: string; role: UserRole } | null) {
+    return this.venuesService.findAll(user);
   }
 
   @Get('venues/:id')

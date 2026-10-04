@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { recomputeSeatedTotals } from './seating-rules';
+import { organizerIdOf, usableBy } from './venue-access';
+import { UserRole } from '@prisma/client';
 import {
   CreateAccessZoneDto,
   CreateGateDto,
@@ -30,8 +32,13 @@ export class VenuesService {
     });
   }
 
-  findAll() {
-    return this.prisma.venue.findMany({ orderBy: { name: 'asc' } });
+  async findAll(user: { id: string; role: UserRole } | null) {
+    if (user?.role === UserRole.ADMIN) return this.prisma.venue.findMany({ orderBy: { name: 'asc' } });
+    const organizerId = user ? await organizerIdOf(this.prisma, user.id) : null;
+    return this.prisma.venue.findMany({
+      where: organizerId ? usableBy(organizerId) : { ownerId: null, sharing: 'everyone' },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async findOne(id: string) {

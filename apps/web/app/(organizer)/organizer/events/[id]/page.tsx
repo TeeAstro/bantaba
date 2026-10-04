@@ -18,6 +18,7 @@ import { CheckInsTab } from '@/components/event/CheckInsTab';
 import { StaffTab } from '@/components/event/StaffTab';
 import { RefundsTab } from '@/components/event/RefundsTab';
 import { SeatingTab } from '@/components/event/SeatingTab';
+import { SaveTemplateDialog } from '@/components/event/SaveTemplateDialog';
 
 function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +30,7 @@ function EventDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [refundMode, setRefundMode] = useState<'AUTOMATIC' | 'ORGANIZER'>('AUTOMATIC');
 
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
@@ -109,18 +111,22 @@ function EventDetail() {
           {editable && (
             <Link className={`btn ${event.status === 'DRAFT' ? 'btn-quiet' : ''}`} href={`/organizer/events/${event.id}/edit`}>Edit event</Link>
           )}
-          {editable && event.status !== 'DRAFT' && (
-            <details className="menu">
-              <summary className="btn btn-quiet" aria-label="More actions"><Icon name="more" /></summary>
-              <div className="menu-pop" role="menu">
-                {(event.status === 'PUBLISHED' || event.status === 'SOLD_OUT') && (
-                  <a role="menuitem" href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer">View public page</a>
-                )}
-                <Link role="menuitem" href={`/scan/${event.id}`}>Open the scanner</Link>
+          <details className="menu">
+            <summary className="btn btn-quiet" aria-label="More actions"><Icon name="more" /></summary>
+            <div className="menu-pop" role="menu">
+              {/* Phase 18: any event, even a past one, can start new ones (docs/templates.md) */}
+              <button role="menuitem" onClick={(e) => { (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; setTemplateOpen(true); }}>
+                <Icon name="copy" size={16} /> Save as template
+              </button>
+              {(event.status === 'PUBLISHED' || event.status === 'SOLD_OUT') && (
+                <a role="menuitem" href={`/e/${event.slug}`} target="_blank" rel="noopener noreferrer">View public page</a>
+              )}
+              {editable && event.status !== 'DRAFT' && <Link role="menuitem" href={`/scan/${event.id}`}>Open the scanner</Link>}
+              {editable && event.status !== 'DRAFT' && (
                 <button role="menuitem" className="menu-danger" disabled={busy} onClick={(e) => { (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; setCancelOpen(true); }}>Cancel event…</button>
-              </div>
-            </details>
-          )}
+              )}
+            </div>
+          </details>
         </div>
       </header>
 
@@ -146,6 +152,14 @@ function EventDetail() {
         )}
       </div>
 
+      {templateOpen && (
+        <SaveTemplateDialog
+          eventId={event.id}
+          eventName={event.name}
+          seated={data.ticketTypes.some((t) => t.seated) ? { sections: data.ticketTypes.reduce((n, t) => n + (t.seated ? t.sections : 0), 0), closed: 0 } : null}
+          onClose={() => setTemplateOpen(false)}
+        />
+      )}
       {cancelOpen && (
         <div className="modal-backdrop" role="presentation" onClick={(e) => e.target === e.currentTarget && !busy && setCancelOpen(false)}>
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="cancel-title">

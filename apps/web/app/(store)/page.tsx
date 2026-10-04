@@ -6,13 +6,24 @@ import { api, ApiError } from '@/lib/api';
 import { Discover } from '@/lib/store';
 import { Icon } from '@/components/Icon';
 import { StoreFooter, StoreHeader } from '@/components/store/Chrome';
-import { EventCard, HostAvatar, HostName, TrendCard } from '@/components/store/Cards';
+import { EventCard, FeaturedCard, HostAvatar, HostName, RowCard, SellCard, TrendCard } from '@/components/store/Cards';
 
 // Discover, the Bantaba home page (Phase 16, docs/storefront.md): Trending,
-// then what's on grouped by host, two events each.
+// then what's on grouped by host, two events each. With only a few events
+// (Phase 18b, "Few events"): one list by date, the next one big.
 
 type When = Discover['when'];
 const WHEN: [When, string][] = [['all', 'All dates'], ['weekend', 'This weekend'], ['week', 'Next 7 days']];
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+/** 14 days from the start of the chosen dates, for the "what's on next" strip. */
+function fortnight(start: string) {
+  const first = new Date(`${start}T12:00:00Z`);
+  return Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(first.getTime() + i * 864e5);
+    return { date: iso(d), wd: d.toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short' }), day: d.getUTCDate() };
+  });
+}
 
 const dayLabel = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
 
@@ -124,11 +135,27 @@ export default function DiscoverPage() {
 
         <section className="s-hosts-wrap" aria-labelledby="hosts">
           <div className="s-wrap">
-            <div className="s-section-head"><h2 id="hosts">{term ? `Results for “${term}”` : 'Hosts on Bantaba'}</h2></div>
+            <div className="s-section-head"><h2 id="hosts">{term ? `Results for “${term}”` : data?.list || (data && !hosts.length && data.next.length) ? 'Coming up' : 'Hosts on Bantaba'}</h2>
+              {data?.list && <span className="s-head-count">{data.list.length} {data.list.length === 1 ? 'event' : 'events'}</span>}</div>
             {loading && !data ? (
               <p className="s-empty">Loading…</p>
+            ) : data?.list ? (
+              <FewEvents list={data.list} />
             ) : hosts.length === 0 ? (
-              <p className="s-empty">{term ? 'No events match that.' : 'Nothing on for these dates.'}</p>
+              data && !term && data.next.length > 0 ? (
+                <NothingThen
+                  label={when === 'weekend' ? 'Nothing this weekend' : when === 'date' ? 'Nothing on that day' : 'Nothing on these dates'}
+                  start={data.from.slice(0, 10)}
+                  days={data.eventDays}
+                  next={data.next}
+                  onDay={(d) => {
+                    setDate(d);
+                    pick('date');
+                  }}
+                />
+              ) : (
+                <p className="s-empty">{term ? 'No events match that.' : 'Nothing on for these dates.'}</p>
+              )
             ) : (
               <div className="s-hosts">
                 {hosts.map((h) => (
@@ -141,12 +168,16 @@ export default function DiscoverPage() {
                       </div>
                       <Link href={`/o/${h.slug}`} className="s-host-all">{h.total > 2 ? `See all ${h.total}` : 'See all'}</Link>
                     </div>
-                    <div className="s-grid2">{h.events.map((e) => <EventCard key={e.id} e={e} />)}</div>
+                    {h.events.length === 1 ? (
+                      <div className="s-host-one"><RowCard e={h.events[0]} showHost={false} /></div>
+                    ) : (
+                      <div className="s-grid2">{h.events.map((e) => <EventCard key={e.id} e={e} />)}</div>
+                    )}
                   </section>
                 ))}
               </div>
             )}
-            {data && page < data.totalPages && (
+            {data && !data.list && page < data.totalPages && (
               <div className="s-pager">
                 <button type="button" className="s-btn s-btn-quiet s-btn-small" disabled={loading} onClick={() => setPage((p) => p + 1)}>
                   {loading ? 'Loading…' : 'More hosts'}
@@ -158,5 +189,47 @@ export default function DiscoverPage() {
       </main>
       <StoreFooter />
     </>
+  );
+}
+
+/** 8 events or fewer: all of them by date, the first one big, and room to say "sell here". */
+function FewEvents({ list }: { list: Discover['hosts'][number]['events'] }) {
+  const [first, ...rest] = list;
+  return (
+    <div className="s-few-grid">
+      <div className="s-few-list">
+        <FeaturedCard e={first} />
+      </div>
+      <div className="s-few-side">
+        {rest.map((e) => <RowCard key={e.id} e={e} />)}
+        <SellCard />
+      </div>
+    </div>
+  );
+}
+
+/** Nothing on the chosen dates: which days in the next two weeks have something, and what's next. */
+function NothingThen({ label, start, days, next, onDay }: { label: string; start: string; days: string[]; next: Discover['next']; onDay: (d: string) => void }) {
+  const has = new Set(days);
+  return (
+    <div className="s-few-list">
+      <div className="s-nothing">
+        <strong>{label}</strong>
+        <span>Here’s what’s on next.</span>
+      </div>
+      <div className="s-days" role="group" aria-label="Days with events">
+        {fortnight(start).map((d) => (
+          <button key={d.date} type="button" className={`s-day${has.has(d.date) ? ' s-day-has' : ''}`} disabled={!has.has(d.date)} onClick={() => onDay(d.date)} aria-label={dayLabel(d.date)}>
+            <span>{d.wd}</span>
+            <strong>{d.day}</strong>
+            <i />
+          </button>
+        ))}
+      </div>
+      <div className="s-few-grid">
+        <div className="s-few-list">{next.map((e) => <RowCard key={e.id} e={e} />)}</div>
+        <div className="s-few-side"><SellCard /></div>
+      </div>
+    </div>
   );
 }

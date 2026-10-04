@@ -1048,6 +1048,55 @@ Admin actions are API-only until Phase 14: use `/api/docs` signed in as `admin@e
 | 11b | Stadium seats | With the stadium drawing uploaded to "Independence Stadium": `node scripts/independence-seats.js "Independence Stadium"` in `apps/backend` | 23 sections listed, "13,588 seats"; 2B shows rows D–G; VIP Blue, VVIP 1 and 2 reserved |
 | 12 | Automated | `node seating-test.js` in `apps/backend` (backend started with `RATE_LIMITS=off`) | `18/18 passed`; all other suites unchanged |
 
+## Organizers' own venues and event templates (Phase 18)
+
+Organizers map their own venues in Bantaba Host → **Venues** (sections by
+name, or a drawing), admins choose who can use each Bantaba venue, and any
+event can be saved as a **template** to start the next one with just a name
+and dates. Details: `docs/seating.md` ("Who manages venues") and
+`docs/templates.md`. Designed on the "Bantaba Host screens" canvas
+(OrgVenues, OrgVenueSeats, AdminVenueSharing, SaveTemplate, Templates).
+
+**After pulling:** `npx prisma migrate dev` in `apps/backend` (new migration
+`20261004200000_venue_owners_templates`), then `npm run build` and restart
+the backend and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Own venue | As organizer: **Venues → New venue** → name, address, town → **Add venue** | The venue page with "No drawing · Sections as a list", badge **Yours** |
+| 2 | Sections without a drawing | Type "Tables" → **Add section**, then "Dance floor" | Two sections, amber "Needs seats" |
+| 3 | Seats | Tap Dance floor → Rows 6, Seats per row 20 → **Save** | "Saved.", 120 seats; footer "Only you can see this venue." |
+| 4 | Rename and delete | **Rename** a section, then **Delete** one with no event | Both work; a section on sale for an event is refused |
+| 5 | Bantaba's venues | **Venues** → Independence Stadium → **View map** | The map and seats, read-only, badge **Bantaba** |
+| 6 | Venue picker | **Create event** → Venue | Your own venues and Bantaba's open ones only |
+| 7 | Sharing | As admin: a Bantaba venue → **Who can use it → Chosen organizers** → add one → **Save** | Venues list shows "1 organizer"; other organizers no longer see it or can make events there |
+| 8 | Save as template | As organizer: an event → **⋯ → Save as template** → **Save template** | "Saved. Start your next event from it on Templates." |
+| 9 | Use a template | **Templates → Use** → name, date, times → **Create draft** | A draft with the same details, ticket types and seating; the template shows "Used once" |
+| 10 | Automated | `node phase18-test.js` in `apps/backend` (backend started with `RATE_LIMITS=off`) | `8/8 passed`; seating 18/18 and the other suites unchanged |
+
+## Pages with only a few events (Phase 18b)
+
+Discover and host pages no longer look empty when there are only one or two
+events: the next event shows big, a few events show as wide cards, and a
+date with nothing on shows what's on next. Details: `docs/storefront.md`
+("Few events"). Designed on the "Bantaba storefront" canvas (HostOne,
+HostTwo, HostNone, HostDesktop, DiscoverFew, DiscoverHosts, DiscoverNone,
+DiscoverDesktop).
+
+**After pulling:** `npm run build` in `apps/backend`, restart the backend and
+web app. No migration.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Few events on Discover | Pick a date with 1 to 8 events | "Coming up · N events": the first big with **Get tickets**, the rest as wide cards, and "Hosting something?" |
+| 2 | Nothing on a date | Pick a date with no events | "Nothing on that day · Here's what's on next.", 14 days with dots on days with events (tap one), then the next events |
+| 3 | One-event host on Discover | All dates, a host with 1 event | One wide card, not half a pair |
+| 4 | Host with 1 event | Open its page | The big card ("Next up"), "Few left" when 50 or fewer tickets are left |
+| 5 | Host with 2 events | Open its page | Two wide cards under "Upcoming" |
+| 6 | Host with nothing on sale | Open its page | "Nothing on sale right now", past events, then **More on Bantaba** from other hosts |
+| 7 | Stats | A host with past events and sales | "Events · Tickets sold · Since" by the name |
+| 8 | Computer | The same pages at full width | Wide big card; About and Contact in the right column |
+
 ## Project structure
 
 ```

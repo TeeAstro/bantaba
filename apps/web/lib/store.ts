@@ -34,8 +34,14 @@ export interface TrendingCard extends StoreEventCard {
 
 export interface Discover {
   when: 'all' | 'weekend' | 'week' | 'date';
+  from: string;
   trending: TrendingCard[];
   hosts: (StoreHost & { total: number; events: StoreEventCard[] })[];
+  // Phase 18b: with 8 events or fewer, all of them by date (shown as a list)
+  list: StoreEventCard[] | null;
+  // Nothing on the chosen dates: the next events, and days in the next two weeks with events ("2026-10-24")
+  next: StoreEventCard[];
+  eventDays: string[];
   totalHosts: number;
   totalEvents: number;
   page: number;

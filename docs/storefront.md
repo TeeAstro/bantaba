@@ -28,6 +28,22 @@ Part 1 built the server side; part 2 built the web screens (below).
   - 12 hosts per page by default.
 - **Trending** (below) comes with the first page, except when searching.
 
+### Few events (Phase 18b)
+
+When there are only a few events, Discover and host pages fill the space with bigger cards instead of leaving it empty.
+
+**Discover** (`/storefront/discover` adds three fields):
+- `list`: with **8 events or fewer** on the first page, all of them by date. The page then shows "Coming up · N events" instead of hosts: the first event as a big card (picture, Next up, host, date, venue, price, coral **Get tickets**), the rest as wide short cards beside it on a computer, and a "Hosting something? Sell tickets" card. `null` otherwise.
+- `next` and `eventDays`: when a date button finds **nothing** (not with a search), the next 4 events after the chosen dates, and the days in the two weeks from the start of the chosen dates that have events (`"2026-10-13"`). The page says "Nothing this weekend / on that day · Here's what's on next.", shows the 14 days with a dot on days that have events (tap one to see that day), then the next events and the Sell card.
+- In the usual host groups, a host with **one** event shows it as one wide card instead of half of a pair.
+
+**Host page** (`/o/<slug>`; `GET /organizers/:slug` adds `stats.ticketsSold` and each upcoming event's `left`, the tickets still for sale):
+- **1 upcoming event:** the big card, with "Few left: N tickets" when 50 or fewer are left. **2:** two wide cards. **3 or more:** the grid as before.
+- **Stats** ("Events · Tickets sold · Since") when the host has past events and sales.
+- **Past events** as a strip you swipe on a phone, four across on a computer, each with its month.
+- **Nothing on sale:** "Nothing on sale right now · Their last event was in September", past events, then **More on Bantaba**: up to 4 events from other hosts.
+- On a computer, About and Contact sit in a column on the right; on a phone they come after the events.
+
 ### Event cards
 
 Each card has:
@@ -156,7 +172,7 @@ All in `apps/web/app/(store)`, with the buyer look in `store.css`: plum, coral b
 
 | Page | What it does |
 |---|---|
-| `/` | Discover: search, date buttons, Trending, then "Hosts on Bantaba" (2 events each, "See all N", "More hosts"). It replaces the old sign-in landing page. |
+| `/` | Discover: search, date buttons, Trending, then "Hosts on Bantaba" (2 events each, "See all N", "More hosts"). With few events, "Coming up" instead (see Few events). It replaces the old sign-in landing page. |
 | `/e/<slug>` | The event page. The event's colour frames the top. Date with "Add to calendar", venue with "Directions", "Hosted by", ticket types with + and −, the refund rule, About. The bar at the bottom shows the total and **Get tickets**. |
 | `/e/<slug>/seats?type=` | Choosing seats on the venue map (Phase 17, `docs/seating.md`): tap a section, then seats, up to 6, in any seated ticket type. Seat states use the brand rule. "We hold your seats for 5 minutes while you pay." |
 | `/checkout` | **Signed in:** the tickets are held as soon as the page opens. **Guest:** name, email and phone, then **Continue** holds them. Then the "Held for 4:59" countdown, Wave, card or bank transfer, and **Pay**. When the hold runs out, "Choose again". |
@@ -164,7 +180,7 @@ All in `apps/web/app/(store)`, with the buyer look in `store.css`: plum, coral b
 | `/checkout/error?order=` | The payment didn't go through; try again. |
 | `/signin` | Buyers sign in with an email code ("Use a password instead" is there too). A new email signs up. |
 | `/tickets` | My tickets. The next event's tickets with QR codes, one at a time, with Send to a friend, Directions and Ask for a refund. Later events are below, and past ones are on their own tab. |
-| `/o/<slug>` | A host's page, now in the storefront look. |
+| `/o/<slug>` | A host's page, in the storefront look; see Few events for how it looks with 0 to 2 events. |
 | `/admin/trending` | The admin Trending screen from the Host canvas, under **Storefront** in the admin menu. |
 
 How it works underneath:

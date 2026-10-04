@@ -7,6 +7,9 @@ import { DiscoverQueryDto } from './storefront.dto';
 
 const DAY = 86_400_000;
 const PER_HOST = 2; // events shown per host on the front page; "See all" opens their page
+// Phase 18b: with this many events or fewer, the front page lists them all
+// by date instead of grouping by host (docs/storefront.md, "Few events").
+const FEW = 8;
 
 // The date buttons on Discover. Banjul is on UTC all year, so days are UTC days.
 export function dateWindow(when: DiscoverQueryDto['when'], date: string | undefined, now = new Date()): { from: Date; to: Date | null } {
@@ -85,6 +88,31 @@ export class StorefrontService {
 
     // Trending stays put while browsing dates; a search shows only matches.
     const withTrending = !term && page === 1;
+    const card = (e: CardEvent) => eventCard(e, sold.get(e.id) ?? 0, now);
+
+    // Nothing on the chosen dates: what's on next, and which of the next
+    // two weeks have events.
+    let next: ReturnType<typeof eventCard>[] = [];
+    let eventDays: string[] = [];
+    if (events.length === 0 && !term && (query.when ?? 'all') !== 'all') {
+      const after = to ?? from;
+      const until = new Date(from.getTime() + 14 * DAY);
+      const [later, starts] = await Promise.all([
+        this.prisma.event.findMany({
+          where: { ...visibleWhere(now), startDate: { gt: after } },
+          orderBy: { startDate: 'asc' },
+          take: 4,
+          select: CARD_SELECT,
+        }),
+        this.prisma.event.findMany({
+          where: { ...visibleWhere(now), endDate: { gte: now }, startDate: { gte: from, lt: until } },
+          select: { startDate: true },
+          take: 500,
+        }),
+      ]);
+      next = later.map(card);
+      eventDays = [...new Set(starts.map((e) => e.startDate.toISOString().slice(0, 10)))].sort();
+    }
     return {
       when: query.when ?? 'all',
       from,
@@ -95,6 +123,10 @@ export class StorefrontService {
         total: evs.length,
         events: evs.slice(0, PER_HOST).map((e) => eventCard(e, sold.get(e.id) ?? 0, now)),
       })),
+      // A few events: all of them, by date (the page shows a list, not hosts).
+      list: page === 1 && events.length > 0 && events.length <= FEW ? events.map(card) : null,
+      next,
+      eventDays,
       totalHosts: groups.length,
       totalEvents: events.length,
       page,

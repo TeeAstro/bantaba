@@ -14,6 +14,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { MAX_ANY_ROWS, MAX_PER_ROW, NUMBERINGS, Numbering } from '../seating-rules';
+import { SHARINGS, Sharing } from '../venue-access';
 
 export class UpdateVenueDto {
   @IsOptional()
@@ -95,4 +96,25 @@ export class EventSectionDto {
   @ArrayMaxSize(MAX_ANY_ROWS * MAX_PER_ROW)
   @IsUUID('all', { each: true })
   closedSeatIds?: string[];
+}
+
+/** A section added by name, for a venue without a drawing. */
+export class NewSectionDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  name!: string;
+}
+
+/** Who can use a Bantaba venue. */
+export class VenueSharingDto {
+  /** "everyone": any organizer; "chosen": only organizerIds. */
+  @IsIn(SHARINGS)
+  sharing!: Sharing;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(500)
+  @IsUUID('all', { each: true })
+  organizerIds?: string[];
 }

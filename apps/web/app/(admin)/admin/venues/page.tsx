@@ -9,7 +9,8 @@ import { AdminVenueRow } from '@/lib/seating';
 import { Icon } from '@/components/Icon';
 import { ErrorNotice, Loading } from '@/components/ui';
 
-// Venues and their seat maps (Phase 17, docs/seating.md).
+// Venues and their seat maps (Phase 17, docs/seating.md): Bantaba's, and
+// organizers' own (Phase 18), with who can use each.
 
 export default function AdminVenuesPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function AdminVenuesPage() {
     setFormError(null);
     try {
       const v = await api<{ id: string }>('/venues', { method: 'POST', body: { name: form.name.trim(), address: form.address.trim(), city: form.city.trim() } });
-      router.push(`/admin/venues/${v.id}/drawing`);
+      router.push(`/admin/venues/${v.id}`);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Could not add the venue');
       setBusy(false);
@@ -64,7 +65,7 @@ export default function AdminVenuesPage() {
           </div>
           {formError && <div className="notice notice-error" role="alert">{formError}</div>}
           <div className="row">
-            <button className="btn" disabled={busy}>Add and upload its drawing</button>
+            <button className="btn" disabled={busy}>Add venue</button>
             <button type="button" className="btn btn-quiet" onClick={() => setAdding(false)}>Cancel</button>
           </div>
         </form>
@@ -73,16 +74,16 @@ export default function AdminVenuesPage() {
       <div className="panel table-wrap">
         <table>
           <thead>
-            <tr><th>Venue</th><th>Town</th><th className="right">Sections</th><th className="right">Seats</th><th>Drawing</th><th className="right">Coming events</th></tr>
+            <tr><th>Venue</th><th>Made by</th><th>Who can use it</th><th className="right">Sections</th><th className="right">Seats</th><th className="right">Coming events</th></tr>
           </thead>
           <tbody>
             {data.map((v) => (
               <tr key={v.id}>
-                <td><Link href={`/admin/venues/${v.id}`}>{v.name}</Link></td>
-                <td>{v.city}</td>
+                <td><Link href={`/admin/venues/${v.id}`}>{v.name}</Link><div className="small muted">{v.city}{v.hasDrawing ? '' : ' · no drawing'}</div></td>
+                <td>{v.owner ? v.owner.name : <span className="badge vm-own vm-own-bantaba">Bantaba</span>}</td>
+                <td className="muted">{v.owner ? 'Only them' : v.sharing === 'everyone' ? 'Every organizer' : `${v.sharedWith} ${v.sharedWith === 1 ? 'organizer' : 'organizers'}`}</td>
                 <td className="right num">{v.sections}</td>
                 <td className="right num">{v.seats.toLocaleString('en-GB')}</td>
-                <td>{v.hasDrawing ? 'Yes' : <Link href={`/admin/venues/${v.id}/drawing`}>Upload</Link>}</td>
                 <td className="right num">{v.upcomingEvents}</td>
               </tr>
             ))}

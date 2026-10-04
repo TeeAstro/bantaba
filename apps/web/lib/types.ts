@@ -392,11 +392,12 @@ export interface ProfileEventCard {
   priceFrom: number | null;
   // Phase 16: the storefront's price label (docs/storefront.md)
   price?: { label: string | null; kind: 'price' | 'from' | 'free' | 'soldOut' | 'ended' | 'soon' | 'none'; min: number | null; currency: string };
+  left?: number; // tickets still for sale (Phase 18b)
 }
 
 export interface PublicOrganizerProfile extends OrganizerProfile {
   preview: boolean; // not public yet: only the organizer and admins see it
-  stats: { upcomingEvents: number; pastEvents: number };
+  stats: { upcomingEvents: number; pastEvents: number; ticketsSold?: number };
   upcoming: ProfileEventCard[];
   past: ProfileEventCard[];
 }

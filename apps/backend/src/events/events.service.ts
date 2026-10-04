@@ -1,3 +1,4 @@
+import { assertCanUseVenue } from '../venues/venue-access';
 import {
   Injectable,
   ForbiddenException,
@@ -147,12 +148,10 @@ export class EventsService {
     assertSocialLinks(dto.socialLinks);
     assertRefundPolicy(dto.refundPolicy, dto.refundDaysBefore);
 
-    const [category, venue] = await Promise.all([
-      this.prisma.eventCategory.findUnique({ where: { id: dto.categoryId } }),
-      this.prisma.venue.findUnique({ where: { id: dto.venueId } }),
-    ]);
+    const category = await this.prisma.eventCategory.findUnique({ where: { id: dto.categoryId } });
     if (!category) throw new BadRequestException('categoryId does not exist');
-    if (!venue) throw new BadRequestException('venueId does not exist');
+    // Phase 18: their own venues, and Bantaba's they can use.
+    await assertCanUseVenue(this.prisma, dto.venueId, organizer.id);
 
     const slug = await this.generateUniqueSlug(dto.name);
 
@@ -216,13 +215,19 @@ export class EventsService {
       if (dto.description !== undefined) proposed.description = dto.description ?? null;
       if (dto.startDate) proposed.startDate = new Date(dto.startDate).toISOString();
       if (dto.endDate) proposed.endDate = new Date(dto.endDate).toISOString();
-      if (dto.venueId) proposed.venueId = dto.venueId;
+      if (dto.venueId) {
+        if (dto.venueId !== event.venueId) await assertCanUseVenue(this.prisma, dto.venueId, event.organizerId, user.role === UserRole.ADMIN);
+        proposed.venueId = dto.venueId;
+      }
       for (const k of ['name', 'description', 'startDate', 'endDate', 'venueId'] as const) delete immediate[k];
     } else {
       if (dto.startDate || dto.endDate) {
         assertDates(new Date(dto.startDate ?? event.startDate), new Date(dto.endDate ?? event.endDate));
       }
-      if (dto.venueId && dto.venueId !== event.venueId) await assertVenueChangeAllowed(this.prisma, eventId, dto.venueId);
+      if (dto.venueId && dto.venueId !== event.venueId) {
+        await assertVenueChangeAllowed(this.prisma, eventId, dto.venueId);
+        await assertCanUseVenue(this.prisma, dto.venueId, event.organizerId, user.role === UserRole.ADMIN);
+      }
     }
 
     // Deliberately do not regenerate the slug when `name` changes — the

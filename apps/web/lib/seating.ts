@@ -52,7 +52,10 @@ export interface EventSeating {
   sections: { id: string; key: string | null; name: string; gate: string | null; ticketTypeId: string | null; seats: number; closed: number; held: number; sold: number }[];
 }
 
-/** GET /admin/venues */
+/** Who made a venue: null = Bantaba (Phase 18). */
+export type VenueOwner = { id: string; name: string } | null;
+
+/** GET /admin/venues, GET /organizer/venues */
 export interface AdminVenueRow {
   id: string;
   name: string;
@@ -61,6 +64,13 @@ export interface AdminVenueRow {
   seats: number;
   hasDrawing: boolean;
   upcomingEvents: number;
+  owner: VenueOwner;
+  sharing: 'everyone' | 'chosen';
+  sharedWith: number;
+  // GET /organizer/venues only
+  kind?: 'yours' | 'bantaba' | 'shared';
+  svg?: string | null;
+  sectionNames?: string[];
 }
 
 export interface AdminSection {
@@ -89,6 +99,10 @@ export interface AdminVenue {
   sections: AdminSection[];
   seats: number;
   upcomingEvents: number;
+  owner: VenueOwner;
+  sharing: 'everyone' | 'chosen';
+  sharedWith: { id: string; name: string }[];
+  editable?: boolean; // organizers: false on Bantaba's venues
 }
 
 /** POST /admin/venues/:id/drawing/check */

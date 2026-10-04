@@ -6,12 +6,34 @@ sections and seats; Phase 17 added venue drawings, gates per section and
 seating per event. Designed on the "Bantaba Host screens" canvas (VenueUpload,
 VenueMap, EventSeating) and the storefront canvas (Seats).
 
-## Who manages venue layouts
+## Who manages venues
 
-Venues are shared: two organizers can run events at the same stadium. So a
-venue's drawing, sections, seats and gates are managed by **admins** (Admin →
-System → Venues). Organizers only choose, per event, what each section is sold
-as and which seats are closed for that event.
+Three kinds of venue (Phase 18):
+
+- **Bantaba's venues** (`Venue.ownerId` null), made by admins (Admin →
+  System → Venues), e.g. Independence Stadium. **Who can use it**, on the
+  venue page: **Every organizer** (`sharing = "everyone"`, the default) or
+  **Chosen organizers** (`"chosen"`, the organizers in `venue_shares`).
+  Organizers can view the map and sell its sections; only admins change the
+  layout. Taking an organizer off keeps their events already there; they
+  just can't hold new ones.
+- **An organizer's own venues** (`ownerId` = their organizer), made in
+  Bantaba Host → **Venues**. Private: only they (and admins) see them, hold
+  events there and change them, with the same editor as admins. They can't
+  be shared.
+- Admins can open and fix any venue.
+
+Organizers can map a venue without drawing it: they add sections by name
+("Tables", "Dance floor") and set each one's seats; a drawing can be
+uploaded later (sections are matched to it by name). Sections not in a
+drawing can be renamed or removed; one with tickets, or on sale for an event
+that hasn't ended, can't be removed.
+
+`GET /venues` (the venue list on the event form) only returns venues the
+caller can use: for an organizer their own and Bantaba's they can use, for
+admins all, for visitors Bantaba's open ones. Creating an event, or moving
+one, at a venue the organizer can't use is refused ("You can't use this
+venue. Ask Bantaba to share it with you.").
 
 ## Venue drawings
 
@@ -196,7 +218,16 @@ event's ticket types by price, highest first (`tone` in the replies,
 
 | Endpoint | Who | What |
 |---|---|---|
-| `GET /admin/venues` | admin | Venues with sections, seats, drawing yes/no, coming events |
+| `GET /admin/venues` | admin | Venues with sections, seats, drawing yes/no, coming events, `owner` (null = Bantaba), `sharing`, `sharedWith` |
+| `POST /admin/venues` | admin | New Bantaba venue |
+| `PUT /admin/venues/:id/sharing` | admin | `{ sharing: "everyone" \| "chosen", organizerIds }`, Bantaba venues only |
+| `POST /admin/venues/:id/sections` | admin | Add a section by name |
+| `PATCH`, `DELETE /admin/venue-sections/:id` | admin | Rename or remove a section that isn't in the drawing |
+| `GET /organizer/venues` | organizer | Their own venues and Bantaba's they can use (`kind`: yours, bantaba, shared) |
+| `POST /organizer/venues` | organizer | New venue of their own |
+| `GET /organizer/venues/:id` | organizer | As the admin detail, with `editable` (false on Bantaba's) |
+| `PATCH /organizer/venues/:id`, `POST …/gates`, `POST …/drawing/check`, `PUT …/drawing`, `POST …/sections` | organizer | Their own venues only (403 on Bantaba's) |
+| `PUT`, `PATCH`, `DELETE /organizer/venue-sections/:id` | organizer | Seats, rename, remove, on their own venues |
 | `POST /venues` | admin | New venue |
 | `GET /admin/venues/:id` | admin | Drawing, gates, every section's grid |
 | `PATCH /admin/venues/:id` | admin | Name, address, town, `frontLabel` |
@@ -212,11 +243,15 @@ event's ticket types by price, highest first (`tone` in the replies,
 
 \* Published events; drafts only for their owner and admins (404 otherwise).
 
-Every admin change is in the audit log (`venue_drawing_uploaded`,
-`venue_section_layout_changed`, `venue_gate_added`, `venue_updated`).
+Every change is in the audit log (`venue_created`, `venue_drawing_uploaded`,
+`venue_section_layout_changed`, `venue_section_added`, `venue_section_renamed`,
+`venue_section_removed`, `venue_gate_added`, `venue_updated`,
+`venue_sharing_changed`).
 
 ## Testing
 
 `apps/backend/seating-test.js` (backend running with `RATE_LIMITS=off`, seed
 data loaded) checks drawings, cleaning, re-uploads, seats, gates, seating per
 event, buying seats and what can't change once seats are sold.
+`apps/backend/phase18-test.js` checks organizers' own venues, sharing and
+templates (docs/templates.md).

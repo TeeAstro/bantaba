@@ -49,10 +49,12 @@ export class OrganizerProfileService {
       category: { select: { name: true, slug: true } },
       ticketTypes: { select: { price: true, currency: true, quantityTotal: true, quantitySold: true, isActive: true, salesStart: true, salesEnd: true } },
     } satisfies Prisma.EventSelect;
-    const [upcoming, past, pastCount] = await Promise.all([
+    const [upcoming, past, pastCount, sold] = await Promise.all([
       this.prisma.event.findMany({ where: { organizerId: o.id, status: { in: SHOWN }, endDate: { gte: now } }, orderBy: { startDate: 'asc' }, take: 50, select: eventSelect }),
       this.prisma.event.findMany({ where: { organizerId: o.id, status: { in: PAST_SHOWN }, endDate: { lt: now } }, orderBy: { startDate: 'desc' }, take: 6, select: eventSelect }),
       this.prisma.event.count({ where: { organizerId: o.id, status: { in: PAST_SHOWN }, endDate: { lt: now } } }),
+      // Phase 18b: tickets sold over all their events, for the host page's stats line
+      this.prisma.ticket.count({ where: { ticketType: { event: { organizerId: o.id } }, status: { in: ['ACTIVE', 'USED', 'TRANSFERRED'] } } }),
     ]);
     const card = (e: (typeof upcoming)[number]) => ({
       id: e.id, slug: e.slug, name: e.name, startDate: e.startDate, endDate: e.endDate, posterUrl: e.posterUrl, bannerUrl: e.bannerUrl,
@@ -60,11 +62,13 @@ export class OrganizerProfileService {
       priceFrom: e.ticketTypes.length ? Math.min(...e.ticketTypes.map((t) => t.price)) : null,
       // Phase 16: the storefront's price label (docs/storefront.md)
       price: (({ label, kind, min, currency }) => ({ label, kind, min, currency }))(priceLabel(e.ticketTypes, now)),
+      // Tickets still for sale, so the page can say "Few left" (Phase 18b)
+      left: priceLabel(e.ticketTypes, now).left,
     });
     return {
       ...this.presentPublic(o),
       preview: !approved,
-      stats: { upcomingEvents: upcoming.length, pastEvents: pastCount },
+      stats: { upcomingEvents: upcoming.length, pastEvents: pastCount, ticketsSold: sold },
       upcoming: upcoming.map(card),
       past: past.map(card),
     };
