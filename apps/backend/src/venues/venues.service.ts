@@ -137,14 +137,16 @@ export class VenuesService {
     const section = await this.prisma.venueSection.findUnique({ where: { id: sectionId } });
     if (!section) throw new NotFoundException('Section not found');
 
-    const ids = [...new Set(dto.seatIds)];
-    const found = await this.prisma.seat.count({ where: { id: { in: ids }, sectionId } });
-    if (found !== ids.length) {
-      throw new BadRequestException('Every seatId must belong to this section');
+    const ids = dto.seatIds ? [...new Set(dto.seatIds)] : null;
+    if (ids) {
+      const found = await this.prisma.seat.count({ where: { id: { in: ids }, sectionId } });
+      if (found !== ids.length) {
+        throw new BadRequestException('Every seatId must belong to this section');
+      }
     }
 
     const result = await this.prisma.seat.updateMany({
-      where: { id: { in: ids }, sectionId },
+      where: { sectionId, ...(ids ? { id: { in: ids } } : {}) },
       data: { isBlocked: dto.isBlocked },
     });
     // Seated ticket types sell exactly their open seats (Phase 17).

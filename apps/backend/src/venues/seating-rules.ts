@@ -5,7 +5,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
 // Shared seating rules (Phase 17, docs/seating.md).
 
 export const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-export const MAX_PER_ROW = 100;
+export const MAX_PER_ROW = 500; // long stadium terraces run to 380
 
 // How a section's seats are numbered, chosen per section by an admin:
 //   letters: rows A, B, C…, each row from 1: A1–A30, B1–B20.
@@ -25,8 +25,12 @@ export const MAX_ANY_ROWS = Math.max(...Object.values(MAX_ROWS));
 
 const HIDDEN_ROW = /^#(\d+)$/;
 
+// A section's rows needn't start at A: Independence Stadium's 2A has rows
+// A–C and 2B carries on D–G. `first` is the first row's letter, from 1
+// (A = 1, D = 4); rows r below are counted from it.
+
 /** Row r (from 1) as stored: "C", or "#3" when seats have no row letters. */
-export const rowName = (numbering: Numbering, r: number) => (numbering === 'seats' ? `#${r}` : ROW_LETTERS[r - 1]);
+export const rowName = (numbering: Numbering, r: number, first = 1) => (numbering === 'seats' ? `#${r}` : ROW_LETTERS[first - 1 + r - 1]);
 /** Which row (from 1) a stored row label is; 0 = not a grid row. */
 export function rowIndex(row: string) {
   const hidden = HIDDEN_ROW.exec(row);
@@ -35,7 +39,7 @@ export function rowIndex(row: string) {
 }
 
 /** The seats of a grid: rows × places, minus the places taken out ("r-c"). */
-export function buildSeats(numbering: Numbering, rows: number, perRow: number, removed: Set<string>) {
+export function buildSeats(numbering: Numbering, rows: number, perRow: number, removed: Set<string>, first = 1) {
   const out: { r: number; row: string; number: string; place: number }[] = [];
   let n = 0;
   for (let r = 1; r <= rows; r++) {
@@ -43,7 +47,7 @@ export function buildSeats(numbering: Numbering, rows: number, perRow: number, r
       if (removed.has(`${r}-${c}`)) continue;
       n++;
       const number = numbering === 'running' ? n : numbering === 'seats' ? (r - 1) * perRow + c : c;
-      out.push({ r, row: rowName(numbering, r), number: String(number), place: c });
+      out.push({ r, row: rowName(numbering, r, first), number: String(number), place: c });
     }
   }
   return out;
@@ -70,13 +74,17 @@ export function layoutOf(seats: SeatPos[]) {
   const places = seats.map(placeOf);
   const ok = places.every((c) => Number.isInteger(c) && c >= 1);
   const perRow = ok && seats.length ? Math.max(...places) : 0;
-  // Grid rows (A–Z, or #1, #2…) sit at their index, so a row with every place taken out stays a gap.
-  const gridRows = seats.every((s) => rowIndex(s.row) > 0);
+  // Grid rows (A–Z, or #1, #2…) sit at their index from the first row, so a
+  // row with every place taken out stays a gap.
+  const idx = seats.map((s) => rowIndex(s.row));
+  const gridRows = idx.every((r) => r > 0);
+  const lettered = gridRows && seats.length > 0 && seats.every((s) => !HIDDEN_ROW.test(s.row));
+  const first = lettered ? Math.min(...idx) : 1;
   const labels = gridRows ? [] : [...new Set(seats.map((s) => s.row))].sort(naturalCompare);
   const custom = !gridRows || !ok || perRow > MAX_PER_ROW;
-  const pos = seats.map((s, i) => ({ r: gridRows ? rowIndex(s.row) : labels.indexOf(s.row) + 1, c: Number.isInteger(places[i]) ? places[i] : 0 }));
+  const pos = seats.map((s, i) => ({ r: gridRows ? idx[i] - first + 1 : labels.indexOf(s.row) + 1, c: Number.isInteger(places[i]) ? places[i] : 0 }));
   const rows = pos.reduce((m, p) => Math.max(m, p.r), 0);
-  return { rows, perRow, custom, pos };
+  return { rows, perRow, custom, pos, first };
 }
 
 /**
@@ -90,7 +98,7 @@ export function gridOf(seats: SeatPos[], numbering: string) {
   if (!l.custom) {
     for (let r = 1; r <= l.rows; r++) for (let c = 1; c <= l.perRow; c++) if (!have.has(`${r}-${c}`)) removed.push(`${r}-${c}`);
   }
-  return { rows: l.rows, perRow: l.perRow, numbering: (NUMBERINGS.includes(numbering as Numbering) ? numbering : 'letters') as Numbering, removed, custom: l.custom };
+  return { rows: l.rows, firstRow: ROW_LETTERS[l.first - 1], perRow: l.perRow, numbering: (NUMBERINGS.includes(numbering as Numbering) ? numbering : 'letters') as Numbering, removed, custom: l.custom };
 }
 
 /**

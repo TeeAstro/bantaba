@@ -95,11 +95,13 @@ export class UpdateGateDto {
 }
 
 export class SetSeatsBlockedDto {
+  /** The seats to block or unblock. Leave out for every seat in the section (a reserved section). */
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(500)
   @IsUUID('all', { each: true })
-  seatIds!: string[];
+  seatIds?: string[];
 
   @IsBoolean()
   isBlocked!: boolean;

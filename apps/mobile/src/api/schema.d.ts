@@ -2795,7 +2795,8 @@ export interface components {
             accessZoneId?: string | null;
         };
         SetSeatsBlockedDto: {
-            seatIds: string[];
+            /** @description The seats to block or unblock. Leave out for every seat in the section (a reserved section). */
+            seatIds?: string[];
             isBlocked: boolean;
         };
         UpdateVenueDto: {
@@ -2817,6 +2818,8 @@ export interface components {
              */
             numbering?: "letters" | "running" | "seats";
             perRow: number;
+            /** @description The first row's letter, when rows don't start at A ("D" for rows D–G). Ignored with "seats". */
+            firstRow?: string;
             /** @description Places with no seat, as "row-place" counted from 1: ["1-12", "2-12"] for an aisle. */
             removed: string[];
             /** @description The gate its ticket holders go in by. null = none; leave out to keep it. */

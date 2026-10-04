@@ -6953,6 +6953,7 @@
         "type": "object",
         "properties": {
           "seatIds": {
+            "description": "The seats to block or unblock. Leave out for every seat in the section (a reserved section).",
             "type": "array",
             "items": {
               "type": "string"
@@ -6963,7 +6964,6 @@
           }
         },
         "required": [
-          "seatIds",
           "isBlocked"
         ]
       },
@@ -7025,7 +7025,12 @@
           "perRow": {
             "type": "number",
             "minimum": 1,
-            "maximum": 100
+            "maximum": 500
+          },
+          "firstRow": {
+            "type": "string",
+            "description": "The first row's letter, when rows don't start at A (\"D\" for rows D–G). Ignored with \"seats\".",
+            "pattern": "/^[A-Z]$/"
           },
           "removed": {
             "description": "Places with no seat, as \"row-place\" counted from 1: [\"1-12\", \"2-12\"] for an aisle.",

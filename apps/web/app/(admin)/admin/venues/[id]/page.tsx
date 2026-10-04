@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { useApi } from '@/lib/hooks';
-import { AdminSection, AdminVenue, FRONT_LABELS, gridNumbers, MAP, MAX_ROWS, Numbering, ROW_LETTERS } from '@/lib/seating';
+import { AdminSection, AdminVenue, FRONT_LABELS, gridNumbers, MAP, MAX_PER_ROW, MAX_ROWS, Numbering, ROW_LETTERS } from '@/lib/seating';
 import { Icon } from '@/components/Icon';
 import { ErrorNotice, Loading } from '@/components/ui';
 import { SectionLook, VenueMap } from '@/components/VenueMap';
@@ -18,6 +18,7 @@ import { BackLink } from '@/components/BackLink';
 
 interface Edit {
   rows: string;
+  firstRow: string;
   perRow: string;
   numbering: Numbering;
   removed: string[];
@@ -25,7 +26,7 @@ interface Edit {
 }
 
 const fmt = (n: number) => n.toLocaleString('en-GB');
-const toEdit = (s: AdminSection): Edit => ({ rows: s.rows ? String(s.rows) : '', perRow: s.perRow ? String(s.perRow) : '', numbering: s.numbering ?? 'letters', removed: s.removed, gateId: s.gateId ?? '' });
+const toEdit = (s: AdminSection): Edit => ({ rows: s.rows ? String(s.rows) : '', firstRow: s.firstRow ?? 'A', perRow: s.perRow ? String(s.perRow) : '', numbering: s.numbering ?? 'letters', removed: s.removed, gateId: s.gateId ?? '' });
 const uploaded = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 export default function AdminVenuePage() {
@@ -75,8 +76,9 @@ export default function AdminVenuePage() {
   const needCount = venue.sections.filter((s) => s.seats === 0).length;
 
   const numbering = edit?.numbering ?? 'letters';
-  const rows = Math.min(MAX_ROWS[numbering], Math.max(0, parseInt(edit?.rows ?? '', 10) || 0));
-  const perRow = Math.min(100, Math.max(0, parseInt(edit?.perRow ?? '', 10) || 0));
+  const first = numbering === 'seats' ? 0 : Math.max(0, ROW_LETTERS.indexOf(edit?.firstRow ?? 'A'));
+  const rows = Math.min(MAX_ROWS[numbering] - first, Math.max(0, parseInt(edit?.rows ?? '', 10) || 0));
+  const perRow = Math.min(MAX_PER_ROW, Math.max(0, parseInt(edit?.perRow ?? '', 10) || 0));
   // Taken-out places are "row-place" from 1, however the seats are numbered.
   const inRange = (k: string) => {
     const [r, c] = k.split('-').map(Number);
@@ -100,9 +102,9 @@ export default function AdminVenuePage() {
   // Row r gets `value` seats: its places run on until that many seats,
   // skipping the gaps (aisles) it already has.
   const setRowSeats = (r: number, value: string) => {
-    const want = Math.min(100, Math.max(0, parseInt(value, 10) || 0));
+    const want = Math.min(MAX_PER_ROW, Math.max(0, parseInt(value, 10) || 0));
     let len = 0;
-    for (let n = 0; n < want && len < 100; ) {
+    for (let n = 0; n < want && len < MAX_PER_ROW; ) {
       len++;
       if (!(len <= perRow && len < rowLen(r) && removed.includes(`${r}-${len}`))) n++;
     }
@@ -122,7 +124,7 @@ export default function AdminVenuePage() {
   const numbersOnly = numbering === 'seats';
   const numbers = gridNumbers(numbering, rows, perRow, new Set(removed));
   const gridRows = Array.from({ length: rows }, (_, ri) => {
-    const letter = ROW_LETTERS[ri];
+    const letter = ROW_LETTERS[first + ri];
     const inRow = Array.from({ length: perRow }, (_, i) => numbers.get(`${ri + 1}-${i + 1}`)).filter((n): n is number => n !== undefined);
     const span = inRow.length === 0 ? '' : inRow.length === 1 ? ` ${inRow[0]}` : ` ${inRow[0]}–${inRow[inRow.length - 1]}`;
     return {
@@ -132,7 +134,7 @@ export default function AdminVenuePage() {
           className="sg-len"
           type="number"
           min={0}
-          max={100}
+          max={MAX_PER_ROW}
           value={seatsIn(ri + 1)}
           aria-label={`Seats in ${numbersOnly ? `row ${ri + 1}` : `row ${letter}`}`}
           title="Seats in this row"
@@ -158,7 +160,7 @@ export default function AdminVenuePage() {
     setBusy(true);
     setNote(null);
     try {
-      const s = await api<AdminSection>(`/admin/venue-sections/${sel.id}`, { method: 'PUT', body: { rows, perRow, numbering, removed, gateId: edit.gateId || null } });
+      const s = await api<AdminSection>(`/admin/venue-sections/${sel.id}`, { method: 'PUT', body: { rows, firstRow: ROW_LETTERS[first], perRow, numbering, removed, gateId: edit.gateId || null } });
       const sections = venue!.sections.map((x) => (x.id === s.id ? s : x));
       setVenue({ ...venue!, sections, seats: sections.reduce((n, x) => n + x.seats, 0) });
       setEdit(toEdit(s));
@@ -295,7 +297,14 @@ export default function AdminVenuePage() {
               <div className="vm-fields">
                 <div className="field">
                   <label htmlFor="s-rows">Rows</label>
-                  <input id="s-rows" type="number" min={1} max={MAX_ROWS[numbering]} placeholder="e.g. 14" value={edit.rows} onChange={(e) => setEdit({ ...edit, rows: e.target.value })} />
+                  <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                    <input id="s-rows" type="number" min={1} max={MAX_ROWS[numbering] - first} placeholder="e.g. 14" value={edit.rows} onChange={(e) => setEdit({ ...edit, rows: e.target.value })} />
+                    {numbering !== 'seats' && (
+                      <select aria-label="First row" title="First row" value={edit.firstRow} onChange={(e) => setEdit({ ...edit, firstRow: e.target.value })} style={{ width: 'auto', flexShrink: 0 }}>
+                        {ROW_LETTERS.map((l) => <option key={l} value={l}>from {l}</option>)}
+                      </select>
+                    )}
+                  </div>
                 </div>
                 <div className="field">
                   <label htmlFor="s-names">Seat numbers</label>
@@ -307,7 +316,7 @@ export default function AdminVenuePage() {
                 </div>
                 <div className="field">
                   <label htmlFor="s-per">Seats per row</label>
-                  <input id="s-per" type="number" min={1} max={100} placeholder="e.g. 24" value={edit.perRow} onChange={(e) => setEdit({ ...edit, perRow: e.target.value })} />
+                  <input id="s-per" type="number" min={1} max={MAX_PER_ROW} placeholder="e.g. 24" value={edit.perRow} onChange={(e) => setEdit({ ...edit, perRow: e.target.value })} />
                 </div>
                 <div className="field">
                   <label htmlFor="s-gate">Gate</label>
@@ -332,7 +341,7 @@ export default function AdminVenuePage() {
               </div>
               {rows > 0 && perRow > 0 && (
                 <>
-                  <SeatGrid front={venue.frontLabel} rows={gridRows} cols={perRow} hideCols={numbering !== 'letters'} endWidth={46} />
+                  <SeatGrid front={venue.frontLabel} rows={gridRows} cols={perRow} hideCols={numbering !== 'letters'} endWidth={52} />
                   <div className="vm-legend">
                     <span><i className="vm-sw" style={{ background: '#dbeafe', border: '1px solid #93c5fd' }} />Seat</span>
                     <span><i className="vm-sw" style={{ border: '1px dashed #cbd5e1' }} />Taken out (tap or drag)</span>

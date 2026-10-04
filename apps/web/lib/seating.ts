@@ -72,6 +72,7 @@ export interface AdminSection {
   rows: number;
   perRow: number;
   numbering: Numbering;
+  firstRow: string; // "A", or "D" when the rows start at D
   removed: string[]; // places with no seat, "row-place" from 1: "3-12"
   custom: boolean;
 }
@@ -101,6 +102,7 @@ export interface DrawingCheck {
 }
 
 export const ROW_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+export const MAX_PER_ROW = 500;
 
 // How a section's seats are numbered, chosen per section by an admin:
 // "letters" = rows A, B, C…, each row from 1: A1–A30, B1–B20;

@@ -58,6 +58,11 @@ export class SectionLayoutDto {
   @Max(MAX_PER_ROW)
   perRow!: number;
 
+  /** The first row's letter, when rows don't start at A ("D" for rows D–G). Ignored with "seats". */
+  @IsOptional()
+  @Matches(/^[A-Z]$/, { message: 'firstRow is one letter, A to Z' })
+  firstRow?: string;
+
   /** Places with no seat, as "row-place" counted from 1: ["1-12", "2-12"] for an aisle. */
   @IsArray()
   @ArrayMaxSize(MAX_ANY_ROWS * MAX_PER_ROW)

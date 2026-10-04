@@ -3,7 +3,7 @@ import { EventStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVenueGateDto, SectionLayoutDto, UpdateVenueDto } from './dto/seating.dto';
 import { gateFromName, MAX_DRAWING_BYTES, readDrawing, sectionKey } from './venue-drawing';
-import { buildSeats, gridOf, MAX_ROWS, naturalCompare, recomputeSeatedTotals, rowIndex, seatLabel } from './seating-rules';
+import { buildSeats, gridOf, layoutOf, MAX_ROWS, naturalCompare, recomputeSeatedTotals, ROW_LETTERS, seatLabel } from './seating-rules';
 
 type Actor = { id: string; role: UserRole };
 type Tx = Prisma.TransactionClient;
@@ -246,11 +246,15 @@ export class AdminVenuesService {
     }
 
     const numbering = dto.numbering ?? 'letters';
+    const first = numbering === 'seats' ? 1 : ROW_LETTERS.indexOf(dto.firstRow ?? 'A') + 1;
     if (dto.rows > MAX_ROWS[numbering]) {
       throw new BadRequestException(`Rows A to Z make ${MAX_ROWS.letters} at most. Number the seats 1, 2, 3… for more.`);
     }
+    if (numbering !== 'seats' && first - 1 + dto.rows > ROW_LETTERS.length) {
+      throw new BadRequestException(`${dto.rows} rows from ${dto.firstRow} go past Z.`);
+    }
     // Seats are matched by row (from 1) and place, so switching numbering keeps them.
-    const want = new Map(buildSeats(numbering, dto.rows, dto.perRow, new Set(dto.removed)).map((s) => [`${s.r}-${s.place}`, s]));
+    const want = new Map(buildSeats(numbering, dto.rows, dto.perRow, new Set(dto.removed), first).map((s) => [`${s.r}-${s.place}`, s]));
     if (want.size === 0) throw new BadRequestException('A section needs at least one seat');
 
     const refuse = (used: { row: string; number: string }[], why: (one: boolean) => string) => {
@@ -271,8 +275,11 @@ export class AdminVenuesService {
         // Each seat's spot in the grid; a seat made before Phase 17 sits at its number.
         const kept = new Map<string, (typeof seats)[number]>();
         const drop: typeof seats = [];
-        for (const s of seats) {
-          const k = `${rowIndex(s.row)}-${s.place ?? s.number}`;
+        // Matched by row counted from the section's first row, so moving
+        // the rows (A–C to D–F) renames the same seats.
+        const now = layoutOf(seats);
+        for (const [i, s] of seats.entries()) {
+          const k = `${now.custom ? 0 : now.pos[i].r}-${s.place ?? s.number}`;
           if (want.has(k) && !kept.has(k)) kept.set(k, s);
           else drop.push(s);
         }

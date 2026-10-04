@@ -109,6 +109,14 @@ const without = (svg, id) => svg.replace(new RegExp(`\\s*<path id="${id}"[^>]*/>
       backToLetters.status === 200 && at(letSeats6b, 'B', 2)?.id === at(numSeats, '#2', 14)?.id && tallLetters.status === 400 && tallSeats.status === 200 && tallSeats.data.seats === 160,
     `${num.status}, ${num.data?.seats} seats, ${num.data?.numbering}; letters ${backToLetters.status}; 40 rows ${tallLetters.status}/${tallSeats.status}`);
 
+  // D4 — rows that don't start at A, rows of their own length, 380-seat rows
+  const fromD = await lay('Section 2B', { rows: 2, firstRow: 'D', perRow: 380, removed: Array.from({ length: 140 }, (_, i) => `2-${241 + i}`) });
+  const seats2b = await prisma.seat.findMany({ where: { sectionId: s('Section 2B').id }, select: { row: true } });
+  const pastZ = await lay('Section 2B', { rows: 4, firstRow: 'Y', perRow: 4, removed: [] });
+  check('D4', '2B rows D (380 seats) and E (240): stored as D and E, read back as first row D; 4 rows from Y refused',
+    fromD.status === 200 && fromD.data.seats === 620 && fromD.data.firstRow === 'D' && fromD.data.rows === 2 && [...new Set(seats2b.map((x) => x.row))].sort().join() === 'D,E' && pastZ.status === 400,
+    `${fromD.status} ${fromD.data?.seats} seats from ${fromD.data?.firstRow} "${fromD.data?.message ?? ''}"; past Z ${pastZ.status}`);
+
   // E — an event at the venue; the organizer sees its seating
   const ev = (await api('POST', '/events', organizer, { name: `Cup Final ${tag}`, categoryId: cat, venueId: venue.id, startDate: iso(72), endDate: iso(76) })).data;
   const tt = async (name, price, quantityTotal) => (await api('POST', '/ticket-types', organizer, { eventId: ev.id, name, price, quantityTotal })).data;

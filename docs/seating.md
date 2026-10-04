@@ -65,7 +65,9 @@ Keep it in the drawing."). Sections made before drawings existed (no
 ## Seats
 
 On the venue page an admin taps a section and sets **rows** (A to Z, up to
-26; up to 60 with **1, 2, 3…**), **seats per row** (1 to 100), the places taken out (aisles, pillars,
+26; up to 60 with **1, 2, 3…**) and the **first row's letter** (rows needn't
+start at A: 2A has rows A–C and 2B carries on D–G), **seats per row** (1 to
+500), the places taken out (aisles, pillars,
 the end of a short row), which show as gaps, and the **seat numbers**:
 
 - **Each row from 1** (the default): A1–A30, B1–B20. A place taken out
@@ -110,8 +112,25 @@ The `20261004120000_seat_numbering` migration adds `venue_sections.numbering`
 and `seats.place`, and marks sections already saved with **1, 2, 3…** (rows
 `#1`, `#2`…) as `seats`, working out each seat's place from its number.
 
+### Independence Stadium
+
+`apps/backend/scripts/independence-seats.js` loads the stadium's seat counts
+(the real counts, 4 Oct 2026) into a venue that has the stadium drawing,
+through the admin API, so it can be run again safely:
+
+```
+node scripts/independence-seats.js "Independence Stadium"
+```
+
+Lettered sections get their rows as given (5A: I 330, J 380), each row from
+1. Sections given only as a total (1A, 1B, the VIP stands) are laid out as
+**1, 2, 3…** in even rows that make that total (1A: 9 rows of 94), to be
+corrected on the venue page. VIP Blue, VVIP 1 and VVIP 2 are reserved: all
+their seats are blocked at the venue, so no event sells them
+(`--unreserve` opens them again).
+
 `Seat.isBlocked` (a broken seat, a camera position) still exists for
-venue-wide blocks (`POST /sections/:id/seats/blocked`).
+venue-wide blocks (`POST /sections/:id/seats/blocked`; leave out `seatIds` to block or open a whole section).
 
 **What the seats face.** `Venue.frontLabel` ("Stage", "Pitch"…) is shown
 above every seat grid, so buyers know which way row A is. Set on the venue
@@ -184,7 +203,7 @@ event's ticket types by price, highest first (`tone` in the replies,
 | `POST /admin/venues/:id/gates` | admin | Add a gate |
 | `POST /admin/venues/:id/drawing/check` | admin | Read an SVG (multipart `file`) without saving |
 | `PUT /admin/venues/:id/drawing` | admin | Save an SVG as the venue's drawing |
-| `PUT /admin/venue-sections/:id` | admin | `{ rows, perRow, numbering: "letters" \| "running" \| "seats", removed: ["2-21"], gateId }` |
+| `PUT /admin/venue-sections/:id` | admin | `{ rows, firstRow: "D", perRow, numbering: "letters" \| "running" \| "seats", removed: ["2-21"], gateId }` |
 | `GET /events/:id/seating` | owner, admin | Sections with what they're sold as and counts; ticket types |
 | `GET /events/:id/seating/sections/:sectionId` | owner, admin | Seats row by row (`row`, `label` "B 31–50" when counting on; each seat's `label` "B31" and `col` = place), closed seats as `CLOSED` |
 | `PUT /events/:id/seating/sections/:sectionId` | owner, admin | `{ ticketTypeId \| null, closedSeatIds? }` |

@@ -29,7 +29,8 @@ export function SeatGrid({
   endWidth = 0,
 }: {
   front: string;
-  // `end`: something after the row's seats, e.g. the admin's row size box.
+  // `end`: something beside the row label, e.g. the admin's row size box
+  // (before the seats, so it stays in view when a long row scrolls).
   rows: { label: string; cells: GridCell[]; end?: ReactNode }[];
   cols: number;
   hideCols?: boolean;
@@ -100,14 +101,17 @@ export function SeatGrid({
         {!hideCols && (
           <div className="sg-row" aria-hidden="true">
             <span className="sg-label" style={{ width: labelWidth }} />
+            {endWidth > 0 && <span className="sg-end" style={{ width: endWidth }} />}
             {Array.from({ length: cols }, (_, i) => (
-              <span key={i} className="sg-col">{i + 1}</span>
+              // Small seats: only every 10th number fits.
+              <span key={i} className={`sg-col${cell < 14 ? ' sg-col-tens' : ''}`}>{cell >= 14 || (i + 1) % 10 === 0 ? i + 1 : ''}</span>
             ))}
           </div>
         )}
         {rows.map((row, ri) => (
           <div key={ri} className="sg-row">
             <span className="sg-label" style={{ width: labelWidth }}>{row.label}</span>
+            {endWidth > 0 && <span className="sg-end" style={{ width: endWidth }}>{row.end}</span>}
             {Array.from({ length: cols }, (_, i) => {
               const c = cells.get(`${ri}:${i + 1}`);
               if (!c) return <span key={i} className="sg-gap" />;
@@ -128,7 +132,6 @@ export function SeatGrid({
                 </button>
               );
             })}
-            {row.end && <span className="sg-end" style={{ width: endWidth }}>{row.end}</span>}
           </div>
         ))}
       </div>
