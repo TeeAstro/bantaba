@@ -256,6 +256,9 @@ model User {
   email             String     @unique
   phone             String?    @unique
   passwordHash      String
+  // Phase 18d: when the person chose a password. Null for accounts made by
+  // guest checkout or an email code, which have a random one nobody knows.
+  passwordSetAt     DateTime?
   role              UserRole   @default(CUSTOMER)
   fullName          String?
   profilePictureUrl String?

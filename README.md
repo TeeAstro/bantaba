@@ -1097,6 +1097,49 @@ web app. No migration.
 | 7 | Stats | A host with past events and sales | "Events · Tickets sold · Since" by the name |
 | 8 | Computer | The same pages at full width | Wide big card; About and Contact in the right column |
 
+## Sign in from the storefront header (Phase 18c)
+
+Every storefront page now has **Sign in** in the header, and a signed-in
+person gets their initials with a menu (Sign out, and My tickets or Bantaba
+Host). Details: `docs/storefront.md` ("Signing in from the header"). No
+migration; restart the web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Signed out | Open Discover or an event page | **Sign in** next to My tickets; it signs in and returns to the same page |
+| 2 | Buyer | Sign in as a buyer, tap the initials | Name, email, My tickets, Sign out |
+| 3 | Host account | Sign in as organizer and open `/` | **Bantaba Host** goes to the dashboard; the menu has Open Bantaba Host and Sign out |
+| 4 | Sign out | Menu → **Sign out** | Back on Discover, signed out, **Sign in** shown |
+
+## Buyer Profile (Phase 18d)
+
+Buyers get a **Profile** page from the account menu: name and phone, setting
+or changing a password (email codes keep working), and their orders.
+Details: `docs/storefront.md` ("Profile").
+
+**After pulling:** `npx prisma migrate dev` in `apps/backend` (new migration
+`20261004230000_password_set_at`), then `npm run build` and restart the
+backend and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Open it | Sign in as a buyer → initials → **Profile** | Name and email at the top; Your details, Signing in, Orders |
+| 2 | Details | Change the name and phone → **Save** | "Details saved."; the header initials change |
+| 3 | Phone in use | Enter another account's phone → **Save** | "That phone number is on another account." |
+| 4 | Set a password | A buyer who signed in with a code → **Set a password** | "Password saved…"; they can now sign in with it too |
+| 5 | Change it | **Change** → current and new password | Wrong current password is refused; the right one saves |
+| 6 | Orders | A buyer with orders | Each with tickets, date, total and Paid / Refunded |
+| 7 | Automated | `node profile-test.js` in `apps/backend` | `8/8 passed` |
+
+## The logo (5 October)
+
+The new logo is the name as a ticket: "banta" with the last "ba" in a
+torn-off stub. It's on every web screen, the emails, the browser tab icon
+and the Bantaba Host phone app icon. Details: `docs/brand.md` ("Logo").
+No migration; rebuild the backend (for the emails) and restart both apps.
+The phone app shows its new icon after the next build (`npx expo start -c`
+in Expo Go only shows the app, not its icon).
+
 ## Project structure
 
 ```

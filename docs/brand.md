@@ -7,7 +7,29 @@ A bantaba is the shaded meeting place in a Mandinka village, where people gather
 | **Bantaba** | Ticket buyers | "Night out": plum, coral pink, spotlight yellow | Emails (now); the storefront (next) |
 | **Bantaba Host** | Organizers, gate staff, admins | "River and flag": river blue, ink, mangrove green | The web app (`/organizer`, `/admin`, `/scan`, sign-in) and the staff mobile app |
 
-The design concepts are on the "Bantaba brand concept" canvas: wordmark, event page, Host dashboard, event colour themes and seat selection. **The logo is concept artwork**: it's due to be reworked, and it lives in one component (`apps/web/components/Logo.tsx`) so the final version is a one-file swap.
+The design concepts are on the "Bantaba brand concept" canvas: wordmark, event page, Host dashboard, event colour themes, seat selection, and the logo drafts.
+
+## Logo
+
+**The name is a ticket** (chosen 5 Oct 2026, draft G4 on the canvas): "banta" and then the last "ba" in a stub with a notch where it tore off. No separate picture.
+
+| Where | "banta" | Stub | "ba" in the stub |
+|---|---|---|---|
+| Bantaba on plum (storefront header) | white | spotlight yellow | plum |
+| Bantaba on white (emails, light pages) | plum | plum | white |
+| Bantaba Host on ink (sidebar, scanner) | white | sky `#60A5FA` | ink |
+| Bantaba Host on white (sign-in) | ink | river blue | white |
+
+- **"host"** follows in Bricolage 500, sky on dark and river blue on light.
+- **App and browser icon:** the stub alone, upright, with "ba" and a dotted tear line between two notches. Buyers: a yellow stub (on plum for the iPhone home screen). Bantaba Host app: a sky stub on ink.
+- **Coral stays for buying.** The logo never uses it.
+- **Don't** tilt the stub, outline it, put the logo on a busy photo, or set "bantaba" in another font.
+- **Files:**
+  - `apps/web/components/Logo.tsx`: `<Logo>` and `<Wordmark>`. The letters are drawn as shapes, so the logo looks right before the font loads.
+  - `apps/web/app/icon.svg` and `apple-icon.png`: browser tab and iPhone bookmark.
+  - `apps/mobile/assets/*`: the Bantaba Host app icons.
+  - `scripts/brand/`: makes all of these from the Bricolage Grotesque font.
+- **Emails** show it as text: "banta" with "ba" in a plum box.
 
 ## Colours
 
@@ -15,7 +37,7 @@ The design concepts are on the "Bantaba brand concept" canvas: wordmark, event p
 
 | Name | Hex | Use |
 |---|---|---|
-| Coral pink | `#E11D48` | The main buy action ("Get tickets") and the people in the logo |
+| Coral pink | `#E11D48` | The main buy action ("Get tickets"), and only that |
 | Flag red | `#CE1126` | Errors and danger only |
 
 **Bantaba (buyers)**
@@ -23,7 +45,7 @@ The design concepts are on the "Bantaba brand concept" canvas: wordmark, event p
 | Name | Hex | Use |
 |---|---|---|
 | Plum | `#3B0764` | Top bar, emails' name and buttons |
-| Spotlight | `#FACC15` | Highlights ("Selling fast"), logo canopy |
+| Spotlight | `#FACC15` | Highlights ("Selling fast"), the logo's stub on plum |
 | Haze | `#FAF5FF` | Page background |
 | Stage black | `#18181B` | Text |
 
@@ -46,7 +68,7 @@ The older `--teal*` names still work and now mean river blue.
 ## Type
 
 - **Inter** (400–800) for everything in Bantaba Host: words, headings and figures. One family looks calm and exact, like other money apps. Figures use even-width digits (`tnum`), so amounts line up in columns.
-- **Bricolage Grotesque** (500/800) for the wordmark only (`--font-logo`).
+- **Bricolage Grotesque** (500/800) for the wordmark and the storefront's big headings (`--font-logo`).
 - Figtree, used before 2 Oct, is no longer loaded.
 
 Both load from Google Fonts in `app/layout.tsx`. If they can't load, the system font is used, so nothing breaks offline. The buyer storefront can still choose its own type when it's designed.

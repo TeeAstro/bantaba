@@ -57,6 +57,12 @@ function saveSession(session: Session | null) {
   window.dispatchEvent(new Event('etp-session'));
 }
 
+/** Change the signed-in user's name (or other fields) in the saved session, e.g. after the Profile page saves. */
+export function updateSessionUser(patch: Partial<SessionUser>) {
+  const session = loadSession();
+  if (session) saveSession({ ...session, user: { ...session.user, ...patch } });
+}
+
 function messageFrom(body: unknown, status: number): string {
   const m = (body as { message?: unknown } | null)?.message;
   if (Array.isArray(m)) return m.join('. ');

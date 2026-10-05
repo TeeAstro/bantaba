@@ -5598,6 +5598,131 @@
         ]
       }
     },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "Me_get",
+        "summary": "",
+        "description": "Name, phone, email and whether a password is set.\n\n**Roles:** CUSTOMER",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Me"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "Me_update",
+        "summary": "",
+        "description": "Change the name and phone. The email can't be changed here.\n\n**Roles:** CUSTOMER",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Me"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/password": {
+      "put": {
+        "operationId": "Me_setPassword",
+        "summary": "",
+        "description": "Set a password (or change it, with the current one). Email codes keep working.\n\n**Roles:** CUSTOMER",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Me"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/me/orders": {
+      "get": {
+        "operationId": "Me_orders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Me"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** CUSTOMER"
+      }
+    },
     "/api/v1/organizer/overview": {
       "get": {
         "operationId": "Dashboard_overview",
@@ -8034,6 +8159,42 @@
           "name",
           "startDate",
           "endDate"
+        ]
+      },
+      "UpdateMeDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "phone": {
+            "type": "string",
+            "description": "Empty to remove it.",
+            "pattern": "/^$|^\\+?[0-9 ()-]{7,20}$/"
+          }
+        },
+        "required": [
+          "fullName"
+        ]
+      },
+      "SetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 200
+          },
+          "currentPassword": {
+            "type": "string",
+            "description": "Needed when changing a password that's already set.",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "password"
         ]
       },
       "OrderStatus": {

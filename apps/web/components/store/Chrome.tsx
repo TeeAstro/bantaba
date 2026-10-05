@@ -1,8 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/Icon';
+import { Logo } from '@/components/Logo';
 import { useSessionUser } from '@/lib/hooks';
+import { logout, Role, SessionUser } from '@/lib/api';
+import { initials } from '@/lib/store';
 import { BackLink } from '@/components/BackLink';
 
 // The storefront's header and footer (Phase 16, docs/storefront.md).
@@ -10,15 +15,63 @@ import { BackLink } from '@/components/BackLink';
 export function StoreLogo() {
   return (
     <Link href="/" className="s-logo" aria-label="Bantaba home">
-      <svg width="28" height="28" viewBox="0 0 76 76" aria-hidden="true">
-        <path d="M8 34 C8 14 68 14 68 34 Z" fill="#FACC15" />
-        <rect x="35" y="33" width="6" height="22" rx="2" fill="#FFFFFF" />
-        <circle cx="16" cy="62" r="5" fill="#E11D48" />
-        <circle cx="38" cy="66" r="5" fill="#E11D48" />
-        <circle cx="60" cy="62" r="5" fill="#E11D48" />
-      </svg>
-      <span className="s-logo-word">bantaba</span>
+      <Logo host={false} size={24} />
     </Link>
+  );
+}
+
+const HOST_HOME: Record<Exclude<Role, 'CUSTOMER'>, string> = { ADMIN: '/admin', ORGANIZER: '/organizer', STAFF: '/scan' };
+
+// The account button: initials that open a menu (Phase 18c, "Signing in
+// from the header" on the storefront canvas).
+function AccountMenu({ user }: { user: SessionUser }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const buyer = user.role === 'CUSTOMER';
+
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  async function signOut() {
+    setOpen(false);
+    await logout();
+    router.push('/');
+  }
+
+  const name = user.fullName || user.email;
+  return (
+    <div className="s-acct" ref={box}>
+      <button type="button" className="s-acct-btn" aria-haspopup="menu" aria-expanded={open} aria-label={`Account: ${name}`} onClick={() => setOpen(!open)}>
+        {initials(name)}
+      </button>
+      {open && (
+        <div className="s-acct-menu" role="menu">
+          <div className="s-acct-who">
+            <strong>{name}</strong>
+            {user.fullName && <span>{user.email}</span>}
+          </div>
+          {buyer ? (
+            <>
+              <Link role="menuitem" href="/tickets" onClick={() => setOpen(false)}><Icon name="tickets" size={16} />My tickets</Link>
+              <Link role="menuitem" href="/profile" onClick={() => setOpen(false)}><Icon name="profile" size={16} />Profile</Link>
+            </>
+          ) : (
+            <Link role="menuitem" href={HOST_HOME[user.role as Exclude<Role, 'CUSTOMER'>]} onClick={() => setOpen(false)}><Icon name="dashboard" size={16} />Open Bantaba Host</Link>
+          )}
+          <button type="button" role="menuitem" className="s-acct-out" onClick={signOut}><Icon name="logout" size={16} />Sign out</button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -26,6 +79,7 @@ export function StoreLogo() {
 // page on this site, or to this path when there isn't one.
 export function StoreHeader({ back }: { back?: string } = {}) {
   const user = useSessionUser();
+  const path = usePathname();
   const buyer = user?.role === 'CUSTOMER';
   return (
     <header className="s-head">
@@ -38,10 +92,20 @@ export function StoreHeader({ back }: { back?: string } = {}) {
           )}
           <StoreLogo />
         </span>
-        <Link href="/tickets" className="s-head-link">
-          <Icon name="tickets" />
-          {buyer && user.fullName ? user.fullName.split(' ')[0] : 'My tickets'}
-        </Link>
+        <span className="s-head-right">
+          {user && !buyer ? (
+            <Link href={HOST_HOME[user.role as Exclude<Role, 'CUSTOMER'>]} className="s-head-host">Bantaba Host</Link>
+          ) : (
+            <Link href="/tickets" className="s-head-link">
+              <Icon name="tickets" />
+              <span className="s-head-label">My tickets</span>
+            </Link>
+          )}
+          {user === null && !path?.startsWith('/signin') && (
+            <Link href={`/signin?next=${encodeURIComponent(path || '/')}`} className="s-head-signin">Sign in</Link>
+          )}
+          {user && <AccountMenu user={user} />}
+        </span>
       </div>
     </header>
   );

@@ -616,6 +616,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1
 
 /* ---------- Logo (components/Logo.tsx) ---------- */
 .logo { display: inline-flex; align-items: center; gap: 8px; line-height: 1; white-space: nowrap; }
+.logo svg { display: block; flex-shrink: 0; }
 .logo-word { font-family: var(--font-logo); font-weight: 800; letter-spacing: -0.03em; }
 .logo-host { font-family: var(--font-logo); font-weight: 500; color: #93c5fd; }
 .logo-on-light .logo-word { color: var(--ink); }

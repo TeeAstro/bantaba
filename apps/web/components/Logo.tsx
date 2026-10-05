@@ -1,27 +1,51 @@
-// The Bantaba logo (docs/brand.md): a bantaba tree, its canopy over three
-// people gathered beneath, next to the lowercase wordmark. "host" marks the
-// organizer, staff and admin app. Concept artwork: swap the mark here when
-// the final logo is ready; every screen uses this component.
+import { useId } from 'react';
 
-export function LogoMark({ size = 28, canopy = '#60a5fa', trunk = '#ffffff' }: { size?: number; canopy?: string; trunk?: string }) {
+// The Bantaba logo (docs/brand.md, "Logo"): the name as a ticket, with the
+// last "ba" in a torn-off stub. Chosen 5 Oct 2026 (G4 on the "Bantaba brand
+// concept" canvas). The letters are Bricolage Grotesque 800 drawn as shapes,
+// so the logo looks the same whether or not the font has loaded. "host"
+// marks the organizer, staff and admin app. Every screen uses this file.
+
+// Drawn in font units (1000 per em) by scripts/brand/logo.py; don't edit by hand.
+const W = 4187.0;
+const H = 1020;
+const BANTA = 'M396 877Q346 877 308.5 858Q271 839 247.5 801Q224 763 216 707H197L194 863H62V143H223V318Q223 342 219.5 368.5Q216 395 210.5 424Q205 453 199 486H222Q236 432 259 396Q282 360 316.5 341.5Q351 323 398 323Q464 323 512.5 357Q561 391 588 453.5Q615 516 615 603Q615 687 588.5 748.5Q562 810 513 843.5Q464 877 396 877ZM336 747Q369 747 394 728.5Q419 710 432.5 676.5Q446 643 446 598Q446 552 433 519.5Q420 487 396.5 469Q373 451 340 451Q318 451 299.5 459Q281 467 267 481Q253 495 243 512.5Q233 530 228 549.5Q223 569 223 588V609Q223 630 229 654Q235 678 248.5 699Q262 720 283.5 733.5Q305 747 336 747ZM804 877Q760 877 726 859.5Q692 842 673 808.5Q654 775 654 727Q654 682 671.5 652.5Q689 623 722.5 605.5Q756 588 803 576.5Q850 565 910 556Q939 551 958.5 546.5Q978 542 988 532Q998 522 998 503Q998 478 980 460Q962 442 922 442Q894 442 871.5 452Q849 462 833 481Q817 500 809 527L667 485Q680 443 703.5 412Q727 381 760 360.5Q793 340 835.5 330.5Q878 321 926 321Q1006 321 1056.5 346.5Q1107 372 1131.5 425.5Q1156 479 1156 563V644Q1156 680 1157.5 716.5Q1159 753 1161.5 789.5Q1164 826 1168 863H1026Q1022 840 1018 807.5Q1014 775 1012 741H993Q979 779 952.5 810.5Q926 842 888.5 859.5Q851 877 804 877ZM877 763Q895 763 913.5 756.5Q932 750 949 738.5Q966 727 980 710Q994 693 1001 673L999 610Q990 615 979 618Q956 625 932.5 629Q909 633 886.5 637.5Q864 642 846.5 649Q829 656 819 668Q809 680 809 701Q809 729 828 746Q847 763 877 763ZM1245 863V335H1375L1377 490H1397Q1410 434 1434 396Q1458 358 1495 339.5Q1532 321 1582 321Q1675 321 1723.5 386Q1772 451 1772 593V863H1610V611Q1610 529 1586.5 491.5Q1563 454 1517 454Q1479 454 1454.5 477Q1430 500 1418 538Q1406 576 1406 623V863ZM2064 876Q1971 876 1927 826.5Q1883 777 1883 668V461H1808L1811 336H1865Q1897 335 1913.5 326Q1930 317 1934 292L1947 218H2038V335H2165V466H2038V661Q2038 695 2054.5 711Q2071 727 2105 727Q2124 727 2141 723Q2158 719 2169 712V861Q2137 871 2110.5 873.5Q2084 876 2064 876ZM2358 877Q2314 877 2280 859.5Q2246 842 2227 808.5Q2208 775 2208 727Q2208 682 2225.5 652.5Q2243 623 2276.5 605.5Q2310 588 2357 576.5Q2404 565 2464 556Q2493 551 2512.5 546.5Q2532 542 2542 532Q2552 522 2552 503Q2552 478 2534 460Q2516 442 2476 442Q2448 442 2425.5 452Q2403 462 2387 481Q2371 500 2363 527L2221 485Q2234 443 2257.5 412Q2281 381 2314 360.5Q2347 340 2389.5 330.5Q2432 321 2480 321Q2560 321 2610.5 346.5Q2661 372 2685.5 425.5Q2710 479 2710 563V644Q2710 680 2711.5 716.5Q2713 753 2715.5 789.5Q2718 826 2722 863H2580Q2576 840 2572 807.5Q2568 775 2566 741H2547Q2533 779 2506.5 810.5Q2480 842 2442.5 859.5Q2405 877 2358 877ZM2431 763Q2449 763 2467.5 756.5Q2486 750 2503 738.5Q2520 727 2534 710Q2548 693 2555 673L2553 610Q2544 615 2533 618Q2510 625 2486.5 629Q2463 633 2440.5 637.5Q2418 642 2400.5 649Q2383 656 2373 668Q2363 680 2363 701Q2363 729 2382 746Q2401 763 2431 763Z';
+const BA = 'M3370.1 840.6Q3325.1 840.6 3291.3 823.5Q3257.6 806.4 3236.4 772.2Q3215.2 738 3208.1 687.6H3191L3188.2 828H3069.5V180H3214.3V337.5Q3214.3 359.1 3211.2 382.9Q3208.1 406.8 3203.1 432.9Q3198.2 459 3192.8 488.7H3213.5Q3226.1 440.1 3246.8 407.7Q3267.5 375.3 3298.5 358.6Q3329.6 342 3371.8 342Q3431.2 342 3474.9 372.6Q3518.6 403.2 3542.9 459.5Q3567.2 515.7 3567.2 594Q3567.2 669.6 3543.3 725Q3519.5 780.3 3475.4 810.5Q3431.2 840.6 3370.1 840.6ZM3316.1 723.6Q3345.8 723.6 3368.2 707Q3390.8 690.3 3402.9 660.1Q3415.1 630 3415.1 589.5Q3415.1 548.1 3403.4 518.8Q3391.7 489.6 3370.5 473.4Q3349.3 457.2 3319.7 457.2Q3299.8 457.2 3283.2 464.4Q3266.6 471.6 3253.9 484.2Q3241.3 496.8 3232.3 512.5Q3223.3 528.3 3218.8 545.8Q3214.3 563.4 3214.3 580.5V599.4Q3214.3 618.3 3219.8 639.9Q3225.2 661.5 3237.3 680.4Q3249.5 699.3 3268.8 711.5Q3288.2 723.6 3316.1 723.6ZM3737.3 840.6Q3697.7 840.6 3667.1 824.9Q3636.5 809.1 3619.4 779Q3602.3 748.8 3602.3 705.6Q3602.3 665.1 3618 638.5Q3633.8 612 3663.9 596.2Q3694.1 580.5 3736.4 570.1Q3778.7 559.8 3832.7 551.7Q3858.8 547.2 3876.3 543.1Q3893.9 539.1 3902.9 530.1Q3911.9 521.1 3911.9 504Q3911.9 481.5 3895.7 465.3Q3879.5 449.1 3843.5 449.1Q3818.3 449.1 3798 458.1Q3777.8 467.1 3763.4 484.2Q3749 501.3 3741.8 525.6L3614 487.8Q3625.7 450 3646.8 422.1Q3668 394.2 3697.7 375.8Q3727.4 357.3 3765.6 348.8Q3803.9 340.2 3847.1 340.2Q3919.1 340.2 3964.5 363.1Q4010 386.1 4032 434.2Q4054.1 482.4 4054.1 558V630.9Q4054.1 663.3 4055.4 696.1Q4056.8 729 4059 761.9Q4061.3 794.7 4064.9 828H3937.1Q3933.5 807.3 3929.9 778Q3926.3 748.8 3924.5 718.2H3907.4Q3894.8 752.4 3870.9 780.8Q3847.1 809.1 3813.3 824.9Q3779.6 840.6 3737.3 840.6ZM3803 738Q3819.2 738 3835.8 732.1Q3852.5 726.3 3867.8 716Q3883.1 705.6 3895.7 690.3Q3908.3 675 3914.6 657L3912.8 600.3Q3904.7 604.8 3894.8 607.5Q3874.1 613.8 3852.9 617.4Q3831.8 621 3811.5 625Q3791.3 629.1 3775.5 635.4Q3759.8 641.7 3750.8 652.5Q3741.8 663.3 3741.8 682.2Q3741.8 707.4 3758.9 722.7Q3776 738 3803 738Z';
+const TAG = { x: 2867.0, w: 1320, r: 160, notch: 130 };
+
+type Colours = { word: string; stub: string; stubText: string };
+
+/** The wordmark alone. `height` in px. */
+export function Wordmark({ height, colours, className }: { height: number; colours: Colours; className?: string }) {
+  const mask = `bt-${useId().replace(/:/g, '')}`;
   return (
-    <svg width={size} height={size} viewBox="0 0 76 76" aria-hidden="true" focusable="false">
-      <path d="M8 34 C8 14 68 14 68 34 Z" fill={canopy} />
-      <rect x="35" y="33" width="6" height="22" rx="2" fill={trunk} />
-      <circle cx="16" cy="62" r="5" fill="#e11d48" />
-      <circle cx="38" cy="66" r="5" fill="#e11d48" />
-      <circle cx="60" cy="62" r="5" fill="#e11d48" />
+    <svg className={className} width={Math.round((height * W) / H)} height={height} viewBox={`0 0 ${W} ${H}`} aria-hidden="true" focusable="false">
+      <defs>
+        <mask id={mask}>
+          <rect x={TAG.x} y="0" width={TAG.w} height={H} fill="#fff" />
+          <circle cx={TAG.x} cy={H / 2} r={TAG.notch} fill="#000" />
+        </mask>
+      </defs>
+      <path d={BANTA} fill={colours.word} />
+      <rect x={TAG.x} y="0" width={TAG.w} height={H} rx={TAG.r} fill={colours.stub} mask={`url(#${mask})`} />
+      <path d={BA} fill={colours.stubText} />
     </svg>
   );
 }
 
-/** `onDark`: white wordmark for the ink sidebar and scanner; otherwise ink on light backgrounds. */
+// Bantaba (buyers) and Bantaba Host colours, on dark and on light backgrounds.
+const STORE_DARK: Colours = { word: '#ffffff', stub: '#facc15', stubText: '#3b0764' };
+const STORE_LIGHT: Colours = { word: '#3b0764', stub: '#3b0764', stubText: '#ffffff' };
+const HOST_DARK: Colours = { word: '#ffffff', stub: '#60a5fa', stubText: '#0f172a' };
+const HOST_LIGHT: Colours = { word: '#0f172a', stub: '#1e3a8a', stubText: '#ffffff' };
+
+/** `size`: the letters' size in px. `onDark`: for the plum header, ink sidebar and scanner; otherwise for light pages. */
 export function Logo({ host = true, size = 22, onDark = true }: { host?: boolean; size?: number; onDark?: boolean }) {
   const label = host ? 'Bantaba Host' : 'Bantaba';
+  const colours = host ? (onDark ? HOST_DARK : HOST_LIGHT) : onDark ? STORE_DARK : STORE_LIGHT;
   return (
     <span className={`logo ${onDark ? '' : 'logo-on-light'}`} role="img" aria-label={label}>
-      <LogoMark size={Math.round(size * 1.3)} canopy={onDark ? '#60a5fa' : '#1e3a8a'} trunk={onDark ? '#ffffff' : '#0f172a'} />
-      <span className="logo-word" style={{ fontSize: size }} aria-hidden="true">bantaba</span>
+      <Wordmark height={Math.round(size * 1.05)} colours={colours} />
       {host && <span className="logo-host" style={{ fontSize: Math.round(size * 0.68) }} aria-hidden="true">host</span>}
     </span>
   );

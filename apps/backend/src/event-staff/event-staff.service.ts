@@ -101,6 +101,7 @@ export class EventStaffService {
           email,
           fullName: dto.fullName,
           passwordHash: await argon2.hash(dto.password, { type: argon2.argon2id }),
+          passwordSetAt: new Date(),
           role: UserRole.STAFF,
           staffOrganizerId: event.organizerId,
         },

@@ -81,6 +81,7 @@ export class AuthService {
       data: {
         email: dto.email,
         passwordHash,
+        passwordSetAt: new Date(),
         fullName: dto.fullName,
         role: UserRole.CUSTOMER,
       },
@@ -116,6 +117,7 @@ export class AuthService {
         data: {
           email: dto.email,
           passwordHash,
+          passwordSetAt: new Date(),
           role: UserRole.ORGANIZER,
         },
       });
@@ -377,7 +379,7 @@ export class AuthService {
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: resetToken.userId },
-        data: { passwordHash },
+        data: { passwordHash, passwordSetAt: new Date() },
       });
       await tx.passwordResetToken.update({
         where: { id: resetToken.id },

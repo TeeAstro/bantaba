@@ -64,6 +64,14 @@ const greet = (name: string | null | undefined) => (name ? `Hi ${name.split(' ')
 
 // ---------- layout ----------
 
+// The logo as email-safe text (docs/brand.md, "Logo"): "banta" and the last
+// "ba" in a plum stub. Another APP_NAME is shown as plain text.
+function wordmark() {
+  const name = APP();
+  if (name.toLowerCase() !== 'bantaba') return h(name.toLowerCase());
+  return `banta<span style="display:inline-block;margin-left:5px;padding:0 7px 2px;border-radius:5px;background:${COLORS.teal};color:#ffffff">ba</span>`;
+}
+
 function layout(opts: { preheader: string; title: string; body: string; tone?: 'teal' | 'red' | 'marigold' }) {
   const bar = COLORS[opts.tone ?? 'teal'];
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${h(opts.title)}</title></head>
@@ -72,7 +80,7 @@ function layout(opts: { preheader: string; title: string; body: string; tone?: '
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COLORS.paper}"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid ${COLORS.line};border-radius:8px">
 <tr><td style="height:6px;background:${bar};border-radius:8px 8px 0 0;font-size:0;line-height:0">&nbsp;</td></tr>
-<tr><td style="padding:22px 28px 6px;font-size:22px;font-weight:800;letter-spacing:-.02em;font-family:'Bricolage Grotesque',Arial,sans-serif;color:${COLORS.teal}">${h(APP().toLowerCase())}</td></tr>
+<tr><td style="padding:22px 28px 6px;font-size:24px;font-weight:800;letter-spacing:-.03em;font-family:'Bricolage Grotesque',Arial,sans-serif;color:${COLORS.teal}">${wordmark()}</td></tr>
 <tr><td style="padding:0 28px 28px;font-size:15px;line-height:1.55">
 <h1 style="margin:6px 0 14px;font-size:22px;line-height:1.25">${h(opts.title)}</h1>
 ${opts.body}

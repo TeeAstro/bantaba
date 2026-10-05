@@ -162,6 +162,20 @@ A guest account can also set a password with **Forgot password**.
 
 The in-memory limits (`src/common/rate-limit.ts`) are per server process. `RATE_LIMITS=off` turns them off for tests.
 
+## Profile (Phase 18d)
+
+`/profile`, from the buyer's account menu. Designed on the storefront canvas (6 · Profile).
+
+- **Your details:** full name and phone number (saved as digits, e.g. `+2207012345`; empty removes it; a number on another account is refused). The email can't be changed here. Saving also updates the initials in the header.
+- **Signing in:** email codes always work. **Password** shows *Set* or *Not set*. Buyers made by guest checkout or an email code have no password until they set one here; changing one that's set asks for the current one first (it was "New password" only on the canvas). At least 12 characters.
+- **Orders:** paid, refunded and still-open orders, newest first, with the number of tickets, date, total and status (Paid, Waiting for payment, Refunded, Part refunded). Holds that ran out aren't shown. Paid and open orders open their tickets or payment page; refunded ones open the event.
+- **Sign out** at the bottom.
+- Host accounts (organizer, admin, staff) use their Bantaba Host settings instead.
+
+API, buyers only (`CUSTOMER`): `GET /me`, `PATCH /me` `{ fullName, phone }`, `PUT /me/password` `{ password, currentPassword? }`, `GET /me/orders`. `users.passwordSetAt` (new, migration `20261004230000_password_set_at`) records when the person chose a password; registering, a password reset, staff accounts and the seed set it.
+
+Tests: `node profile-test.js` in `apps/backend`, 8/8.
+
 ## My tickets
 
 `GET /tickets/mine` now includes each event's venue. Every ticket already carries its QR (`qrCodeSvg`).
@@ -189,6 +203,7 @@ How it works underneath:
 - **Test payment:** outside production, checkout also offers "Test payment" (MOCK), so the whole flow can be tried without Wave or a card account. `NEXT_PUBLIC_TEST_PAYMENTS=1` shows it in a production build too; leave it unset for real sales.
 - **Event colours:** until hosts can choose their own colour, each event gets one of eight dark colours from its id, always the same for that event.
 - **Other links:** **View public page** is in the organizer's event menu (⋯) for live events. A buyer who signs in at `/login` goes to My tickets.
+- **Signing in from the header** (Phase 18c): every storefront page's header shows **Sign in** (white, next to My tickets) when signed out; it opens `/signin` and comes back to the same page. A signed-in buyer sees their initials, which open a menu (name, email, My tickets, Sign out). An organizer, admin or staff member sees **Bantaba Host** (back to their dashboard, the scanner for staff) and the same menu with Open Bantaba Host and Sign out. The buyer menu also has **Profile**. Designed on the storefront canvas (Account, AccountDesktop).
 - **Back buttons:** every storefront page except Discover has a back arrow left of the logo; checkout has **Back**. It goes to the previous page on this site, or to the page's parent (Discover, or the event for seats) when there isn't one: a link opened from an email, or a return from Wave or a card payment page. The pages visited in the tab are tracked by `components/NavTracker.tsx` and `lib/nav.ts`. `/login` and `/transfer` have **← Back** too.
 
 ## Not built yet

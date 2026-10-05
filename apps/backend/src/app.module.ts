@@ -1,4 +1,5 @@
 import { TemplatesModule } from './templates/templates.module';
+import { MeModule } from './me/me.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HealthModule } from './health/health.module';
@@ -45,6 +46,7 @@ import { StorefrontModule } from './storefront/storefront.module';
     CheckInsModule,
     VenuesModule,
     TemplatesModule,
+    MeModule,
     DashboardModule,
     EventStaffModule,
     ScannerModule,

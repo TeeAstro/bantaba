@@ -15,10 +15,11 @@ async function main() {
   // creating login-ready accounts.
   const admin = await prisma.user.upsert({
     where: { email: 'admin@example.com' },
-    update: { passwordHash: seedPasswordHash },
+    update: { passwordHash: seedPasswordHash, passwordSetAt: new Date() },
     create: {
       email: 'admin@example.com',
       passwordHash: seedPasswordHash,
+      passwordSetAt: new Date(),
       role: 'ADMIN',
       fullName: 'Sample Admin',
     },
@@ -26,10 +27,11 @@ async function main() {
 
   const organizerUser = await prisma.user.upsert({
     where: { email: 'organizer@example.com' },
-    update: { passwordHash: seedPasswordHash },
+    update: { passwordHash: seedPasswordHash, passwordSetAt: new Date() },
     create: {
       email: 'organizer@example.com',
       passwordHash: seedPasswordHash,
+      passwordSetAt: new Date(),
       role: 'ORGANIZER',
       fullName: 'Sample Organizer',
     },
@@ -51,10 +53,11 @@ async function main() {
 
   const customer = await prisma.user.upsert({
     where: { email: 'customer@example.com' },
-    update: { passwordHash: seedPasswordHash },
+    update: { passwordHash: seedPasswordHash, passwordSetAt: new Date() },
     create: {
       email: 'customer@example.com',
       passwordHash: seedPasswordHash,
+      passwordSetAt: new Date(),
       role: 'CUSTOMER',
       fullName: 'Sample Customer',
     },
@@ -66,10 +69,11 @@ async function main() {
   // lets any STAFF scan any event until Phase 10 enforces assignments.
   const staff = await prisma.user.upsert({
     where: { email: 'staff@example.com' },
-    update: { passwordHash: seedPasswordHash, staffOrganizerId: organizer.id },
+    update: { passwordHash: seedPasswordHash, passwordSetAt: new Date(), staffOrganizerId: organizer.id },
     create: {
       email: 'staff@example.com',
       passwordHash: seedPasswordHash,
+      passwordSetAt: new Date(),
       role: 'STAFF',
       fullName: 'Sample Gate Staff',
       staffOrganizerId: organizer.id,
