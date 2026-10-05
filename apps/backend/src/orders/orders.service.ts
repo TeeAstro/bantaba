@@ -14,15 +14,14 @@ import { RateLimiter } from '../common/rate-limit';
 import { CheckoutDto, GuestCheckoutDto } from './dto/checkout.dto';
 import { seatLabel } from '../venues/seating-rules';
 
+import { FeesService } from '../fees/fees.service';
+import { feeFor } from '../fees/fee-rules';
+
 interface AuthenticatedUser {
   id: string;
   role: UserRole;
   email: string;
 }
-
-const PLATFORM_FEE_MINOR_UNITS = Number(
-  process.env.TICKET_PLATFORM_FEE_MINOR_UNITS ?? 5000,
-); // D50.00 default
 
 // Phase 16: tickets (and seats) are held for 5 minutes while the buyer
 // chooses how to pay; starting a payment extends the hold
@@ -45,6 +44,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
+    private readonly fees: FeesService,
   ) {}
 
   async checkout(user: AuthenticatedUser, dto: CheckoutDto) {
@@ -103,6 +103,8 @@ export class OrdersService {
 
     const event = await this.prisma.event.findUnique({ where: { id: dto.eventId }, include: { organizer: { select: { verificationStatus: true } } } });
     if (!event) throw new NotFoundException('Event not found');
+    // Phase 20: this host's booking fee (docs/payments.md, "Booking fee").
+    const fee = await this.fees.feeForOrganizer(event.organizerId);
     // A suspended organizer's events stop selling at once (docs/organizer-trust.md).
     if (event.organizer.verificationStatus === 'SUSPENDED') {
       throw new ForbiddenException('Ticket sales for this event are paused');
@@ -249,7 +251,8 @@ export class OrdersService {
         subtotal += ticketType.price * quantity;
       }
 
-      const platformFee = PLATFORM_FEE_MINOR_UNITS;
+      // Free tickets never pay a fee (Phase 20).
+      const platformFee = feeFor(fee, orderItemsData.map((i) => ({ price: i.unitPrice, quantity: i.quantity })));
       const total = subtotal + platformFee;
       const expiresAt = new Date(Date.now() + RESERVATION_TTL_MINUTES * 60 * 1000);
 

@@ -1641,6 +1641,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{id}/booking-fee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Public: the fee buyers pay on top of this event's tickets, for the event page. */
+        get: operations["Fees_forEvent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Bantaba's fee, when it last changed, and hosts with their own.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["Fees_view"];
+        /**
+         * @description Change Bantaba's fee. New orders only; orders already placed keep theirs.
+         *
+         *     **Roles:** ADMIN
+         */
+        put: operations["Fees_setGlobal"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/fees/hosts/{organizerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Give a host their own fee ("none" = no fee).
+         *
+         *     **Roles:** ADMIN
+         */
+        put: operations["Fees_setHost"];
+        post?: never;
+        /**
+         * @description Back to Bantaba's fee.
+         *
+         *     **Roles:** ADMIN
+         */
+        delete: operations["Fees_removeHost"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tickets/mine": {
         parameters: {
             query?: never;
@@ -3145,6 +3214,24 @@ export interface components {
         };
         PayOrderDto: {
             provider: components["schemas"]["PaymentProviderType"];
+        };
+        SetFeeDto: {
+            /** @enum {string} */
+            kind: "order" | "ticket" | "pct";
+            /** @description Minor units: per order, per ticket, or the flat part of "pct". At most D500. */
+            amount: number;
+            /** @description Basis points for "pct": 500 = 5%. At most 20%. */
+            percentBp?: number;
+            /** @description Minor units: at most this per ticket ("pct" only). Null = no cap. */
+            cap?: number | null;
+        };
+        SetHostFeeDto: {
+            /** @enum {string} */
+            kind: "order" | "ticket" | "pct" | "none";
+            amount: number;
+            percentBp?: number;
+            cap?: number | null;
+            note?: string;
         };
         CreateCheckInDto: {
             qrToken: string;
@@ -6403,6 +6490,161 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
+            };
+        };
+    };
+    Fees_forEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_setGlobal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFeeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_setHost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetHostFeeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_removeHost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organizerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

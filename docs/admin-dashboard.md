@@ -21,6 +21,7 @@ Screens for the work admins used to do through the raw API. Web app, admin role 
 | Refunds | `/admin/refunds?view=` | `GET /admin/refunds`, `POST /admin/refunds/{id}/mark-paid\|retry`, `POST /admin/refunds/run` | Tabs: **To pay by hand** (approved, manual), **Failed** (approved provider refunds with an error), **All**. Record a payment with its reference, or retry. |
 | Card payments | `/admin/card-payments` | `GET /admin/card-flags`, `POST /admin/card-flags/{paymentId}/resolve` | Customers charged after their order closed. Refund each one in Modem Pay, then record the reference. |
 | Emails | `/admin/emails` | `GET /admin/notifications`, `…/summary`, `POST …/{id}/retry`, `…/run`, `…/scan-reminders` | Failed, waiting, sent and cancelled emails. Retry one, send everything due now, or queue due reminders. |
+| Fees (Phase 20) | `/admin/fees` | `GET`/`PUT /admin/fees`, `PUT`/`DELETE /admin/fees/hosts/{organizerId}`, `GET /admin/organizers?q=` | Set Bantaba's booking fee (per order, per ticket or a percentage), with a preview and a confirm step. Give a host no fee or their own, with a note. See docs/payments.md, "Booking fee". |
 | Audit log | `/admin/audit` | `GET /admin/audit-log`, `GET /admin/audit-log/facets` | Filter by action, entity type or id. Expand an entry to see its details. Click an action or id to filter by it. |
 
 ### Organizer page

@@ -357,6 +357,9 @@ model Organizer {
   venueShares    VenueShare[]
   eventTemplates EventTemplate[]
 
+  // Phase 20: their own booking fee, when it differs from Bantaba's
+  feeRule FeeRule?
+
   @@map("organizers")
 }
 
@@ -981,6 +984,32 @@ model CheckIn {
   @@index([ticketId])
   @@index([scannedAt])
   @@map("check_ins")
+}
+
+// Phase 20 (docs/payments.md, "Booking fee"): the fee buyers pay on top of
+// the ticket price. One row with organizerId null is Bantaba's fee; a row
+// with an organizer is that host's own fee. No rows = the
+// TICKET_PLATFORM_FEE_MINOR_UNITS per order from the environment.
+model FeeRule {
+  id          String     @id @default(uuid())
+  // "global" for Bantaba's fee, else the organizer's id (one rule each).
+  scope       String     @unique
+  organizerId String?    @unique
+  organizer   Organizer? @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  // "order" = amount per order; "ticket" = amount per ticket; "pct" =
+  // percentBp of each ticket's price plus amount, at most cap a ticket;
+  // "none" = no fee. Free tickets never pay a fee.
+  kind        String
+  amount      Int        @default(0) // minor units
+  percentBp   Int        @default(0) // basis points: 500 = 5%
+  cap         Int? // minor units, per ticket, "pct" only
+  note        String? // why a host's fee differs ("federation matches")
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("fee_rules")
 }
 
 // Phase 19: gates a standing (unseated) ticket type enters through.

@@ -1166,6 +1166,33 @@ and web app.
 | 8 | Live numbers | Check-ins during scanning | Totals and a row per gate (in, per minute, sent away); busiest gate marked |
 | 9 | Automated | `node gates-test.js` in `apps/backend` | `10/10 passed` |
 
+## Booking fee set by admins (Phase 20)
+
+Bantaba's booking fee is now set on **Admin → Fees** instead of in `.env`:
+per order, per ticket, or a percentage (with an optional flat part and a cap
+per ticket). Admins can give a host no fee or their own fee, with a note on
+why. Free tickets never pay a fee (before, an order of free tickets paid D50).
+Changes apply to new orders only and go in the audit log. The event page bar
+shows the total with the fee: "Includes D22.50 booking fee". Details:
+`docs/payments.md` ("Booking fee"). Designed on the "Bantaba Host screens"
+canvas (Fees board).
+
+**After pulling:** `npx prisma migrate dev` in `apps/backend` (new migration
+`20261005210000_fee_rules`), then `npm run build` and restart the backend
+and web app. Until an admin saves a fee, `TICKET_PLATFORM_FEE_MINOR_UNITS`
+(D50 per order) still applies.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | The page | Sign in as admin → **Fees** | Current fee "D50 per order", a preview for sample orders, no hosts listed |
+| 2 | Change it | Pick Percentage, 5 % + D10, at most D100 → **Save** → confirm | "Saved. New orders pay 5% + D10 per ticket, at most D100 a ticket." Audit log has `fee_changed` |
+| 3 | Guardrails | Try D600 per order or 25 % | Refused: at most D500, at most 20 % |
+| 4 | A host with no fee | Add a host → search → No fee, note "launch partner" → Save | Listed with the note; their orders have no fee |
+| 5 | Remove | **Remove** on that host | They pay Bantaba's fee again |
+| 6 | Event page | Open an event, add a ticket | The bar shows the total and "Includes D… booking fee" |
+| 7 | Free tickets | Get only free tickets | No booking fee |
+| 8 | Automated | `node fees-test.js` in `apps/backend` | `7/7 passed` |
+
 ## Project structure
 
 ```

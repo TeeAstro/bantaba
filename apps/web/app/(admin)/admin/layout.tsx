@@ -20,6 +20,7 @@ const NAV: { href: string; label: string; icon: IconName; exact?: boolean; count
   { group: 'Money', href: '/admin/payouts', label: 'Payouts', icon: 'payouts', count: (c) => c.payoutRequests + c.payoutsToSend },
   { href: '/admin/refunds', label: 'Refunds', icon: 'refunds', count: (c) => c.manualRefundsToPay + c.failedProviderRefunds },
   { href: '/admin/card-payments', label: 'Card payments', icon: 'card', count: (c) => c.cardPaymentsFlagged },
+  { href: '/admin/fees', label: 'Fees', icon: 'percent' },
   { group: 'System', href: '/admin/venues', label: 'Venues', icon: 'venue' },
   { href: '/admin/emails', label: 'Emails', icon: 'emails', count: (c) => c.failedEmails },
   { href: '/admin/audit', label: 'Audit log', icon: 'audit' },

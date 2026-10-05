@@ -1205,3 +1205,26 @@ fieldset.vm-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
 .gr-stats span { font-size: 13px; color: var(--ink-soft); }
 .result-actions .btn-quiet { background: transparent; color: #e8eef7 !important; border: 1px solid #22304a; }
 @media (max-width: 900px) { .gr-layout > :last-child { order: -1; } }
+/* Admin Fees (Phase 20) */
+.fee-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.fee-grid > :first-child { border-right: 1px solid var(--line); }
+@media (max-width: 900px) { .fee-grid { grid-template-columns: minmax(0, 1fr); } .fee-grid > :first-child { border-right: 0; border-bottom: 1px solid var(--line); } }
+.fee-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.fee-input { display: flex; align-items: center; gap: 6px; height: 42px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 12px; background: #fff; max-width: 220px; }
+.fee-input input { border: 0; outline: 0; padding: 0; height: 100%; width: 100%; font: inherit; font-weight: 400; background: transparent; }
+.fee-input:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-wash, #eff6ff); }
+.fee-input-bad { border-color: var(--red); }
+.fee-err { font-size: 13px; font-weight: 500; color: var(--red); }
+.fee-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.fee-info { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink-soft); margin: 0; }
+.fee-info .icon { flex-shrink: 0; margin-top: 1px; }
+.fee-confirm { background: var(--marigold-wash, #fdf3e1); border: 1px solid #f3d9a4; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; font-size: 15px; }
+.fee-preview { display: flex; flex-direction: column; gap: 12px; }
+.fee-preview table { width: 100%; }
+.fee-amt { color: var(--brand); font-weight: 600; }
+.fee-add { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--paper, #f8fafc); }
+.fee-host { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.fee-host:first-child { border-top: 0; }
+.fee-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--brand-wash, #eff6ff); color: var(--brand); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.fee-host-name { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.fee-host-fee { font-weight: 600; font-size: 14px; }

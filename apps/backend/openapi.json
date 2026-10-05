@@ -3718,6 +3718,173 @@
         ]
       }
     },
+    "/api/v1/events/{id}/booking-fee": {
+      "get": {
+        "operationId": "Fees_forEvent",
+        "summary": "",
+        "description": "Public: the fee buyers pay on top of this event's tickets, for the event page.",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Fees"
+        ]
+      }
+    },
+    "/api/v1/admin/fees": {
+      "get": {
+        "operationId": "Fees_view",
+        "summary": "",
+        "description": "Bantaba's fee, when it last changed, and hosts with their own.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "Fees_setGlobal",
+        "summary": "",
+        "description": "Change Bantaba's fee. New orders only; orders already placed keep theirs.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/fees/hosts/{organizerId}": {
+      "put": {
+        "operationId": "Fees_setHost",
+        "summary": "",
+        "description": "Give a host their own fee (\"none\" = no fee).\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "organizerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHostFeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "Fees_removeHost",
+        "summary": "",
+        "description": "Back to Bantaba's fee.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "organizerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/tickets/mine": {
       "get": {
         "operationId": "Tickets_findMine",
@@ -7846,6 +8013,80 @@
         },
         "required": [
           "provider"
+        ]
+      },
+      "SetFeeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "order",
+              "ticket",
+              "pct"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "description": "Minor units: per order, per ticket, or the flat part of \"pct\". At most D500.",
+            "minimum": 0,
+            "maximum": 50000
+          },
+          "percentBp": {
+            "type": "number",
+            "description": "Basis points for \"pct\": 500 = 5%. At most 20%.",
+            "minimum": 0,
+            "maximum": 2000
+          },
+          "cap": {
+            "type": "number",
+            "nullable": true,
+            "description": "Minor units: at most this per ticket (\"pct\" only). Null = no cap.",
+            "minimum": 0,
+            "maximum": 50000
+          }
+        },
+        "required": [
+          "kind",
+          "amount"
+        ]
+      },
+      "SetHostFeeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "order",
+              "ticket",
+              "pct",
+              "none"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 50000
+          },
+          "percentBp": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2000
+          },
+          "cap": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 50000
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "kind",
+          "amount"
         ]
       },
       "CreateCheckInDto": {

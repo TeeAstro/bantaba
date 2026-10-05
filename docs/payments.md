@@ -78,6 +78,37 @@ In the Modem Pay dashboard, set the webhook URL to `https://<your-api>/api/v1/pa
 
 Without the keys, a card checkout answers 503 "Card payments are not configured yet", the same as Wave.
 
+## Booking fee (Phase 20)
+
+Before Phase 20 every order paid a flat `TICKET_PLATFORM_FEE_MINOR_UNITS` (D50), even an order of free tickets. Now admins set the fee on **Admin → Fees** (`/admin/fees`).
+
+**Kinds** (`FeeRule.kind`):
+
+| Kind | Fee | Example |
+|---|---|---|
+| `order` | `amount` once per order with at least one paid ticket | D50 per order |
+| `ticket` | `amount` × paid tickets | D25 per ticket: 3 paid + 1 free → D75 |
+| `pct` | per paid ticket, `round(price × percentBp / 10000) + amount`, at most `cap` | 5 % + D10, at most D100: D250 → D22.50; D3,000 → D100 |
+| `none` | 0 (hosts only) | a launch partner |
+
+Free tickets never count. The arithmetic is `feeFor()` in `apps/backend/src/fees/fee-rules.ts`; the web app has a copy in `apps/web/lib/fees.ts` for the admin preview and the event page. Keep them the same.
+
+**Which fee applies** (`FeesService.feeForOrganizer`): the host's own rule (`FeeRule.organizerId`), else Bantaba's rule (`scope = 'global'`), else the environment default (D50 per order). The fee is worked out at checkout and stored on the order (`platformFee`), so a change applies to new orders only.
+
+**Guardrails:** a flat amount up to D500, a percentage up to 20 %. `none` is only for a host. Every change is in the audit log: `fee_changed` (from/to), `host_fee_set`, `host_fee_removed`.
+
+**API**
+
+| Route | Who | |
+|---|---|---|
+| `GET /events/{id}/booking-fee` | public | The fee for this event's host: `kind`, `amount`, `percentBp`, `cap`, `summary`. No note. |
+| `GET /admin/fees` | admin | `{ fee, lastChanged, hosts }` |
+| `PUT /admin/fees` | admin | `{ kind, amount, percentBp?, cap? }` |
+| `PUT /admin/fees/hosts/{organizerId}` | admin | as above, plus `none` and `note` |
+| `DELETE /admin/fees/hosts/{organizerId}` | admin | back to Bantaba's fee; 404 if they had none |
+
+Test: `node fees-test.js` (7 checks; puts back the fee that was set before it ran).
+
 ## Inventory reservation and expiry
 
 A `PENDING` order holds its inventory reservation (the same `quantitySold` increment from Phase 5) for `RESERVATION_TTL_MINUTES` (default 5 since Phase 16; it was 15). Starting a payment extends the hold: 15 minutes for Wave and card, 24 hours for a bank transfer. See `docs/storefront.md`, "Checkout: hold, then pay". If payment never completes, that hold needs releasing eventually or a customer who abandons checkout permanently locks tickets away from everyone else.
