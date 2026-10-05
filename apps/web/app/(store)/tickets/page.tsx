@@ -23,9 +23,17 @@ interface MyTicket {
     name: string;
     price: number;
     currency: string;
-    event: { id: string; slug: string; name: string; startDate: string; endDate: string; transfersEnabled: boolean; venue: { name: string; city: string } };
+    event: { id: string; slug: string; name: string; startDate: string; endDate: string; transfersEnabled: boolean; gatesOpenAt?: string | null; venue: { name: string; city: string } };
+    // Phase 19: the gates a standing ticket uses
+    gates?: { gate: { name: string } }[];
   };
 }
+
+// "1", "1 & 2", "1, 2 & 5": gate numbers for the ticket's Gate box.
+const gateShort = (names: string[]) => {
+  const n = names.map((x) => x.replace(/^gate\s+/i, ''));
+  return n.length <= 1 ? n[0] ?? '' : `${n.slice(0, -1).join(', ')} & ${n[n.length - 1]}`;
+};
 interface Offer { id: string; ticketId: string; toEmail: string; status: string }
 interface Eligibility { tickets: { ticketId: string; allowed: boolean; reason?: string }[] }
 
@@ -85,6 +93,7 @@ function TicketCard({ g, holder, offers, reload }: { g: Group; holder: string; o
         {soon(e.startDate) && <small>{soon(e.startDate)}</small>}
         <strong>{e.name}</strong>
         <span>{d.short} · {d.time} · {e.venue.name}</span>
+        {e.gatesOpenAt && <span className="s-gates-open">Gates open {new Date(e.gatesOpenAt).toLocaleTimeString('en-GB', { timeZone: 'Africa/Banjul', hour: '2-digit', minute: '2-digit' })}</span>}
       </div>
       <div className="s-perf" />
       <div className="s-ticket-mid">
@@ -111,7 +120,10 @@ function TicketCard({ g, holder, offers, reload }: { g: Group; holder: string; o
               <div><dt>Gate</dt><dd>{t.seat.section.gate ? t.seat.section.gate.name.replace(/^gate\s+/i, '') : '—'}</dd></div>
             </>
           ) : (
-            <div><dt>Holder</dt><dd>{holder}</dd></div>
+            <>
+              <div><dt>Holder</dt><dd>{holder}</dd></div>
+              {!!t.ticketType.gates?.length && <div><dt>{t.ticketType.gates.length > 1 ? 'Gates' : 'Gate'}</dt><dd>{gateShort(t.ticketType.gates.map((g) => g.gate.name))}</dd></div>}
+            </>
           )}
           <div><dt>Ticket</dt><dd>{t.ticketType.name}</dd></div>
           <div><dt>Price</dt><dd>{t.ticketType.price ? dalasi(t.ticketType.price, t.ticketType.currency) : 'Free'}</dd></div>

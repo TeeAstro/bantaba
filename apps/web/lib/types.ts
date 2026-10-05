@@ -169,6 +169,9 @@ export interface CheckInRow {
   result: string;
   scannedAt: string;
   gate: { name: string } | null;
+  // Phase 19: their own gate when scanned at another, and a manager's "Let in here"
+  expectedGate?: { id: string; name: string } | null;
+  override?: boolean;
   ticket: {
     ticketType: { name: string };
     owner: { fullName: string | null; email: string };
@@ -199,7 +202,11 @@ export interface ScannerEvent {
   endDate: string;
   role: string;
   assignedGate: { id: string; name: string } | null;
-  venue: { id: string; name: string; gates: { id: string; name: string; accessZone: { name: string } | null }[] };
+  // Phase 19: what each gate serves (sections and standing ticket types)
+  venue: { id: string; name: string; gates: { id: string; name: string; accessZone: { name: string } | null; serves?: string[] }[] };
+  wrongGate?: 'send' | 'allow';
+  gatesOpenAt?: string | null;
+  canLetInAnyGate?: boolean;
 }
 
 export interface ScanProgress {
@@ -211,6 +218,8 @@ export interface ScanProgress {
     result: string;
     scannedAt: string;
     gate: string | null;
+    expectedGate?: string | null;
+    override?: boolean;
     ticketType: string;
     seat: { section: string; row: string; number: string } | null;
   }[];
@@ -227,6 +236,11 @@ export interface ScanResult {
     seat: { section: string; row: string; number: string } | null;
     accessZone: string | null;
   } | null;
+  // Phase 19
+  expectedGates?: { id: string; name: string }[];
+  atOtherGate?: boolean;
+  override?: boolean;
+  gatesOpenAt?: string | null;
 }
 
 // GET /events/:id — the event as stored; what the edit form works on.

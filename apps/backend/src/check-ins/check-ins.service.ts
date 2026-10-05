@@ -4,10 +4,11 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { Prisma, UserRole, CheckInResult, TicketStatus } from '@prisma/client';
+import { Prisma, UserRole, CheckInResult, StaffRole, TicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashToken } from '../common/token.util';
 import { CreateCheckInDto } from './dto/create-check-in.dto';
+import { GateRulesDto, TicketTypeGatesDto } from './dto/gate-rules.dto';
 
 interface AuthenticatedUser {
   id: string;
@@ -83,8 +84,8 @@ export class CheckInsService {
       const ticket = await tx.ticket.findUnique({
         where: { qrCredentialHash: credentialHash },
         include: {
-          ticketType: { include: { event: true, accessZone: true } },
-          seat: { include: { section: true } },
+          ticketType: { include: { event: true, accessZone: true, gates: { include: { gate: { select: { id: true, name: true } } } } } },
+          seat: { include: { section: { include: { gate: { select: { id: true, name: true } } } } } },
         },
       });
 
@@ -140,7 +141,13 @@ export class CheckInsService {
         return { result: CheckInResult.INVALID, ticket: null, gate: gate ? { id: gate.id, name: gate.name } : null };
       }
 
-      const recordAndReturn = async (result: CheckInResult) => {
+      // Phase 19: the gates this ticket enters through: its seat's section
+      // gate, or for standing tickets the ticket type's gates. Empty = any.
+      const ownGates = ticket.seat
+        ? ticket.seat.section.gate ? [ticket.seat.section.gate] : []
+        : ticket.ticketType.gates.map((g) => g.gate);
+
+      const recordAndReturn = async (result: CheckInResult, extra: { expectedGateId?: string | null; override?: boolean; gatesOpenAt?: Date } = {}) => {
         await tx.checkIn.create({
           data: {
             eventId: event.id,
@@ -148,11 +155,19 @@ export class CheckInsService {
             gateId: gate?.id ?? null,
             staffId: actor.id,
             result,
+            expectedGateId: extra.expectedGateId ?? null,
+            override: extra.override ?? false,
           },
         });
         return {
           result,
           gate: gate ? { id: gate.id, name: gate.name } : null,
+          /** The ticket's own gates (empty when it can use any). */
+          expectedGates: ownGates,
+          /** Let in at a gate that isn't theirs: by a manager, or because the event lets everyone in. */
+          atOtherGate: !!extra.expectedGateId && result === CheckInResult.VALID,
+          override: extra.override ?? false,
+          gatesOpenAt: extra.gatesOpenAt ?? null,
           ticket: {
             id: ticket.id,
             status: ticket.status,
@@ -184,11 +199,29 @@ export class CheckInsService {
       }
 
       const now = new Date();
-      const windowStart = new Date(
+      // Phase 19: the organizer's "gates open" time, else the usual window.
+      const windowStart = event.gatesOpenAt ?? new Date(
         event.startDate.getTime() - CHECKIN_WINDOW_BEFORE_MINUTES * 60 * 1000,
       );
       if (now < windowStart || now > event.endDate) {
-        return recordAndReturn(CheckInResult.WRONG_DATE);
+        return recordAndReturn(CheckInResult.WRONG_DATE, now < windowStart && event.gatesOpenAt ? { gatesOpenAt: event.gatesOpenAt } : {});
+      }
+
+      // Phase 19, gate check: a ticket with its own gates scanned at another
+      // gate. The ticket stays ACTIVE so they get in at theirs. Events set to
+      // "allow" let them in and say where their gate is; otherwise a manager
+      // (or the organizer) can let them in here, which is noted.
+      let expectedGateId: string | null = null;
+      let override = false;
+      if (gate && ownGates.length > 0 && !ownGates.some((g) => g.id === gate!.id)) {
+        expectedGateId = ownGates[0].id;
+        if (event.wrongGate !== 'allow') {
+          if (!dto.override) return recordAndReturn(CheckInResult.WRONG_GATE, { expectedGateId });
+          if (actor.role === UserRole.STAFF && assignment?.role !== StaffRole.MANAGER) {
+            throw new ForbiddenException('Only a manager can let them in at this gate');
+          }
+          override = true;
+        }
       }
 
       // Zone check. A ticket type with no zone is treated as level 0
@@ -197,7 +230,7 @@ export class CheckInsService {
       // the holder can still enter through a gate they're entitled to.
       if (gate?.accessZone) {
         const ticketLevel = ticket.ticketType.accessZone?.level ?? 0;
-        if (ticketLevel < gate.accessZone.level) {
+        if (ticketLevel < gate.accessZone.level && !override) {
           return recordAndReturn(CheckInResult.NO_ACCESS);
         }
       }
@@ -221,7 +254,7 @@ export class CheckInsService {
         return recordAndReturn(CheckInResult.ALREADY_USED);
       }
 
-      return recordAndReturn(CheckInResult.VALID);
+      return recordAndReturn(CheckInResult.VALID, { expectedGateId, override });
     });
   }
 
@@ -246,8 +279,109 @@ export class CheckInsService {
       include: {
         ticket: { include: { ticketType: true, owner: { select: { id: true, fullName: true, email: true } } } },
         gate: true,
+        expectedGate: { select: { id: true, name: true } },
       },
       orderBy: { scannedAt: 'desc' },
     });
+  }
+
+  // ---------- Phase 19: gate checks (docs/scanner.md, "Gate checks") ----------
+
+  private async ownedEvent(actor: AuthenticatedUser, eventId: string) {
+    const event = await this.prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) throw new NotFoundException('Event not found');
+    if (actor.role !== UserRole.ADMIN) {
+      const organizer = await this.prisma.organizer.findUnique({ where: { userId: actor.id } });
+      if (!organizer || organizer.id !== event.organizerId) throw new ForbiddenException('You do not own this event');
+    }
+    return event;
+  }
+
+  /** The event's gates, what each serves, its standing ticket types and their gates, the rule and the opening time. */
+  async gateSetup(actor: AuthenticatedUser, eventId: string) {
+    const event = await this.ownedEvent(actor, eventId);
+    const [gates, types] = await Promise.all([
+      this.prisma.gate.findMany({
+        where: { venueId: event.venueId },
+        select: { id: true, name: true, sections: { select: { name: true }, orderBy: { name: 'asc' } } },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.ticketType.findMany({
+        where: { eventId },
+        select: { id: true, name: true, _count: { select: { eventSections: true } }, gates: { select: { gateId: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+    return {
+      wrongGate: event.wrongGate,
+      gatesOpenAt: event.gatesOpenAt,
+      startDate: event.startDate,
+      gates: gates.map((g) => ({ id: g.id, name: g.name, sections: g.sections.map((x) => x.name) })),
+      ticketTypes: types.map((t) => ({ id: t.id, name: t.name, seated: t._count.eventSections > 0, gateIds: t.gates.map((g) => g.gateId) })),
+    };
+  }
+
+  async setGateRules(actor: AuthenticatedUser, eventId: string, dto: GateRulesDto) {
+    const event = await this.ownedEvent(actor, eventId);
+    const opens = dto.gatesOpenAt ? new Date(dto.gatesOpenAt) : null;
+    if (opens && opens >= event.endDate) throw new BadRequestException('The gates have to open before the event ends');
+    await this.prisma.event.update({ where: { id: eventId }, data: { wrongGate: dto.wrongGate, gatesOpenAt: opens } });
+    return this.gateSetup(actor, eventId);
+  }
+
+  async setTicketTypeGates(actor: AuthenticatedUser, ticketTypeId: string, dto: TicketTypeGatesDto) {
+    const type = await this.prisma.ticketType.findUnique({ where: { id: ticketTypeId }, include: { _count: { select: { eventSections: true } } } });
+    if (!type) throw new NotFoundException('Ticket type not found');
+    const event = await this.ownedEvent(actor, type.eventId);
+    if (type._count.eventSections > 0 && dto.gateIds.length) {
+      throw new BadRequestException('Seated tickets use their section’s gate');
+    }
+    const ids = [...new Set(dto.gateIds)];
+    const found = await this.prisma.gate.count({ where: { id: { in: ids }, venueId: event.venueId } });
+    if (found !== ids.length) throw new BadRequestException('Those gates aren’t all at this event’s venue');
+    await this.prisma.$transaction([
+      this.prisma.ticketTypeGate.deleteMany({ where: { ticketTypeId } }),
+      this.prisma.ticketTypeGate.createMany({ data: ids.map((gateId) => ({ ticketTypeId, gateId })) }),
+    ]);
+    return this.gateSetup(actor, type.eventId);
+  }
+
+  /** Live numbers per gate for the organizer during the event. */
+  async gateStats(actor: AuthenticatedUser, eventId: string) {
+    const event = await this.ownedEvent(actor, eventId);
+    const since = new Date(Date.now() - 10 * 60_000);
+    const [gates, rows, recent] = await Promise.all([
+      this.prisma.gate.findMany({ where: { venueId: event.venueId }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+      this.prisma.checkIn.groupBy({
+        by: ['gateId', 'result'],
+        where: { eventId },
+        _count: { _all: true },
+      }),
+      this.prisma.checkIn.groupBy({
+        by: ['gateId'],
+        where: { eventId, result: CheckInResult.VALID, scannedAt: { gte: since } },
+        _count: { _all: true },
+      }),
+    ]);
+    const otherGate = await this.prisma.checkIn.groupBy({
+      by: ['gateId', 'override'],
+      where: { eventId, result: CheckInResult.VALID, expectedGateId: { not: null } },
+      _count: { _all: true },
+    });
+    const count = (gateId: string | null, result: CheckInResult) => rows.find((r) => r.gateId === gateId && r.result === result)?._count._all ?? 0;
+    const line = (gateId: string | null) => ({
+      in: count(gateId, CheckInResult.VALID),
+      perMinute: Math.round(((recent.find((r) => r.gateId === gateId)?._count._all ?? 0) / 10) * 10) / 10,
+      sentAway: count(gateId, CheckInResult.WRONG_GATE),
+      letInOther: otherGate.filter((r) => r.gateId === gateId).reduce((n, r) => n + r._count._all, 0),
+    });
+    const perGate = gates.map((g) => ({ id: g.id, name: g.name, ...line(g.id) }));
+    const noGate = line(null);
+    const sum = (k: 'in' | 'sentAway' | 'letInOther') => perGate.reduce((n, g) => n + g[k], 0) + noGate[k];
+    return {
+      gates: perGate,
+      noGate,
+      totals: { in: sum('in'), sentAway: sum('sentAway'), letInOther: sum('letInOther'), byManager: otherGate.filter((r) => r.override).reduce((n, r) => n + r._count._all, 0) },
+    };
   }
 }

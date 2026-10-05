@@ -27,6 +27,8 @@ const TONE: Record<string, string> = {
   WRONG_EVENT: 'badge-red',
   WRONG_DATE: 'badge-red',
   NO_ACCESS: 'badge-red',
+  WRONG_GATE: 'badge-gold',
+  LET_IN_HERE: 'badge-teal',
   // refunds (Phase 13)
   REQUESTED: 'badge-gold',
   APPROVED: 'badge-gold',

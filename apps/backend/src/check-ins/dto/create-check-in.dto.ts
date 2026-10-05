@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class CreateCheckInDto {
   // The raw token scanned from the QR code — never the ticket ID, never
@@ -19,4 +19,10 @@ export class CreateCheckInDto {
   @IsOptional()
   @IsUUID()
   eventId?: string;
+
+  // Phase 19: "Let in here" at the wrong gate. Managers (and the
+  // organizer) only; the check-in is marked so the organizer sees it.
+  @IsOptional()
+  @IsBoolean()
+  override?: boolean;
 }

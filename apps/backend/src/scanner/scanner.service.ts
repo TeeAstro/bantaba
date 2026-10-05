@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { EventStatus, Prisma, TicketStatus, UserRole } from '@prisma/client';
+import { EventStatus, Prisma, StaffRole, TicketStatus, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 interface AuthenticatedUser {
@@ -27,11 +27,16 @@ export class ScannerService {
       status: true,
       startDate: true,
       endDate: true,
+      wrongGate: true,
+      gatesOpenAt: true,
       venue: {
         select: {
           id: true,
           name: true,
-          gates: { select: { id: true, name: true, accessZone: { select: { name: true } } }, orderBy: { name: 'asc' as const } },
+          gates: {
+            select: { id: true, name: true, accessZone: { select: { name: true } }, sections: { select: { name: true }, orderBy: { name: 'asc' as const } } },
+            orderBy: { name: 'asc' as const },
+          },
         },
       },
     } satisfies Prisma.EventSelect;
@@ -42,7 +47,7 @@ export class ScannerService {
         include: { event: { select: eventSelect }, assignedGate: { select: { id: true, name: true } } },
         orderBy: { event: { startDate: 'asc' } },
       });
-      return rows.map((r) => ({ ...r.event, role: r.role, assignedGate: r.assignedGate }));
+      return this.withGates(rows.map((r) => ({ ...r.event, role: r.role as string, assignedGate: r.assignedGate, canLetInAnyGate: r.role === StaffRole.MANAGER })));
     }
 
     const organizer = await this.prisma.organizer.findUnique({ where: { userId: user.id } });
@@ -52,7 +57,28 @@ export class ScannerService {
       select: eventSelect,
       orderBy: { startDate: 'asc' },
     });
-    return events.map((e) => ({ ...e, role: 'ORGANIZER', assignedGate: null }));
+    return this.withGates(events.map((e) => ({ ...e, role: 'ORGANIZER', assignedGate: null, canLetInAnyGate: true })));
+  }
+
+  // Phase 19: what each gate serves, for "Which gate are you at?": its
+  // sections, and the standing ticket types of this event that use it.
+  private async withGates<E extends { id: string; venue: { gates: { id: string; name: string; accessZone: { name: string } | null; sections: { name: string }[] }[] } }>(events: E[]) {
+    const links = events.length
+      ? await this.prisma.ticketTypeGate.findMany({
+          where: { ticketType: { eventId: { in: events.map((e) => e.id) } } },
+          select: { gateId: true, ticketType: { select: { eventId: true, name: true } } },
+        })
+      : [];
+    return events.map((e) => ({
+      ...e,
+      venue: {
+        ...e.venue,
+        gates: e.venue.gates.map(({ sections, ...g }) => ({
+          ...g,
+          serves: [...sections.map((x) => x.name), ...links.filter((l) => l.gateId === g.id && l.ticketType.eventId === e.id).map((l) => l.ticketType.name)],
+        })),
+      },
+    }));
   }
 
   // Live door numbers for one event, for the scanner's header, plus this
@@ -82,6 +108,8 @@ export class ScannerService {
           result: true,
           scannedAt: true,
           gate: { select: { name: true } },
+          expectedGate: { select: { name: true } },
+          override: true,
           ticket: {
             select: {
               ticketType: { select: { name: true } },
@@ -101,6 +129,8 @@ export class ScannerService {
         result: c.result,
         scannedAt: c.scannedAt,
         gate: c.gate?.name ?? null,
+        expectedGate: c.expectedGate?.name ?? null,
+        override: c.override,
         ticketType: c.ticket.ticketType.name,
         seat: c.ticket.seat ? { section: c.ticket.seat.section.name, row: c.ticket.seat.row, number: c.ticket.seat.number } : null,
       })),

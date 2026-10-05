@@ -17,6 +17,8 @@ export class ScannerGateDto {
   name!: string;
   /** Zone this gate admits into; null = open gate. */
   accessZone!: ZoneNameDto | null;
+  /** Phase 19: the sections and standing ticket types that enter here. */
+  serves!: string[];
 }
 
 export class ScannerVenueDto {
@@ -37,6 +39,12 @@ export class ScannerEventDto {
   role!: string;
   /** If set, every scan by this person happens at this gate. */
   assignedGate!: NamedRefDto | null;
+  /** Phase 19: "send" (send them to their gate) or "allow" (let in, tell them their gate). */
+  wrongGate!: string;
+  /** When the gates open, if the organizer set it. */
+  gatesOpenAt!: Date | null;
+  /** May tap "Let in here" at the wrong gate (managers and the organizer). */
+  canLetInAnyGate!: boolean;
 }
 
 export class SeatLabelDto {
@@ -51,6 +59,10 @@ export class RecentScanDto {
   result!: CheckInResult;
   scannedAt!: Date;
   gate!: string | null;
+  /** Phase 19: their own gate, when scanned at another. */
+  expectedGate!: string | null;
+  /** A manager let them in at the wrong gate. */
+  override!: boolean;
   ticketType!: string;
   seat!: SeatLabelDto | null;
 }

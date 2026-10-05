@@ -16,7 +16,7 @@ export class TicketsService {
       where: { ownerId: user.id },
       include: {
         // Phase 16: the venue too, for My tickets on the storefront
-        ticketType: { include: { event: { include: { venue: true } } } },
+        ticketType: { include: { event: { include: { venue: true } }, gates: { select: { gate: { select: { name: true } } } } } },
         seat: { include: { section: { include: { gate: { select: { name: true } } } } } },
       },
       orderBy: { purchasedAt: 'desc' },

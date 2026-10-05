@@ -49,6 +49,14 @@ const ROLE_LABELS: Record<string, string> = {
   VIP_STAFF: 'VIP staff',
 };
 
+// "Gate 1", "Gates 1 and 2", "Gates 1, 2 and 5": a standing ticket's gates.
+function gateList(names: string[]): string | null {
+  if (names.length === 0) return null;
+  if (names.length === 1) return names[0];
+  const short = names.map((n) => n.replace(/^gate\s+/i, ''));
+  return `Gates ${short.slice(0, -1).join(', ')} and ${short[short.length - 1]}`;
+}
+
 @Injectable()
 export class NotificationsWorker implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger('NotificationsWorker');
@@ -180,13 +188,14 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
       rules: e.rules,
       contactEmail: e.contactEmail,
       organizerName: e.organizer.businessName,
+      gatesOpenAt: e.gatesOpenAt,
     };
     return { e, info };
   }
 
   // QR codes as PNG attachments shown inline: the stored SVG doesn't
   // display in Gmail or Outlook, so it's rasterised here.
-  private async ticketImages(tickets: { id: string; qrCodeSvg: string | null; ticketType: { name: string; price?: number; currency?: string }; seat: { row: string; number: string; section: { name: string; gate?: { name: string } | null } } | null }[]) {
+  private async ticketImages(tickets: { id: string; qrCodeSvg: string | null; ticketType: { name: string; price?: number; currency?: string; gates?: { gate: { name: string } }[] }; seat: { row: string; number: string; section: { name: string; gate?: { name: string } | null } } | null }[]) {
     const infos: T.TicketInfo[] = [];
     const attachments: MailAttachment[] = [];
     for (const [i, t] of tickets.entries()) {
@@ -200,7 +209,8 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
         section: t.seat?.section.name ?? null,
         row: t.seat && !t.seat.row.startsWith('#') ? t.seat.row : null,
         number: t.seat?.number ?? null,
-        gate: t.seat?.section.gate?.name ?? null,
+        // Phase 19: a standing ticket's gates come from its ticket type.
+        gate: t.seat ? t.seat.section.gate?.name ?? null : gateList((t.ticketType.gates ?? []).map((g) => g.gate.name)),
         price: t.ticketType.price === undefined ? null : t.ticketType.price ? T.money(t.ticketType.price, t.ticketType.currency) : 'Free',
         cid,
       });
@@ -211,7 +221,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
   private activeTickets(where: Prisma.TicketWhereInput) {
     return this.prisma.ticket.findMany({
       where: { ...where, status: 'ACTIVE' },
-      include: { ticketType: { select: { name: true, price: true, currency: true } }, seat: { select: { row: true, number: true, section: { select: { name: true, gate: { select: { name: true } } } } } } },
+      include: { ticketType: { select: { name: true, price: true, currency: true, gates: { select: { gate: { select: { name: true } } } } } }, seat: { select: { row: true, number: true, section: { select: { name: true, gate: { select: { name: true } } } } } } },
       orderBy: { createdAt: 'asc' },
     });
   }

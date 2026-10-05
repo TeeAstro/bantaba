@@ -38,7 +38,7 @@ The bank-transfer confirmation path (`confirmBankTransfer`) was unaffected — i
 ```
 credential → lookup ticket → check ticket status → check event/date match
   → check zone permission → check not already used → record check-in atomically
-  → return VALID / ALREADY_USED / INVALID / CANCELLED / REFUNDED / WRONG_DATE / (NO_ACCESS — see below)
+  → return VALID / ALREADY_USED / INVALID / CANCELLED / REFUNDED / WRONG_DATE / WRONG_GATE / (NO_ACCESS — see below)
 ```
 
 Implementation notes:
@@ -46,8 +46,9 @@ Implementation notes:
 - **Lookup is by hash of the scanned token**, never by ticket ID — the scanner app will never know a ticket's database ID, only what it reads out of the QR code.
 - **Unrecognized token**: returns `INVALID` but does **not** write a `CheckIn` row — `CheckIn.ticketId` is a required foreign key, so a scan that doesn't resolve to any ticket has nothing to attach an audit row to. A dedicated "raw scan attempts" log (to catch, say, someone probing with random tokens) is a reasonable future addition, not built now. Flagged here rather than silently absent.
 - **Status checks** map directly to `CheckInResult`: `USED → ALREADY_USED`, `CANCELLED → CANCELLED`, `REFUNDED → REFUNDED`. `EXPIRED`/`TRANSFERRED` (and anything else that isn't `ACTIVE`) fall through to `INVALID`.
-- **Date window**: a ticket can be checked in from `event.startDate - CHECKIN_WINDOW_BEFORE_MINUTES` (env var, default 180 = 3 hours, so doors-open scanning works) through `event.endDate`. Outside that window: `WRONG_DATE`. This window is global (one setting for every event), not per-event yet — a known simplification.
+- **Date window**: a ticket can be checked in from `event.startDate - CHECKIN_WINDOW_BEFORE_MINUTES` (env var, default 180 = 3 hours, so doors-open scanning works) through `event.endDate`. Outside that window: `WRONG_DATE`. Since Phase 19 an organizer can set the event's own **Gates open** time (`Event.gatesOpenAt`), which replaces the start of the window.
 - **Zone permission (`NO_ACCESS`)**: ~~always passes in Phase 7~~ — **enforced since Phase 8.** Gates can now be assigned an access zone (`Gate.accessZoneId`); a ticket whose zone level is below the gate's gets `NO_ACCESS`, is logged, and stays `ACTIVE`. Only checked when the scan includes a `gateId`. Full rules in `docs/seating.md`, "Access zones at gates".
+- **Gate (`WRONG_GATE`, Phase 19)**: checked before the zone. A ticket with its own gate (its seat's section gate, or its standing ticket type's gates) scanned at another gate gets `WRONG_GATE` and stays `ACTIVE`, unless the event lets everyone in or a manager lets them in. See `docs/scanner.md`, "Gate checks".
 - **Seat-bound tickets (Phase 8)**: for reserved-seating tickets the `VALID`/other responses include `ticket.seat` (`{ section, row, number }`) and `ticket.accessZone`; `seat` is `null` for general admission.
 - **Atomic claim**: the same pattern used everywhere else that needs to survive concurrent requests (inventory locking in Phase 5, the `PENDING→PAID` transition in Phase 6) — a single conditional `UPDATE tickets SET status = 'USED' WHERE id = ... AND status = 'ACTIVE'`. Two simultaneous scans of the same physical ticket (a screenshot shared with a friend, say) can't both succeed: only one `UPDATE` can ever match. If a scan loses that race, it gets `ALREADY_USED`, not a false `VALID`.
 - **Gate validation**: if `gateId` is supplied, the service checks the gate belongs to the *same venue* as the ticket's event. A mismatch is treated as a request error (400), not a `CheckInResult` — it's an operator/configuration mistake (wrong gate selected on the scanner device), not a fact about the ticket.

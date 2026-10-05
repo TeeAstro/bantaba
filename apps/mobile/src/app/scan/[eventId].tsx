@@ -44,7 +44,9 @@ export default function ScanScreen() {
 
   const [event, setEvent] = useState<ScannerEvent | null | undefined>(undefined);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
-  const [gateId, setGateId] = useState<string | null>(null);
+  // Phase 19: undefined = not chosen yet ("Which gate are you at?"), null = not at a gate.
+  const [gateId, setGateId] = useState<string | null | undefined>(undefined);
+  const [lastToken, setLastToken] = useState<string | null>(null);
   const [shown, setShown] = useState<Shown>(null);
   const [busy, setBusy] = useState(false);
   const [manual, setManual] = useState('');
@@ -62,7 +64,7 @@ export default function ScanScreen() {
     result: string;
     server: ServerTiming | null;
   } | null>(null);
-  gateRef.current = gateId;
+  gateRef.current = gateId ?? null;
 
   // Event (with gates and any assigned gate) from the scanner list.
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function ScanScreen() {
         const ev = list.find((e) => e.id === eventId) ?? null;
         setEvent(ev);
         if (ev?.assignedGate) setGateId(ev.assignedGate.id);
+        else if (ev && ev.venue.gates.length === 0) setGateId(null);
       })
       .catch(() => setEvent(null));
   }, [api, eventId]);
@@ -107,7 +110,7 @@ export default function ScanScreen() {
   }, [shown]);
 
   const submit = useCallback(
-    async (token: string, source: 'camera' | 'manual', detected: number) => {
+    async (token: string, source: 'camera' | 'manual', detected: number, override = false) => {
       const qrToken = token.trim();
       if (!qrToken || busyRef.current) return;
       busyRef.current = true;
@@ -115,13 +118,16 @@ export default function ScanScreen() {
       const sent = performance.now();
       try {
         const timing: { server?: ServerTiming | null } = {};
-        const r = await api.checkIn({ qrToken, eventId, ...(gateRef.current ? { gateId: gateRef.current } : {}) }, timing);
+        const r = await api.checkIn({ qrToken, eventId, ...(gateRef.current ? { gateId: gateRef.current } : {}), ...(override ? { override: true } : {}) }, timing);
+        setLastToken(qrToken);
         pendingTiming.current = { detected, source, networkMs: performance.now() - sent, result: r.result, server: timing.server ?? null };
         setShown({ kind: 'result', r });
         const tone = verdict(r).tone;
         Haptics.notificationAsync(
           tone === 'ok' ? Haptics.NotificationFeedbackType.Success : tone === 'warn' ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Error,
         ).catch(() => undefined);
+        // Wrong gate gets a second buzz, so it can't be mistaken for "Let in" without looking.
+        if (r.result === 'WRONG_GATE') setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined), 350);
         loadProgress();
       } catch (e) {
         // Too-short codes fail request validation (400) — still just "not a ticket" at the door.
@@ -157,6 +163,7 @@ export default function ScanScreen() {
 
   const fixedGate = event?.assignedGate ?? null;
   const v = shown?.kind === 'result' ? verdict(shown.r) : null;
+  const canLetIn = shown?.kind === 'result' && shown.r.result === 'WRONG_GATE' && !!event?.canLetInAnyGate && !!lastToken;
   const seat = shown?.kind === 'result' ? shown.r.ticket?.seat : null;
   const meta = useMemo(
     () => ({ Device: `${Platform.OS} ${Platform.Version}`, 'App version': APP_VERSION, Mode: __DEV__ ? 'development (slower)' : 'production JS' }),
@@ -173,6 +180,41 @@ export default function ScanScreen() {
       </SafeAreaView>
     );
   }
+
+  // Phase 19: "Which gate are you at?" before scanning (docs/scanner.md).
+  if (gateId === undefined) {
+    return (
+      <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40, gap: 10 }}>
+          <Pressable onPress={() => router.back()} hitSlop={10}>
+            <Text style={{ color: colors.accent, fontSize: 13 }}>All events</Text>
+          </Pressable>
+          <Text style={[styles.h2, { fontSize: 19 }]}>{event.name}</Text>
+          <Text style={[styles.h2, { fontSize: 24, marginTop: 8 }]}>Which gate are you at?</Text>
+          <Text style={styles.muted}>So we can tell people if they’re at the wrong one.</Text>
+          {event.venue.gates.map((g) => (
+            <Pressable
+              key={g.id}
+              onPress={() => setGateId(g.id)}
+              accessibilityRole="button"
+              style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>{g.name}</Text>
+                {g.serves.length > 0 && <Text style={styles.muted}>{g.serves.join(' · ')}</Text>}
+                {g.accessZone && <Text style={styles.muted}>{g.accessZone.name} only</Text>}
+              </View>
+              <Text style={{ color: colors.muted, fontSize: 22 }}>›</Text>
+            </Pressable>
+          ))}
+          <Pressable onPress={() => setGateId(null)} accessibilityRole="button" style={{ alignSelf: 'center', padding: 10 }}>
+            <Text style={{ color: colors.accent, fontWeight: '600' }}>Not at a gate (no gate checks)</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+  const here = event.venue.gates.find((g) => g.id === gateId);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
@@ -192,27 +234,16 @@ export default function ScanScreen() {
           </View>
         </View>
 
-        {/* Gate */}
-        <View style={{ marginTop: 12 }}>
-          <Text style={styles.muted}>Gate</Text>
-          {fixedGate ? (
-            <Text style={[styles.body, { marginTop: 4 }]}>
-              {fixedGate.name} <Text style={styles.muted}>(assigned)</Text>
-            </Text>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 6 }}>
-              {[{ id: null as string | null, name: 'No specific gate', zone: null as string | null }, ...event.venue.gates.map((g) => ({ id: g.id, name: g.name, zone: g.accessZone?.name ?? null }))].map((g) => (
-                <Pressable
-                  key={g.id ?? 'none'}
-                  onPress={() => setGateId(g.id)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: gateId === g.id }}
-                  style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: gateId === g.id ? colors.accent : colors.inputLine, backgroundColor: gateId === g.id ? '#173c3b' : 'transparent' }}
-                >
-                  <Text style={{ color: colors.text, fontSize: 14 }}>{g.name}{g.zone ? ` (${g.zone} only)` : ''}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+        {/* Gate (Phase 19) */}
+        <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 10, padding: 12 }}>
+          <View>
+            <Text style={styles.muted}>{fixedGate ? 'Your gate (assigned)' : 'Your gate'}</Text>
+            <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>{here?.name ?? (event.venue.gates.length ? 'Not at a gate' : 'No gates at this venue')}</Text>
+          </View>
+          {!fixedGate && event.venue.gates.length > 0 && (
+            <Pressable onPress={() => setGateId(undefined)} hitSlop={10} accessibilityRole="button">
+              <Text style={{ color: colors.accent, fontWeight: '600' }}>Change</Text>
+            </Pressable>
           )}
         </View>
 
@@ -255,7 +286,14 @@ export default function ScanScreen() {
             <View style={{ marginTop: 14, borderRadius: 12, padding: 18, backgroundColor: toneColor[v.tone] }} testID={`verdict-${shown?.kind === 'result' ? shown.r.result : ''}`}>
               <Text style={{ color: '#fff', fontSize: 30, fontWeight: '800' }}>{v.title}</Text>
               {!!v.detail && <Text style={{ color: '#fff', fontSize: 16, marginTop: 6 }}>{v.detail}</Text>}
+              {!!v.big && <Text style={{ color: '#fff', fontSize: 50, fontWeight: '800', letterSpacing: -1 }}>{v.big}</Text>}
               {seat && <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', marginTop: 10 }}>{seat.section}, row {seat.row}, seat {seat.number}</Text>}
+            </View>
+          )}
+          {!busy && canLetIn && (
+            <View style={{ marginTop: 10, gap: 6 }}>
+              <Button title="Let in here" kind="quiet" onPress={() => submit(lastToken!, 'manual', performance.now(), true)} />
+              <Text style={styles.muted}>Managers only. It’s noted in the check-ins.</Text>
             </View>
           )}
         </View>
@@ -292,12 +330,12 @@ export default function ScanScreen() {
           <View style={{ marginTop: 18 }}>
             <Text style={[styles.muted, { fontWeight: '600', marginBottom: 6 }]}>Your recent scans</Text>
             {progress.myRecentScans.map((s) => {
-              const tone = s.result === 'VALID' ? 'ok' : s.result === 'ALREADY_USED' ? 'warn' : 'bad';
+              const tone = s.result === 'VALID' ? 'ok' : s.result === 'ALREADY_USED' || s.result === 'WRONG_GATE' ? 'warn' : 'bad';
               return (
                 <View key={s.id} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: colors.line }}>
                   <Text style={[styles.body, { flex: 1, fontSize: 14 }]}>
                     <Text style={{ color: tone === 'ok' ? '#3fbf76' : tone === 'warn' ? '#e0a72a' : '#e2574c' }}>● </Text>
-                    {verdict({ result: s.result, ticket: null }).title}
+                    {s.result === 'WRONG_GATE' ? `Sent to ${s.expectedGate ?? 'their gate'}` : s.override ? 'Let in here' : verdict({ result: s.result, ticket: null }).title}
                     <Text style={styles.muted}>, {s.ticketType}{s.seat ? `, ${s.seat.row}${s.seat.number}` : ''}</Text>
                   </Text>
                   <Text style={[styles.muted, { fontVariant: ['tabular-nums'] }]}>

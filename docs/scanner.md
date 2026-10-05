@@ -12,14 +12,15 @@ Phase 10 is the door: gate staff sign in on a phone, pick the event they're work
 | Result | Panel | What it tells the door |
 |---|---|---|
 | `VALID` | green **Let in** | ticket type, zone, and seat for reserved tickets |
+| `WRONG_GATE` | amber **Wrong gate · Send them to Gate 3** | their gate in big letters, and their seat (Phase 19) |
 | `ALREADY_USED` | amber **Already scanned** | don't let a second person in on it |
 | `WRONG_EVENT` | red **Wrong event** | names the event the ticket is actually for |
-| `WRONG_DATE` | red **Not valid now** | outside the entry window |
-| `NO_ACCESS` | red **Wrong gate** | the ticket's zone, so they can be sent to the right gate |
+| `WRONG_DATE` | red **Not valid now**, or amber **Gates not open yet · Gates open at 16:00** | outside the entry window |
+| `NO_ACCESS` | red **Not for this gate** | the ticket's zone, so they can be sent to a gate for it |
 | `CANCELLED` / `REFUNDED` | red | don't admit, refer to the organizer |
 | `INVALID` | red **Not a valid ticket** | not a ticket for this platform |
 
-Also on the screen: the gate (fixed and labelled "assigned" if the organizer set one, otherwise a picker), a live **checked in / sold** counter (refreshes every 10 s and after each scan), a box to type or paste a code when a phone screen won't scan, and the person's own last 15 scans. Short buzz on success, long double buzz on anything else, on phones that support vibration.
+Also on the screen: the gate (fixed and labelled "assigned" if the organizer set one, otherwise chosen on "Which gate are you at?", see Gate checks below), a live **checked in / sold** counter (refreshes every 10 s and after each scan), a box to type or paste a code when a phone screen won't scan, and the person's own last 15 scans. A sound and a buzz for each outcome (Phase 19): one short high beep for **Let in**, two quick beeps for **Wrong gate** and **Already scanned**, one long low buzz for **Don't admit**. Sound can be turned off with **Sound on/off** next to the gate. The phone app buzzes in three patterns (its sounds need an audio package added later).
 
 ### Scanning behaviour worth knowing
 
@@ -87,4 +88,41 @@ With the default `.env` (`NEXT_PUBLIC_API_URL=http://localhost:4000`), nothing c
 - **Online only.** No connection, no scanning. Offline scanning with later sync is Phase 16.
 - **No scan rate limiting yet.** The Phase 0 security plan calls for it on check-in; it belongs with the Phase 18 security audit.
 - **No holder name on the result.** The verdict shows ticket type, zone and seat, not the buyer's name. ID checks at the door can be added if organizers want them.
-- **Gate choice isn't remembered** between visits for staff without an assigned gate.
+
+## Gate checks (Phase 19)
+
+Designed on the "Bantaba Host screens" canvas (GatePick, GateRight, GateWrong, GateOrganizer).
+
+**Every ticket can have its own gate:**
+- **Seated tickets** use their section's gate (set on the venue, Phase 17), as printed on the ticket.
+- **Standing tickets** use the gates the organizer picks for their ticket type, in **Event → At the gate → Check-ins → Standing tickets** (`PUT /ticket-types/:id/gates`). None picked = any gate.
+
+**At the door:**
+1. The scanner first asks **Which gate are you at?**, listing what each gate serves (sections and standing ticket types). Staff assigned to a gate skip this. The choice is remembered on that phone for that event, and **Change** goes back to it. **Not at a gate** turns the checks off.
+2. Right gate: green **Let in** with the seat.
+3. Wrong gate: amber **Wrong gate · Send them to Gate 3**. The ticket stays valid, so they get in at their own gate. `WRONG_GATE` is logged with their gate (`CheckIn.expectedGateId`).
+4. **Let in here**: managers (staff with the Manager role) and the organizer can let them in anyway (`override: true`); it's logged as **Let in here · Their gate: Gate 3** (`CheckIn.override`). Gate staff and other roles get 403 "Only a manager can let them in at this gate".
+
+**The organizer's rule** (`PUT /events/:id/gate-rules`, `Event.wrongGate`):
+- **Send them to their gate** (`send`, the default), as above.
+- **Let them in, tell them their gate** (`allow`): for venues where every gate leads everywhere. The scan is VALID and says "Their gate is Gate 3"; it counts as let in at another gate.
+
+**Gates open** (`Event.gatesOpenAt`, same endpoint): when the gates open. It's shown on My tickets and in the ticket email ("Gates open 15:00"). Scans before then come back `WRONG_DATE` with `gatesOpenAt`, shown as "Gates not open yet · Gates open at 15:00". Not set = the usual window (`CHECKIN_WINDOW_BEFORE_MINUTES`, 3 hours before the start). It has to be before the event ends.
+
+**Order of checks:** wrong event → ticket status (used, cancelled, refunded) → entry window / gates open → **gate** → zone → let in. So a used ticket at the wrong gate still says "Already scanned".
+
+**Live numbers** (`GET /events/:id/gate-stats`, organizer and admin only), on the Check-ins tab and refreshed every 15 s:
+- totals: let in, sent to their gate, let in at another gate (and how many by a manager);
+- per gate: in, per minute over the last 10 minutes (the busiest gate is marked), sent to their gate, let in when it wasn't theirs;
+- scans with no gate picked on their own line.
+
+**API:**
+- `POST /check-ins` takes `override` and returns `expectedGates`, `atOtherGate`, `override` and `gatesOpenAt`.
+- `GET /scanner/events` adds each gate's `serves`, plus `wrongGate`, `gatesOpenAt` and `canLetInAnyGate`.
+- `GET /scanner/events/:id/progress` adds `expectedGate` and `override` to recent scans.
+- `GET /events/:id/gates` returns the organizer's setup: gates, standing ticket types and their gates, rule, opening time.
+
+Migration `20261005200000_gate_checks` adds `events.wrongGate` and `gatesOpenAt`, `ticket_type_gates`, `check_ins.expectedGateId` and `override`, and the `WRONG_GATE` result.
+
+Tests: `node gates-test.js` in `apps/backend` (backend started with `RATE_LIMITS=off`), 10/10.
+

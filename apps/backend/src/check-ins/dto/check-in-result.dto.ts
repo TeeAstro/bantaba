@@ -24,4 +24,12 @@ export class CheckInResponseDto {
   gate?: NamedRefDto | null;
   /** Null when the code isn't a ticket at all (INVALID). */
   ticket!: ScannedTicketDto | null;
+  /** Phase 19: the ticket's own gates; empty when it can use any gate. On WRONG_GATE, send them to the first. */
+  expectedGates?: NamedRefDto[];
+  /** Let in at a gate that isn't theirs (by a manager, or because the event lets everyone in). */
+  atOtherGate?: boolean;
+  /** A manager let them in at the wrong gate. */
+  override?: boolean;
+  /** On WRONG_DATE before the gates open: when they open. */
+  gatesOpenAt?: Date | null;
 }

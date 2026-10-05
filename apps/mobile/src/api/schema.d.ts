@@ -1723,6 +1723,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{eventId}/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description **Roles:** ORGANIZER, ADMIN */
+        get: operations["CheckIns_gateSetup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{eventId}/gate-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description **Roles:** ORGANIZER, ADMIN */
+        put: operations["CheckIns_setGateRules"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ticket-types/{id}/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description The gates a standing ticket type enters through (seated ones use their section's gate).
+         *
+         *     **Roles:** ORGANIZER, ADMIN
+         */
+        put: operations["CheckIns_setTicketTypeGates"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{eventId}/gate-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Live numbers per gate: in, per minute (last 10 minutes), sent to their gate, let in at another.
+         *
+         *     **Roles:** ORGANIZER, ADMIN
+         */
+        get: operations["CheckIns_gateStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/venues": {
         parameters: {
             query?: never;
@@ -3074,9 +3150,10 @@ export interface components {
             qrToken: string;
             gateId?: string;
             eventId?: string;
+            override?: boolean;
         };
         /** @enum {string} */
-        CheckInResult: "VALID" | "ALREADY_USED" | "INVALID" | "CANCELLED" | "REFUNDED" | "WRONG_EVENT" | "WRONG_DATE" | "NO_ACCESS";
+        CheckInResult: "VALID" | "ALREADY_USED" | "INVALID" | "CANCELLED" | "REFUNDED" | "WRONG_EVENT" | "WRONG_DATE" | "NO_ACCESS" | "WRONG_GATE";
         NamedRefDto: {
             id: string;
             name: string;
@@ -3107,6 +3184,30 @@ export interface components {
             gate?: components["schemas"]["NamedRefDto"] | null;
             /** @description Null when the code isn't a ticket at all (INVALID). */
             ticket: components["schemas"]["ScannedTicketDto"] | null;
+            /** @description Phase 19: the ticket's own gates; empty when it can use any gate. On WRONG_GATE, send them to the first. */
+            expectedGates?: components["schemas"]["NamedRefDto"][];
+            /** @description Let in at a gate that isn't theirs (by a manager, or because the event lets everyone in). */
+            atOtherGate?: boolean;
+            /** @description A manager let them in at the wrong gate. */
+            override?: boolean;
+            /**
+             * Format: date-time
+             * @description On WRONG_DATE before the gates open: when they open.
+             */
+            gatesOpenAt?: string | null;
+        };
+        GateRulesDto: {
+            /**
+             * @description "send" = send them to their gate (a manager can let them in); "allow" = let in, tell them their gate.
+             * @enum {string}
+             */
+            wrongGate: "send" | "allow";
+            /** @description When the gates open (ISO time); null for the usual window before the start. */
+            gatesOpenAt?: string | null;
+        };
+        TicketTypeGatesDto: {
+            /** @description The gates this standing ticket type enters through; empty = any gate. */
+            gateIds: string[];
         };
         CreateVenueDto: {
             name: string;
@@ -3235,6 +3336,8 @@ export interface components {
             name: string;
             /** @description Zone this gate admits into; null = open gate. */
             accessZone: components["schemas"]["ZoneNameDto"] | null;
+            /** @description Phase 19: the sections and standing ticket types that enter here. */
+            serves: string[];
         };
         ScannerVenueDto: {
             id: string;
@@ -3254,6 +3357,15 @@ export interface components {
             role: string;
             /** @description If set, every scan by this person happens at this gate. */
             assignedGate: components["schemas"]["NamedRefDto"] | null;
+            /** @description Phase 19: "send" (send them to their gate) or "allow" (let in, tell them their gate). */
+            wrongGate: string;
+            /**
+             * Format: date-time
+             * @description When the gates open, if the organizer set it.
+             */
+            gatesOpenAt: string | null;
+            /** @description May tap "Let in here" at the wrong gate (managers and the organizer). */
+            canLetInAnyGate: boolean;
         };
         RecentScanDto: {
             result: components["schemas"]["CheckInResult"];
@@ -3261,6 +3373,10 @@ export interface components {
             /** Format: date-time */
             scannedAt: string;
             gate: string | null;
+            /** @description Phase 19: their own gate, when scanned at another. */
+            expectedGate: string | null;
+            /** @description A manager let them in at the wrong gate. */
+            override: boolean;
             ticketType: string;
             seat: components["schemas"]["SeatLabelDto"] | null;
         };
@@ -6426,6 +6542,146 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>[];
                 };
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CheckIns_gateSetup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CheckIns_setGateRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GateRulesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CheckIns_setTicketTypeGates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TicketTypeGatesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CheckIns_gateStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Missing or expired access token */
             401: {

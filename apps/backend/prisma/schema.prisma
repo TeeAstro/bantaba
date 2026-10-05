@@ -170,6 +170,7 @@ enum CheckInResult {
   WRONG_EVENT
   WRONG_DATE
   NO_ACCESS
+  WRONG_GATE
 }
 
 enum StaffRole {
@@ -527,9 +528,11 @@ model Gate {
   accessZoneId String?
   accessZone   AccessZone? @relation(fields: [accessZoneId], references: [id], onDelete: SetNull)
 
-  checkIns     CheckIn[]
+  checkIns     CheckIn[]        @relation("CheckInGate")
+  expectedAt   CheckIn[]        @relation("CheckInExpectedGate")
   staffDefault EventStaff[]
   sections     VenueSection[]
+  ticketTypes  TicketTypeGate[]
 
   @@index([venueId])
   @@map("gates")
@@ -597,6 +600,14 @@ model Event {
   reviewedAt           DateTime?
   reviewedById         String?
   reviewNote           String? // shown to the organizer when sent back
+
+  // Phase 19 (gate checks, docs/scanner.md): what the scanner does with a
+  // ticket at the wrong gate: "send" = send them to their gate (a manager
+  // can still let them in), "allow" = let in and tell them their gate.
+  wrongGate   String    @default("send")
+  // When the gates open; scanning before then says so. Null = the usual
+  // window before the start (CHECKIN_WINDOW_BEFORE_MINUTES).
+  gatesOpenAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -683,6 +694,9 @@ model TicketType {
   // Phase 17: the sections sold as this ticket type. Any = reserved
   // seating (buyers pick seats); none = general admission.
   eventSections EventSection[]
+  // Phase 19: the gates this ticket type uses when it has no seat (a
+  // standing area). Seated tickets use their section's gate instead.
+  gates         TicketTypeGate[]
 
   @@index([eventId])
   @@map("ticket_types")
@@ -943,25 +957,42 @@ model NfcCredential {
 // ---------- Access control / check-in ----------
 
 model CheckIn {
-  id        String        @id @default(uuid())
+  id             String        @id @default(uuid())
   // Phase 10: the event being worked at the door when this scan happened.
   // Usually the ticket's own event; differs on WRONG_EVENT, which must
   // show up in the scanning event's log, not the other event's.
-  eventId   String
-  event     Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  ticketId  String
-  ticket    Ticket        @relation(fields: [ticketId], references: [id], onDelete: Restrict)
-  gateId    String?
-  gate      Gate?         @relation(fields: [gateId], references: [id], onDelete: SetNull)
-  staffId   String?
-  result    CheckInResult
-  scannedAt DateTime      @default(now())
+  eventId        String
+  event          Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  ticketId       String
+  ticket         Ticket        @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  gateId         String?
+  gate           Gate?         @relation("CheckInGate", fields: [gateId], references: [id], onDelete: SetNull)
+  staffId        String?
+  result         CheckInResult
+  // Phase 19: the ticket's own gate when it was scanned at another one
+  // (WRONG_GATE, or let in anyway), and whether a manager let them in.
+  expectedGateId String?
+  expectedGate   Gate?         @relation("CheckInExpectedGate", fields: [expectedGateId], references: [id], onDelete: SetNull)
+  override       Boolean       @default(false)
+  scannedAt      DateTime      @default(now())
 
   // Append-only: application code must never UPDATE or DELETE rows here.
   @@index([eventId])
   @@index([ticketId])
   @@index([scannedAt])
   @@map("check_ins")
+}
+
+// Phase 19: gates a standing (unseated) ticket type enters through.
+model TicketTypeGate {
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  gateId       String
+  gate         Gate       @relation(fields: [gateId], references: [id], onDelete: Cascade)
+
+  @@id([ticketTypeId, gateId])
+  @@index([gateId])
+  @@map("ticket_type_gates")
 }
 
 model EventStaff {

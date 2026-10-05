@@ -3907,6 +3907,168 @@
         "description": "**Roles:** ORGANIZER, ADMIN"
       }
     },
+    "/api/v1/events/{eventId}/gates": {
+      "get": {
+        "operationId": "CheckIns_gateSetup",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Check Ins"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ORGANIZER, ADMIN"
+      }
+    },
+    "/api/v1/events/{eventId}/gate-rules": {
+      "put": {
+        "operationId": "CheckIns_setGateRules",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GateRulesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Check Ins"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ORGANIZER, ADMIN"
+      }
+    },
+    "/api/v1/ticket-types/{id}/gates": {
+      "put": {
+        "operationId": "CheckIns_setTicketTypeGates",
+        "summary": "",
+        "description": "The gates a standing ticket type enters through (seated ones use their section's gate).\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketTypeGatesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Check Ins"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/events/{eventId}/gate-stats": {
+      "get": {
+        "operationId": "CheckIns_gateStats",
+        "summary": "",
+        "description": "Live numbers per gate: in, per minute (last 10 minutes), sent to their gate, let in at another.\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Check Ins"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/venues": {
       "get": {
         "operationId": "Venues_findAll",
@@ -7698,6 +7860,9 @@
           },
           "eventId": {
             "type": "string"
+          },
+          "override": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -7714,7 +7879,8 @@
           "REFUNDED",
           "WRONG_EVENT",
           "WRONG_DATE",
-          "NO_ACCESS"
+          "NO_ACCESS",
+          "WRONG_GATE"
         ]
       },
       "NamedRefDto": {
@@ -7829,11 +7995,68 @@
                 "$ref": "#/components/schemas/ScannedTicketDto"
               }
             ]
+          },
+          "expectedGates": {
+            "description": "Phase 19: the ticket's own gates; empty when it can use any gate. On WRONG_GATE, send them to the first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamedRefDto"
+            }
+          },
+          "atOtherGate": {
+            "type": "boolean",
+            "description": "Let in at a gate that isn't theirs (by a manager, or because the event lets everyone in)."
+          },
+          "override": {
+            "type": "boolean",
+            "description": "A manager let them in at the wrong gate."
+          },
+          "gatesOpenAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "On WRONG_DATE before the gates open: when they open."
           }
         },
         "required": [
           "result",
           "ticket"
+        ]
+      },
+      "GateRulesDto": {
+        "type": "object",
+        "properties": {
+          "wrongGate": {
+            "type": "string",
+            "description": "\"send\" = send them to their gate (a manager can let them in); \"allow\" = let in, tell them their gate.",
+            "enum": [
+              "send",
+              "allow"
+            ]
+          },
+          "gatesOpenAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "When the gates open (ISO time); null for the usual window before the start."
+          }
+        },
+        "required": [
+          "wrongGate"
+        ]
+      },
+      "TicketTypeGatesDto": {
+        "type": "object",
+        "properties": {
+          "gateIds": {
+            "description": "The gates this standing ticket type enters through; empty = any gate.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "gateIds"
         ]
       },
       "CreateVenueDto": {
@@ -8296,12 +8519,20 @@
                 "$ref": "#/components/schemas/ZoneNameDto"
               }
             ]
+          },
+          "serves": {
+            "description": "Phase 19: the sections and standing ticket types that enter here.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "id",
           "name",
-          "accessZone"
+          "accessZone",
+          "serves"
         ]
       },
       "ScannerVenueDto": {
@@ -8361,6 +8592,20 @@
                 "$ref": "#/components/schemas/NamedRefDto"
               }
             ]
+          },
+          "wrongGate": {
+            "type": "string",
+            "description": "Phase 19: \"send\" (send them to their gate) or \"allow\" (let in, tell them their gate)."
+          },
+          "gatesOpenAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the gates open, if the organizer set it."
+          },
+          "canLetInAnyGate": {
+            "type": "boolean",
+            "description": "May tap \"Let in here\" at the wrong gate (managers and the organizer)."
           }
         },
         "required": [
@@ -8371,7 +8616,10 @@
           "endDate",
           "venue",
           "role",
-          "assignedGate"
+          "assignedGate",
+          "wrongGate",
+          "gatesOpenAt",
+          "canLetInAnyGate"
         ]
       },
       "RecentScanDto": {
@@ -8391,6 +8639,15 @@
             "type": "string",
             "nullable": true
           },
+          "expectedGate": {
+            "type": "string",
+            "nullable": true,
+            "description": "Phase 19: their own gate, when scanned at another."
+          },
+          "override": {
+            "type": "boolean",
+            "description": "A manager let them in at the wrong gate."
+          },
           "ticketType": {
             "type": "string"
           },
@@ -8408,6 +8665,8 @@
           "id",
           "scannedAt",
           "gate",
+          "expectedGate",
+          "override",
           "ticketType",
           "seat"
         ]

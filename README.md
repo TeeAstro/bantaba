@@ -1140,6 +1140,32 @@ No migration; rebuild the backend (for the emails) and restart both apps.
 The phone app shows its new icon after the next build (`npx expo start -c`
 in Expo Go only shows the app, not its icon).
 
+## Gate checks at the scanner (Phase 19)
+
+The scanner now knows each ticket's gate: seated tickets from their section,
+standing tickets from the gates the organizer picks. At the wrong gate it
+says **Send them to Gate 3**; a manager can still let them in. Organizers
+choose the rule, set when the gates open, and watch live numbers per gate.
+Each result has its own sound. Details: `docs/scanner.md` ("Gate checks").
+Designed on the "Bantaba Host screens" canvas (GatePick, GateRight,
+GateWrong, GateOrganizer).
+
+**After pulling:** `npx prisma migrate dev` in `apps/backend` (new migration
+`20261005200000_gate_checks`), then `npm run build` and restart the backend
+and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Pick a gate | Open the scanner for an event at a venue with gates | "Which gate are you at?" with what each gate serves; the choice is remembered |
+| 2 | Right gate | Scan a seated ticket at its section's gate | Green **Let in** with the seat; one short beep |
+| 3 | Wrong gate | Scan it at another gate | Amber **Wrong gate · Send them to Gate 1**; two beeps; the ticket still works at Gate 1 |
+| 4 | Let in here | Do 3 as a Manager → **Let in here** | Let in; Check-ins shows "Let in here · Their gate: Gate 1". Gate staff don't see the button |
+| 5 | Standing tickets | Check-ins → Standing tickets → pick Gate 2 for a ticket type | Its tickets are sent to Gate 2 from other gates; My tickets shows "Gate 2" |
+| 6 | Let them in | Choose "Let them in, tell them their gate" → **Save**, scan at the wrong gate | **Let in** with "Their gate is Gate 1" |
+| 7 | Gates open | Set Gates open to later today → scan | "Gates not open yet · Gates open at …"; the time is on My tickets and in the ticket email |
+| 8 | Live numbers | Check-ins during scanning | Totals and a row per gate (in, per minute, sent away); busiest gate marked |
+| 9 | Automated | `node gates-test.js` in `apps/backend` | `10/10 passed` |
+
 ## Project structure
 
 ```
