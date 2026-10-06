@@ -51,7 +51,7 @@ export class OfflineScanService {
     const gateId = who.assignedGateId ?? dto.gateId ?? null;
 
     // 1. The scans made without signal, oldest first.
-    const { accepted, conflicts } = await this.takeScans(actor, event, dto, gateId);
+    const { accepted, conflicts } = await this.takeScans(actor, event, dto, gateId, who.manager);
 
     // 2. How this phone is doing, for the organizer.
     await this.prisma.scannerDevice.upsert({
@@ -126,13 +126,19 @@ export class OfflineScanService {
     };
   }
 
-  private async takeScans(actor: Actor, event: { id: string; venueId: string }, dto: OfflineSyncDto, phoneGate: string | null) {
+  private async takeScans(actor: Actor, event: { id: string; venueId: string; startDate: Date; endDate: Date; gatesOpenAt: Date | null }, dto: OfflineSyncDto, phoneGate: string | null, manager: boolean) {
     const accepted: string[] = [];
     const conflicts: { scanId: string; reason: 'twice' | 'refunded' | 'cancelled' | 'not_valid'; ticketType: string; seat: string[] | null; first: { at: Date; gate: string | null } | null; at: Date; gate: string | null }[] = [];
     if (!dto.scans.length) return { accepted, conflicts };
     const now = Date.now();
     const venueGates = new Map((await this.prisma.gate.findMany({ where: { venueId: event.venueId }, select: { id: true, name: true } })).map((g) => [g.id, g.name]));
     const scans = [...dto.scans].sort((a, b) => a.at.localeCompare(b.at));
+    // Security review (Phase 21b): only what a real phone at this event
+    // could have done. A "let in" must fall in the check-in window (an hour
+    // either side, for phone clocks); refusals keep their result but can
+    // never be recorded as VALID; tickets of other events are ignored.
+    const opens = (event.gatesOpenAt ?? new Date(event.startDate.getTime() - WINDOW_BEFORE() * 60_000)).getTime() - 3_600_000;
+    const closes = event.endDate.getTime() + 3_600_000;
 
     for (const s of scans) {
       const done = await this.prisma.checkIn.findUnique({ where: { clientScanId: s.id }, select: { id: true } });
@@ -145,17 +151,25 @@ export class OfflineScanService {
       if (!(at.getTime() > now - 3 * 86_400_000 && at.getTime() < now + 5 * 60_000)) at = new Date(now);
       const gateId = s.gateId && venueGates.has(s.gateId) ? s.gateId : phoneGate && venueGates.has(phoneGate) ? phoneGate : null;
 
+      if (s.letIn && (at.getTime() < opens || at.getTime() > closes)) {
+        accepted.push(s.id); // nothing to record: no phone could have let them in then
+        continue;
+      }
+      if (!s.letIn && (s.result === CheckInResult.VALID || s.result === CheckInResult.WRONG_EVENT)) {
+        accepted.push(s.id);
+        continue;
+      }
+      const override = !!s.override && manager;
       await this.prisma.$transaction(async (tx) => {
         const ticket = await tx.ticket.findUnique({
           where: { qrCredentialHash: s.h },
           include: { ticketType: { select: { id: true, name: true, eventId: true } }, seat: { select: { row: true, number: true, section: { select: { name: true, gateId: true } } } } },
         });
-        // Not a ticket at all: nothing to attach it to (as online).
-        if (!ticket) return;
+        // Not a ticket at all, or another event's: nothing to record here.
+        if (!ticket || ticket.ticketType.eventId !== event.id) return;
         let result: CheckInResult = s.result;
         if (s.letIn) {
-          if (ticket.ticketType.eventId !== event.id) result = CheckInResult.WRONG_EVENT;
-          else if (ticket.status === TicketStatus.ACTIVE) {
+          if (ticket.status === TicketStatus.ACTIVE) {
             const claimed = await tx.$executeRaw`UPDATE tickets SET status = 'USED'::"TicketStatus" WHERE id = ${ticket.id} AND status = 'ACTIVE'::"TicketStatus"`;
             result = claimed ? CheckInResult.VALID : CheckInResult.ALREADY_USED;
           } else if (ticket.status === TicketStatus.USED) result = CheckInResult.ALREADY_USED;
@@ -171,8 +185,8 @@ export class OfflineScanService {
             gateId,
             staffId: actor.id,
             result,
-            expectedGateId: s.result === CheckInResult.WRONG_GATE || s.override ? ownGate : null,
-            override: !!s.override,
+            expectedGateId: s.result === CheckInResult.WRONG_GATE || override ? ownGate : null,
+            override,
             scannedAt: at,
             offline: true,
             letIn: s.letIn,

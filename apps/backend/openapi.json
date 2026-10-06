@@ -1845,7 +1845,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -3740,6 +3747,12 @@
         },
         "tags": [
           "Fees"
+        ],
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
         ]
       }
     },
@@ -4597,6 +4610,12 @@
         },
         "tags": [
           "Venues"
+        ],
+        "security": [
+          {},
+          {
+            "bearer": []
+          }
         ]
       }
     },
@@ -7871,14 +7890,17 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 254
           },
           "password": {
             "type": "string",
-            "minLength": 12
+            "minLength": 12,
+            "maxLength": 200
           },
           "fullName": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 100
           }
         },
         "required": [
@@ -7944,11 +7966,13 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 254
           },
           "password": {
             "type": "string",
-            "minLength": 12
+            "minLength": 12,
+            "maxLength": 200
           },
           "businessName": {
             "type": "string"
@@ -7964,10 +7988,12 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 254
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200
           }
         },
         "required": [
@@ -8051,7 +8077,8 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 254
           }
         },
         "required": [
@@ -8062,11 +8089,13 @@
         "type": "object",
         "properties": {
           "token": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200
           },
           "newPassword": {
             "type": "string",
-            "minLength": 12
+            "minLength": 12,
+            "maxLength": 200
           }
         },
         "required": [
@@ -9059,6 +9088,11 @@
             "type": "string",
             "description": "Needed when changing a password that's already set.",
             "maxLength": 200
+          },
+          "keepRefreshToken": {
+            "type": "string",
+            "description": "This device's refresh token: kept, while every other session is signed out (security review, Phase 21b).",
+            "maxLength": 200
           }
         },
         "required": [
@@ -9094,7 +9128,8 @@
             "$ref": "#/components/schemas/StaffRole"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 254
           },
           "assignedGateId": {
             "type": "string"
@@ -9105,7 +9140,8 @@
           },
           "password": {
             "type": "string",
-            "minLength": 12
+            "minLength": 12,
+            "maxLength": 200
           }
         },
         "required": [

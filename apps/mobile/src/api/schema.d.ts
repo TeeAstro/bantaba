@@ -3559,6 +3559,8 @@ export interface components {
             password: string;
             /** @description Needed when changing a password that's already set. */
             currentPassword?: string;
+            /** @description This device's refresh token: kept, while every other session is signed out (security review, Phase 21b). */
+            keepRefreshToken?: string;
         };
         /** @enum {string} */
         OrderStatus: "PENDING" | "PAID" | "CANCELLED" | "REFUNDED" | "PARTIALLY_REFUNDED";
@@ -5172,7 +5174,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };

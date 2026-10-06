@@ -92,7 +92,10 @@ function lastMailTo(email, type) {
   const tok = newLogin.data.accessToken;
   const order = await api('POST', '/orders/checkout', tok, { eventId: ev.id, items: [{ ticketTypeId: tt.id, quantity: 2 }] });
   const mine = await api('GET', '/me/orders', tok);
-  const theirs = await api('GET', '/me/orders', codeTok);
+  // Another buyer (a fresh account: since the security review, setting a password
+  // in E signs out codeTok's other sessions, this one included).
+  const otherBuyer = (await api('POST', '/auth/register', null, { email: uniq('other'), password: PW })).data;
+  const theirs = await api('GET', '/me/orders', otherBuyer.accessToken);
   const row = mine.data?.find((o) => o.id === (order.data?.order?.id ?? order.data?.id));
   check('G', 'Orders: the held order is listed (2 tickets, D500 plus fees, PENDING, event slug); another buyer sees none of it',
     order.status === 201 && !!row && row.tickets === 2 && row.total >= 50000 && row.status === 'PENDING' && row.event.slug === ev.slug && !theirs.data.some((o) => o.id === row.id) && !('guestTokenHash' in row),

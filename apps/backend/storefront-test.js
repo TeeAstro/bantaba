@@ -182,8 +182,11 @@ function lastMailTo(email, type) {
   const soldAfter = (await prisma.ticketType.findUnique({ where: { id: e2.tts[0].id } })).quantitySold;
   const tooMany = await api('POST', '/orders/guest-checkout', null, { eventId: e1.id, fullName: 'Big Group', email: uniq('big'), items: [{ ticketTypeId: e1.tts[0].id, quantity: 11 }] });
   const hostMail = await api('POST', '/orders/guest-checkout', null, { eventId: e1.id, fullName: 'Organizer', email: 'organizer@example.com', items: [{ ticketTypeId: e1.tts[0].id, quantity: 1 }] });
-  check('J', 'Choosing again replaces the earlier hold (released: 2 back, 1 held); 11 tickets refused; a Bantaba Host email can’t buy as a guest',
-    g2.status === 201 && first.status === 'CANCELLED' && soldAfter === soldBefore - 1 && tooMany.status === 400 && hostMail.status === 409,
+  // Since the security review (Phase 21b) a guest checkout doesn't replace an
+  // earlier hold (anyone can type an email); it runs out after 5 minutes.
+  // A signed-in buyer choosing again still replaces theirs (security-test.js I).
+  check('J', 'A second guest checkout leaves the first hold alone (it runs out); 11 tickets refused; a Bantaba Host email can’t buy as a guest',
+    g2.status === 201 && first.status === 'PENDING' && soldAfter === soldBefore + 1 && tooMany.status === 400 && hostMail.status === 409,
     `second ${g2.status}; first ${first.status}; held ${soldBefore} → ${soldAfter}; 11 → ${tooMany.status}; host email ${hostMail.status}`);
 
   // K — paying: Wave not set up keeps the hold; bank transfer holds 24 hours; mock pays

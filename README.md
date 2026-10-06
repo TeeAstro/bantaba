@@ -1250,6 +1250,27 @@ web app. In `apps/mobile`: `npm install` (adds `expo-file-system`), then
 | 9 | Sleep | Settings → Sleep when quiet 15 s, wait | "Tap to scan" |
 | 10 | Automated | `node offline-test.js` in `apps/backend` | `8/8 passed` |
 
+## Security review (Phase 21b)
+
+A review of every route, sign-in, payments, refunds, payouts, transfers,
+offline scanning, emails and the web app before launch. 6 high, 13 medium
+and 6 low problems found and fixed; details and what's left in
+`docs/security.md`.
+
+**After pulling:**
+- `npx prisma migrate dev` in `apps/backend` (new migration `20261006090000_security_review`), then `npm install` (adds helmet; updates sharp and nodemailer) and `npm run build`.
+- **Add `ALLOW_MOCK_PAYMENTS=true` to `apps/backend/.env`**, or test payments stop working locally (they're now off unless switched on).
+- Restart the backend and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Transfer | Send a ticket to a friend, they accept; open your order | The ticket shows as transferred, no QR |
+| 2 | Wrong passwords | Try a wrong password 11 times (with `RATE_LIMITS` unset) | The 11th: "Too many tries. Wait 15 minutes" |
+| 3 | Password change | Signed in on two browsers, change the password on one | The other is signed out at its next click; this one stays |
+| 4 | Test payments | Remove `ALLOW_MOCK_PAYMENTS` from `.env`, restart, buy with the test option | Refused |
+| 5 | Headers | Open any page, check the response headers | Content-Security-Policy and X-Frame-Options: DENY |
+| 6 | Automated | `node security-test.js` in `apps/backend` (backend running) | `15/15 passed` |
+
 ## Project structure
 
 ```

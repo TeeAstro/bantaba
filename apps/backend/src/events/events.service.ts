@@ -1,3 +1,4 @@
+import { deleteImageIfUnused } from './image-refs';
 import { assertCanUseVenue } from '../venues/venue-access';
 import {
   Injectable,
@@ -57,6 +58,14 @@ function assertRefundPolicy(policy: RefundPolicy | undefined | null, days: numbe
   if (policy === RefundPolicy.UNTIL_DAYS_BEFORE && (days === undefined || days === null)) {
     throw new BadRequestException('refundDaysBefore is required with refundPolicy UNTIL_DAYS_BEFORE');
   }
+}
+
+// Security review (Phase 21b): what the public sees of an event row. The
+// review trail (the admin's note, who reviewed it, when it was sent) is for
+// the host and admins only.
+function publicEvent<T extends Record<string, unknown>>(e: T) {
+  const { reviewNote: _n, reviewedById: _r, reviewedAt: _a, submittedForReviewAt: _s, ...rest } = e as T & { reviewNote?: unknown; reviewedById?: unknown; reviewedAt?: unknown; submittedForReviewAt?: unknown };
+  return rest;
 }
 
 @Injectable()
@@ -336,7 +345,8 @@ export class EventsService {
 
     return this.prisma.event.update({
       where: { id: eventId },
-      data: { status: EventStatus.PUBLISHED },
+      // An earlier "sent back" note is private to host and admin (security review, Phase 21b).
+      data: { status: EventStatus.PUBLISHED, reviewNote: null },
     });
   }
 
@@ -441,8 +451,8 @@ export class EventsService {
     }
 
     await this.prisma.event.delete({ where: { id: eventId } });
-    await this.storage.deleteUrl(event.posterUrl);
-    await this.storage.deleteUrl(event.bannerUrl);
+    await deleteImageIfUnused(this.prisma, this.storage, event.posterUrl);
+    await deleteImageIfUnused(this.prisma, this.storage, event.bannerUrl);
     return { success: true };
   }
 
@@ -479,7 +489,7 @@ export class EventsService {
       this.prisma.event.count({ where }),
     ]);
 
-    return { items: items.map((e) => ({ ...e, organizer: publicOrganizer(e.organizer) })), total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { items: items.map((e) => publicEvent({ ...e, organizer: publicOrganizer(e.organizer) })), total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findMine(user: AuthenticatedUser) {
@@ -510,7 +520,7 @@ export class EventsService {
     if (isOwner || isAdmin) return { ...(await this.ownerView(event, viewer!)), organizer: shown.organizer };
 
     if (event.status === EventStatus.PUBLISHED) {
-      return shown;
+      return publicEvent(shown);
     }
 
     // Not published: only visible to the owning organizer or an admin.

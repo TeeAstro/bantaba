@@ -361,6 +361,11 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
   }
 
   // Admin: try a failed provider refund again.
+  /** Security review (Phase 21b): admin refund actions go in the audit log. */
+  async audit(actor: Actor, action: string, entityType: string, entityId: string | null, metadata?: Record<string, unknown>) {
+    await this.prisma.auditLog.create({ data: { actorId: actor.id, actorRole: actor.role, action, entityType, entityId, ...(metadata ? { metadata: metadata as Prisma.InputJsonValue } : {}) } });
+  }
+
   async retry(refundId: string) {
     const done = await this.prisma.refund.updateMany({ where: { id: refundId, status: RefundStatus.APPROVED, method: RefundMethod.PROVIDER }, data: { attempts: 0, lastError: null } });
     if (done.count === 0) throw new ConflictException('Only an approved provider refund can be retried');

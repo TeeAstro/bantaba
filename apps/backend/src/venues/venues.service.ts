@@ -41,7 +41,25 @@ export class VenuesService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: { id: string; role: UserRole } | null = null) {
+    // Security review (Phase 21b): an organizer's own venue (or one shared
+    // with chosen organizers) isn't public. Visible to admins, organizers
+    // who can use it or hold events there, and anyone once a published
+    // event is on it. Otherwise 404, as if it didn't exist.
+    if (user?.role !== UserRole.ADMIN) {
+      const organizerId = user ? await organizerIdOf(this.prisma, user.id) : null;
+      const visible = await this.prisma.venue.count({
+        where: {
+          id,
+          OR: [
+            { ownerId: null, sharing: 'everyone' },
+            { events: { some: { status: { in: ['PUBLISHED', 'SOLD_OUT', 'COMPLETED'] } } } },
+            ...(organizerId ? [usableBy(organizerId), { events: { some: { organizerId } } }] : []),
+          ],
+        },
+      });
+      if (!visible) throw new NotFoundException('Venue not found');
+    }
     const venue = await this.prisma.venue.findUnique({
       where: { id },
       include: {

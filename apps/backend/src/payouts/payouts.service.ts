@@ -1,3 +1,4 @@
+import { RateLimiter } from '../common/rate-limit';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventStatus, Organizer, OrganizerVerificationStatus, Payout, PayoutMethod, PayoutStatus, Prisma, UserRole } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -56,6 +57,9 @@ export const autoApproves = (o: Pick<Organizer, 'payoutAutoApprove' | 'payoutAut
 
 // Organizer payouts (docs/payouts.md). Customers pay the platform; an
 // organizer asks for their money and an admin approves every payout.
+// Security review (Phase 21b): the password check on payout details, 10 tries per 15 minutes.
+const accountLimiter = new RateLimiter(10, 15 * 60_000, 'Too many tries. Wait 15 minutes and try again.');
+
 @Injectable()
 export class PayoutsService {
   constructor(
@@ -172,6 +176,7 @@ export class PayoutsService {
 
   async setAccount(user: Actor, dto: PayoutAccountDto) {
     const u = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    accountLimiter.check(user.id);
     if (!(await argon2.verify(u.passwordHash, dto.password))) throw new BadRequestException('That password isn’t right.');
     const o = await this.organizerFor(user);
 
@@ -231,7 +236,13 @@ export class PayoutsService {
       // Organizers an admin has chosen are approved straight away (up to
       // their limit). Every check above still applies: verified account,
       // the hold after the event, the balance, not suspended.
-      const auto = autoApproves(o, dto.amount);
+      // Security review (Phase 21b): not when the host has confirmed bank
+      // transfers to their own events in the last 60 days. Then an admin
+      // looks first, since those orders count as paid on the host's word.
+      const selfConfirmed = await tx.payment.count({
+        where: { provider: 'BANK_TRANSFER', confirmedById: o.userId, updatedAt: { gte: new Date(Date.now() - 60 * 86_400_000) }, order: { event: { organizerId: o.id } } },
+      });
+      const auto = autoApproves(o, dto.amount) && selfConfirmed === 0;
       const p = await tx.payout.create({
         data: {
           organizerId: o.id, amount: dto.amount, method: o.payoutMethod!, accountName: o.payoutAccountName!, accountNumber: o.payoutAccountNumber!,

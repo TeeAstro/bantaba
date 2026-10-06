@@ -18,20 +18,20 @@ export class AuthController {
 
   @ApiCreatedResponse({ type: AuthSessionDto })
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  register(@Body() dto: RegisterDto, @Ip() ip: string) {
+    return this.authService.register(dto, ip);
   }
 
   @Post('register-organizer')
-  registerOrganizer(@Body() dto: RegisterOrganizerDto) {
-    return this.authService.registerOrganizer(dto);
+  registerOrganizer(@Body() dto: RegisterOrganizerDto, @Ip() ip: string) {
+    return this.authService.registerOrganizer(dto, ip);
   }
 
   @ApiOkResponse({ type: AuthSessionDto })
   @Post('login')
   @HttpCode(200)
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Ip() ip: string) {
+    return this.authService.login(dto, ip);
   }
 
   @ApiOkResponse({ type: TokenPairDto, description: 'Rotates the refresh token. Reusing an old one revokes every session for the user.' })
@@ -71,8 +71,8 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(200)
-  resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto.token, dto.newPassword);
+  resetPassword(@Body() dto: ResetPasswordDto, @Ip() ip: string) {
+    return this.authService.resetPassword(dto.token, dto.newPassword, ip);
   }
 
   // Any authenticated user, any role — proves JwtAuthGuard alone works

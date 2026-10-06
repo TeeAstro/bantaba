@@ -1,6 +1,9 @@
+import { deleteImageIfUnused } from './image-refs';
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import sharp = require('sharp');
+// sharp 0.35 ships ES-module types; at run time require() returns the function.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const sharp = require('sharp') as typeof import('sharp').default;
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { EventsService, AuthenticatedUser } from './events.service';
@@ -89,7 +92,7 @@ export class EventImagesService {
       await this.storage.delete(key);
       throw new ConflictException(`The ${kind} was changed at the same time by someone else. Reload and try again.`);
     }
-    await this.storage.deleteUrl(previous);
+    await deleteImageIfUnused(this.prisma, this.storage, previous);
     return this.events.findEditable(event.id, user);
   }
 
@@ -104,7 +107,7 @@ export class EventImagesService {
     const previous = event[spec.field];
     if (previous) {
       await this.prisma.event.updateMany({ where: { id: event.id, [spec.field]: previous }, data: { [spec.field]: null } });
-      await this.storage.deleteUrl(previous);
+      await deleteImageIfUnused(this.prisma, this.storage, previous);
     }
     return this.events.findEditable(event.id, user);
   }
@@ -112,7 +115,7 @@ export class EventImagesService {
   // Exposed for tests and for any future image kinds.
   async process(input: Buffer, kind: ImageKind, crop: CropDto): Promise<Buffer> {
     const spec = IMAGE_SPECS[kind];
-    let meta: sharp.Metadata;
+    let meta: import('sharp').Metadata;
     try {
       meta = await sharp(input, { limitInputPixels: false }).metadata();
     } catch {
@@ -180,7 +183,7 @@ export class EventImagesService {
       const upright = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' }).rotate().toBuffer();
       const foreground = await sharp(upright).resize(fgW, fgH, { fit: 'fill' }).toBuffer();
 
-      let canvas: sharp.Sharp;
+      let canvas: import('sharp').Sharp;
       if (crop.background === 'color') {
         const { channels } = await sharp(upright).stats();
         const [r, g, b] = channels.map((c) => Math.round(c.mean));

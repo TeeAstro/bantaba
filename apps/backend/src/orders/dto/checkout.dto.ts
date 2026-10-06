@@ -1,3 +1,4 @@
+import { NormalizeEmail } from '../../common/email';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -65,6 +66,7 @@ export class GuestCheckoutDto extends CheckoutDto {
   @MaxLength(100)
   fullName!: string;
 
+  @NormalizeEmail()
   @IsEmail()
   @MaxLength(200)
   email!: string;

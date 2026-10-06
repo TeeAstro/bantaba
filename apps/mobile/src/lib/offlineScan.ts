@@ -190,7 +190,8 @@ export class OfflineScanner {
   sync(gateId: string | null): Promise<void> {
     if (this.syncing) return this.syncing;
     this.syncing = (async () => {
-      const sending = this.queue.slice(0, 500);
+      // 200 at a time keeps each send small (security review: the server takes up to 100 KB).
+      const sending = this.queue.slice(0, 200);
       const r = await this.post<SyncResponse>(`/scanner/events/${this.eventId}/sync`, {
         deviceId: this.deviceId,
         gateId,

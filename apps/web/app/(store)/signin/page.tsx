@@ -1,5 +1,6 @@
 'use client';
 
+import { safeNext } from '@/lib/safeNext';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
@@ -11,12 +12,12 @@ import { StoreFooter, StoreHeader } from '@/components/store/Chrome';
 // Organizers, staff and admins use /login.
 
 // Only a path on this site, never a full URL.
-const safeNext = (n: string | null) => (n && n.startsWith('/') && !n.startsWith('//') ? n : '/tickets');
+
 
 function SignInInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const next = safeNext(params.get('next'));
+  const next = safeNext(params.get('next'), '/tickets');
   const [step, setStep] = useState<'email' | 'code' | 'password'>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');

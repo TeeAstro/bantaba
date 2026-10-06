@@ -92,15 +92,18 @@ export class RefundsController {
   /** Try a failed provider refund again. */
   @Roles(UserRole.ADMIN)
   @Post('admin/refunds/:id/retry')
-  retry(@Param('id', ParseUUIDPipe) id: string) {
+  async retry(@CurrentUser() user: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    await this.refunds.audit(user, 'refund_retry', 'Refund', id);
     return this.refunds.retry(id);
   }
 
   /** Send due provider refunds now. */
   @Roles(UserRole.ADMIN)
   @Post('admin/refunds/run')
-  async run() {
-    return { processed: await this.refunds.process() };
+  async run(@CurrentUser() user: Actor) {
+    const processed = await this.refunds.process();
+    await this.refunds.audit(user, 'refunds_run', 'Refund', null, { processed });
+    return { processed };
   }
 
   /** Refund one payment in full: all its tickets and the booking fee (Phase 6 endpoint, now real). */

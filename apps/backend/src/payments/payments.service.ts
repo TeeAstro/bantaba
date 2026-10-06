@@ -381,8 +381,9 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
 
     if (event.status === 'SUCCESSFUL') {
       await this.completeOrder(payment.orderId, payment.id);
+      await this.flagIfNotClaimed(payment.id, payment.orderId, { event: 'wave_succeeded', at: new Date().toISOString() });
     } else {
-      await this.failOrder(payment.orderId, payment.id, 'wave_payment_failed');
+      await this.failIfCurrent(payment, 'wave_payment_failed');
     }
     return { received: true, matched: true };
   }
@@ -412,24 +413,47 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
         return { received: true, matched: true, completed: false, reason: 'amount_mismatch' };
       }
       await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: note } });
-      const order = await this.completeOrder(payment.orderId, payment.id);
-      if (order.status !== 'PAID') {
-        // Paid after the reservation lapsed (or the order was otherwise
-        // closed): the customer was charged but has no tickets. Recorded
-        // as a successful payment with a flag and an audit entry, so it's
-        // found and refunded from the Modem Pay dashboard (docs/payments.md).
-        this.logger.error(`Card payment ${payment.id} succeeded for order ${payment.orderId}, which is ${order.status}. Refund it by hand.`);
-        await this.prisma.$transaction([
-          this.prisma.payment.update({ where: { id: payment.id }, data: { status: 'SUCCESSFUL', rawPayload: { ...note, paidAfterOrderClosed: true } } }),
-          this.prisma.auditLog.create({ data: { actorId: null, actorRole: null, action: 'card_paid_after_order_closed', entityType: 'Payment', entityId: payment.id, metadata: { orderId: payment.orderId, orderStatus: order.status, amount: payment.amount } } }),
-        ]);
-        return { received: true, matched: true, completed: false, reason: 'order_closed' };
-      }
+      await this.completeOrder(payment.orderId, payment.id);
+      const flagged = await this.flagIfNotClaimed(payment.id, payment.orderId, note);
+      if (flagged) return { received: true, matched: true, completed: false, reason: flagged };
       return { received: true, matched: true, completed: true };
     }
     await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: note } });
-    await this.failOrder(payment.orderId, payment.id, 'card_payment_failed');
+    await this.failIfCurrent(payment, 'card_payment_failed');
     return { received: true, matched: true, completed: false };
+  }
+
+  // Security review (Phase 21b): a "failed" message only cancels the order
+  // when it's about the payment the order is actually waiting on. A late
+  // failure for an abandoned card attempt must not cancel an order the
+  // buyer is now paying by bank transfer.
+  private async failIfCurrent(payment: { id: string; orderId: string; status: string }, reason: string) {
+    const latest = await this.prisma.payment.findFirst({ where: { orderId: payment.orderId }, orderBy: { createdAt: 'desc' }, select: { id: true, status: true } });
+    if (payment.status !== 'PENDING' || latest?.id !== payment.id) {
+      await this.prisma.payment.updateMany({ where: { id: payment.id, status: 'PENDING' }, data: { status: 'FAILED' } });
+      return;
+    }
+    await this.failOrder(payment.orderId, payment.id, reason);
+  }
+
+  // A provider says this payment succeeded, but it didn't pay for the order:
+  // the order had closed (hold ran out) or another payment paid it first.
+  // The customer was charged with no tickets for it, so it's recorded as a
+  // successful payment with a flag and an audit entry, and listed on Admin →
+  // Card payments to refund by hand (docs/payments.md). Any provider.
+  private async flagIfNotClaimed(paymentId: string, orderId: string, note: Record<string, unknown>): Promise<'order_closed' | 'paid_twice' | null> {
+    const [p, order] = await Promise.all([
+      this.prisma.payment.findUnique({ where: { id: paymentId } }),
+      this.prisma.ticketOrder.findUnique({ where: { id: orderId }, select: { status: true } }),
+    ]);
+    if (!p || p.status === 'SUCCESSFUL' || p.status === 'REFUNDED' || p.status === 'PARTIALLY_REFUNDED') return null;
+    const reason = order?.status === 'PAID' || order?.status === 'PARTIALLY_REFUNDED' ? 'paid_twice' : 'order_closed';
+    this.logger.error(`${p.provider} payment ${p.id} succeeded for order ${orderId} (${order?.status}), which it didn't pay for (${reason}). Refund it by hand.`);
+    await this.prisma.$transaction([
+      this.prisma.payment.update({ where: { id: p.id }, data: { status: 'SUCCESSFUL', rawPayload: { ...note, paidAfterOrderClosed: true, reason } } }),
+      this.prisma.auditLog.create({ data: { actorId: null, actorRole: null, action: p.provider === 'CARD' ? 'card_paid_after_order_closed' : 'paid_after_order_closed', entityType: 'Payment', entityId: p.id, metadata: { orderId, orderStatus: order?.status ?? null, amount: p.amount, provider: p.provider, reason } } }),
+    ]);
+    return reason;
   }
 
   async confirmBankTransfer(actor: AuthenticatedUser, paymentId: string) {
@@ -461,6 +485,14 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       throw new ForbiddenException('The platform confirms bank-transfer payments for your account. They’ll be confirmed once the money arrives.');
     }
 
-    return this.completeOrder(order.id, payment.id);
+    const done = await this.completeOrder(order.id, payment.id);
+    // Security review (Phase 21b): who said the money arrived. A host
+    // confirming their own transfers also stops payouts being approved
+    // automatically for a while (payouts.service.ts).
+    const claimed = await this.prisma.payment.updateMany({ where: { id: payment.id, status: 'SUCCESSFUL', confirmedById: null }, data: { confirmedById: actor.id } });
+    if (claimed.count) {
+      await this.prisma.auditLog.create({ data: { actorId: actor.id, actorRole: actor.role, action: 'bank_transfer_confirmed', entityType: 'Payment', entityId: payment.id, metadata: { orderId: order.id, amount: payment.amount, byHost: actor.role !== UserRole.ADMIN } } });
+    }
+    return done;
   }
 }

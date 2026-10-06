@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Put, Query, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -15,9 +16,10 @@ export class FeesController {
   constructor(private readonly fees: FeesService) {}
 
   /** Public: this event's booking fee, whether the host includes it, and any deal (no notes). */
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('events/:id/booking-fee')
-  forEvent(@Param('id', ParseUUIDPipe) id: string) {
-    return this.fees.feeForEvent(id);
+  forEvent(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() viewer: Actor | null) {
+    return this.fees.feeForEvent(id, viewer);
   }
 
   /** The host chooses: buyers pay the fee on top, or it's inside the ticket prices. */

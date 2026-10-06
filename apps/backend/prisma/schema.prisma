@@ -264,6 +264,10 @@ model User {
   fullName          String?
   profilePictureUrl String?
   emailVerifiedAt   DateTime?
+  // Security review (Phase 21b): sign-ins (access tokens) issued before
+  // this are refused at once: password reset or change, or an email
+  // taken back by its owner.
+  sessionsRevokedAt DateTime?
   phoneVerifiedAt   DateTime?
   // Phase 9: for STAFF accounts, the organizer that created (and employs)
   // them. Staff are scoped to one organizer (docs/architecture.md
@@ -840,7 +844,9 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  refunds Refund[]
+  refunds       Refund[]
+  // Security review (Phase 21b): who confirmed a bank transfer arrived.
+  confirmedById String?
 
   @@index([orderId])
   @@index([status])

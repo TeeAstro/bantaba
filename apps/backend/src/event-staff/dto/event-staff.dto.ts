@@ -1,9 +1,12 @@
+import { NormalizeEmail } from '../../common/email';
 import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { StaffRole } from '@prisma/client';
 import { ApiEnum, ApiEnumOptional } from '../../common/api-enum';
 
 export class AssignStaffDto {
+  @NormalizeEmail()
   @IsEmail()
+  @MaxLength(254)
   email!: string;
 
   @ApiEnum(StaffRole, 'StaffRole')
@@ -25,6 +28,7 @@ export class AssignStaffDto {
   @IsOptional()
   @IsString()
   @MinLength(12, { message: 'Password must be at least 12 characters' })
+  @MaxLength(200)
   password?: string;
 }
 

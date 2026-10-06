@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, ApiError, logout, updateSessionUser } from '@/lib/api';
+import { api, ApiError, loadSession, logout, updateSessionUser } from '@/lib/api';
 import { useApi, useSessionUser } from '@/lib/hooks';
 import { dalasi, initials } from '@/lib/store';
 import { Icon } from '@/components/Icon';
@@ -94,7 +94,9 @@ function SignIn({ me, onSaved }: { me: Me; onSaved: (m: Me, note: string) => voi
     setBusy(true);
     setError(null);
     try {
-      const m = await api<Me>('/me/password', { method: 'PUT', body: { password: pw, ...(me.hasPassword ? { currentPassword: current } : {}) } });
+      // Other devices are signed out; this one keeps its session (security review, Phase 21b).
+      const keep = loadSession()?.refreshToken;
+      const m = await api<Me>('/me/password', { method: 'PUT', body: { password: pw, ...(me.hasPassword ? { currentPassword: current } : {}), ...(keep ? { keepRefreshToken: keep } : {}) } });
       setOpen(false);
       setPw('');
       setCurrent('');

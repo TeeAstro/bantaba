@@ -277,7 +277,8 @@ export class CheckInsService {
     return this.prisma.checkIn.findMany({
       where: { eventId },
       include: {
-        ticket: { include: { ticketType: true, owner: { select: { id: true, fullName: true, email: true } } } },
+        // Security review (Phase 21b): never the QR or its hash here.
+        ticket: { select: { id: true, status: true, ticketType: { select: { id: true, name: true } }, owner: { select: { id: true, fullName: true, email: true } } } },
         gate: true,
         expectedGate: { select: { id: true, name: true } },
       },

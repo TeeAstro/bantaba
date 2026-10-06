@@ -61,7 +61,7 @@ export class OfflineSyncDto {
   pending?: number;
 
   @IsArray()
-  @ArrayMaxSize(2000)
+  @ArrayMaxSize(400)
   @ValidateNested({ each: true })
   @Type(() => OfflineScanDto)
   scans!: OfflineScanDto[];

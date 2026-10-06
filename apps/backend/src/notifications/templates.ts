@@ -61,7 +61,12 @@ export const money = (minor: number, currency = 'GMD') => {
 };
 const venueLine = (e: EventInfo) => `${e.venueName}, ${e.venueAddress}, ${e.venueCity}`;
 const shortRef = (id: string) => id.slice(0, 8).toUpperCase();
-const greet = (name: string | null | undefined) => (name ? `Hi ${name.split(' ')[0]},` : 'Hi,');
+// The first word of the name, at most 40 characters. In HTML it always goes
+// through h() (security review, Phase 21b: a name is typed by whoever buys).
+const greet = (name: string | null | undefined) => {
+  const first = name?.trim().split(/\s+/)[0]?.slice(0, 40);
+  return first ? `Hi ${first},` : 'Hi,';
+};
 
 // ---------- layout ----------
 
@@ -158,7 +163,7 @@ export function orderConfirmed(d: {
   // Whatever the total holds beyond the tickets themselves (the platform fee).
   const fee = d.total - d.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`Your payment is confirmed. Here ${n === 1 ? 'is your ticket' : `are your ${n} tickets`}.`) +
     eventCard(d.event) +
     ticketBlocks(d.tickets) +
@@ -193,7 +198,7 @@ export function orderAwaitingPayment(d: { name: string | null; event: EventInfo;
   const subject = `Complete your payment for ${d.event.name}`;
   const deadline = d.expiresAt ? when(d.expiresAt) : null;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`Your tickets are reserved. To get them, pay <b>${h(money(d.total, d.currency))}</b>${deadline ? ` before <b>${h(deadline)}</b>` : ''}; after that the reservation is released.`) +
     eventCard(d.event) +
     `<div style="background:${COLORS.paper};border-radius:6px;padding:12px 14px;margin:0 0 14px;font-size:14px;white-space:pre-line">${h(d.instructions)}</div>` +
@@ -205,7 +210,7 @@ export function orderAwaitingPayment(d: { name: string | null; event: EventInfo;
 export function orderExpired(d: { name: string | null; event: EventInfo; orderId: string }): Rendered {
   const subject = `Your reservation for ${d.event.name} has expired`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`We didn't receive payment for order <b>${h(shortRef(d.orderId))}</b> in time, so the reserved tickets have been released. You haven't been charged.`) +
     eventCard(d.event) +
     muted('If you already paid, reply to the organizer or contact us with your payment receipt and order reference.');
@@ -222,7 +227,7 @@ export function eventChanged(d: { name: string | null; event: EventInfo; changes
     )
     .join('');
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`The organizer has changed the details of an event you have ${d.ticketCount === 1 ? 'a ticket' : `${d.ticketCount} tickets`} for:`) +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 16px;border:1px solid ${COLORS.line};border-radius:6px">${rows}</table>` +
     p('<b>Your tickets stay valid</b>: there\'s nothing you need to do, and your QR codes don\'t change.') +
@@ -248,7 +253,7 @@ export function eventCancelled(d: { name: string | null; event: EventInfo; ticke
       : `The organizer will be in touch about what happens next. If you'd rather have your money back, you can ask for a full refund at any time, booking fee included.`;
   const refundText = refundLine.replace(/<[^>]+>/g, '');
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`We're sorry: <b>${h(d.event.name)}</b> has been cancelled by the organizer. Your ${d.ticketCount === 1 ? 'ticket is' : `${d.ticketCount} tickets are`} no longer valid for entry.`) +
     eventCard(d.event) +
     p(refundLine) +
@@ -261,7 +266,7 @@ export function eventReminder(d: { name: string | null; event: EventInfo; ticket
   const n = d.tickets.length;
   const subject = `Tomorrow: ${d.event.name}`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`A reminder that <b>${h(d.event.name)}</b> starts ${h(when(d.event.startDate))}. Here ${n === 1 ? 'is your ticket' : `are your ${n} tickets`} again, ready for the gate.`) +
     eventCard(d.event) +
     ticketBlocks(d.tickets) +
@@ -274,7 +279,7 @@ export function eventReminder(d: { name: string | null; event: EventInfo; ticket
 export function staffAssigned(d: { name: string | null; event: EventInfo; roleLabel: string; gateName: string | null; organizerName: string; accountCreated: boolean; scannerUrl: string; forgotUrl: string }): Rendered {
   const subject = `You're on the team for ${d.event.name}`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`<b>${h(d.organizerName)}</b> has added you as <b>${h(d.roleLabel)}</b>${d.gateName ? ` at <b>${h(d.gateName)}</b>` : ''} for:`) +
     eventCard(d.event) +
     p(`On the day, open the scanner and sign in with this email address (${d.accountCreated ? 'your organizer has set up the account for you' : 'your existing staff account'}).`) +
@@ -287,7 +292,7 @@ export function staffAssigned(d: { name: string | null; event: EventInfo; roleLa
 export function passwordReset(d: { name: string | null; resetUrl: string; minutes: number }): Rendered {
   const subject = `Reset your ${APP()} password`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p('Someone (hopefully you) asked to reset the password for this account. Choose a new one here:') +
     button(d.resetUrl, 'Choose a new password') +
     muted(`The link works once and expires in ${d.minutes} minutes. If you didn't ask for this, ignore this email: your password stays the same.`);
@@ -312,7 +317,7 @@ export function loginCode(d: { code: string; minutes: number }): Rendered {
 export function loginCodeRefused(d: { name: string | null; loginUrl: string }): Rendered {
   const subject = `Sign in to ${APP()} Host with your password`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p('Someone (hopefully you) asked for a sign-in code for this email. This is a Bantaba Host account, which signs in with its password only.') +
     button(d.loginUrl, 'Sign in') +
     muted("If you didn't ask for this, ignore this email.");
@@ -347,7 +352,7 @@ const refundText = (r: RefundInfo) =>
 export function refundRequested(d: { organizerName: string | null; customerName: string | null; customerEmail: string; event: EventInfo; refund: RefundInfo; reason: string | null; reviewUrl: string; basis: string }): Rendered {
   const subject = `Refund request: ${d.event.name}`;
   const body =
-    p(greet(d.organizerName)) +
+    p(h(greet(d.organizerName))) +
     p(`<b>${h(d.customerName ?? d.customerEmail)}</b> (${h(d.customerEmail)}) is asking for a refund for <b>${h(d.event.name)}</b>.`) +
     refundTable(d.refund) +
     (d.reason ? `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px"><b>Their reason:</b> ${h(d.reason)}</div>` : '') +
@@ -361,7 +366,7 @@ export function refundRequested(d: { organizerName: string | null; customerName:
 export function refundApproved(d: { name: string | null; event: EventInfo; refund: RefundInfo }): Rendered {
   const subject = `Refund approved: ${d.event.name}`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`Your refund of <b>${h(money(d.refund.amount, d.refund.currency))}</b> has been approved. The refunded ${d.refund.tickets.length === 1 ? 'ticket no longer works' : 'tickets no longer work'} at the gate.`) +
     refundTable(d.refund) +
     (d.refund.note ? muted(`Note from the organizer: ${h(d.refund.note)}`) : '') +
@@ -373,7 +378,7 @@ export function refundApproved(d: { name: string | null; event: EventInfo; refun
 export function refundProcessed(d: { name: string | null; event: EventInfo; refund: RefundInfo; reference: string | null }): Rendered {
   const subject = `Refund sent: ${money(d.refund.amount, d.refund.currency)} for ${d.event.name}`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`We've sent your refund of <b>${h(money(d.refund.amount, d.refund.currency))}</b>${d.refund.manual ? '' : ' back to the account you paid with'}. The refunded ${d.refund.tickets.length === 1 ? 'ticket no longer works' : 'tickets no longer work'} at the gate.`) +
     refundTable(d.refund) +
     (d.reference && d.refund.manual ? muted(`Payment reference: ${h(d.reference)}`) : '') +
@@ -385,7 +390,7 @@ export function refundProcessed(d: { name: string | null; event: EventInfo; refu
 export function refundRejected(d: { name: string | null; event: EventInfo; refund: RefundInfo; note: string }): Rendered {
   const subject = `Refund request declined: ${d.event.name}`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`The organizer has declined your refund request for <b>${h(d.event.name)}</b>. Your tickets are still valid.`) +
     `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px"><b>Their reason:</b> ${h(d.note)}</div>` +
     eventCard(d.event) +
@@ -413,7 +418,7 @@ export function transferOffer(d: { fromName: string | null; event: EventInfo; ac
 export function transferResolved(d: { name: string | null; event: EventInfo; toEmail: string; accepted: boolean; ticket: string }): Rendered {
   const subject = d.accepted ? `${d.toEmail} accepted your ticket for ${d.event.name}` : `Your ticket for ${d.event.name} was declined`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     (d.accepted
       ? p(`<b>${h(d.toEmail)}</b> accepted the ${h(d.ticket)} ticket you sent. It's theirs now: they have a new QR code, and your copy no longer works at the gate.`)
       : p(`<b>${h(d.toEmail)}</b> declined the ${h(d.ticket)} ticket you offered. It's still yours and still valid; you can send it to someone else.`)) +
@@ -425,7 +430,7 @@ export function transferResolved(d: { name: string | null; event: EventInfo; toE
 export function ticketReceived(d: { name: string | null; fromName: string | null; event: EventInfo; tickets: TicketInfo[] }): Rendered {
   const subject = `Your ticket for ${d.event.name}`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`You've accepted a ticket from <b>${h(d.fromName ?? 'a friend')}</b>. Here it is: this QR code is yours alone.`) +
     eventCard(d.event) +
     ticketBlocks(d.tickets) +
@@ -441,7 +446,7 @@ export function eventReviewRequested(d: { name: string | null; event: EventInfo;
   const subject = `Review needed: ${d.event.name}`;
   const rows = d.ticketTypes.map((t) => `<tr><td style="padding:3px 0;font-size:14px">${h(t.name)}</td><td align="right" style="padding:3px 0;font-size:14px">${t.quantity} × ${h(money(t.price))}</td></tr>`).join('');
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`<b>${h(d.organizer)}</b> (${h(d.organizerTrust)}) wants to publish an event. It isn't on sale until it's approved.`) +
     (d.lookalike ? p(`<b style="color:${COLORS.red}">Careful: the organizer's name looks like the verified organizer “${h(d.lookalike)}”. Make sure this isn't someone pretending to be them.</b>`) : '') +
     eventCard(d.event) +
@@ -456,7 +461,7 @@ export function eventReviewRequested(d: { name: string | null; event: EventInfo;
 export function eventReviewed(d: { name: string | null; event: EventInfo; approved: boolean; note: string | null; eventUrl: string }): Rendered {
   const subject = d.approved ? `${d.event.name} is live` : `${d.event.name} needs changes before it can go live`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     (d.approved
       ? p(`Your event has been approved and is now on sale.`)
       : p(`Your event wasn't approved yet. Here's what the platform team asked you to change:`) +
@@ -476,7 +481,7 @@ export function eventChangesRequested(d: { name: string | null; event: EventInfo
   const subject = `Changes to review: ${d.event.name}`;
   const list = joinList(d.fields);
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`<b>${h(d.organizer)}</b> changed an event that's already on sale: <b>${h(list)}</b>. Ticket buyers keep seeing the approved version until you approve the changes.`) +
     eventCard(d.event) +
     muted('Check nothing new asks people to pay outside the platform, and that any new date or venue is genuine.') +
@@ -489,7 +494,7 @@ export function eventChangesReviewed(d: { name: string | null; event: EventInfo;
   const list = joinList(d.fields);
   const subject = d.approved ? `Your changes to ${d.event.name} are live` : `Your changes to ${d.event.name} weren’t approved`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     (d.approved
       ? p(`Your changes (${h(list)}) have been approved and are now on the event page.`)
       : p(`Your changes (${h(list)}) weren’t approved, so the event still shows its earlier details. Here’s why:`) +
@@ -513,7 +518,7 @@ const STATUS_TEXT: Record<string, { subject: string; body: string; tone: 'teal' 
 
 export function organizerStatus(d: { name: string | null; change: string; dashboardUrl: string }): Rendered {
   const t = STATUS_TEXT[d.change] ?? STATUS_TEXT.approved;
-  const body = p(greet(d.name)) + p(h(t.body)) + button(d.dashboardUrl, 'Open your dashboard');
+  const body = p(h(greet(d.name))) + p(h(t.body)) + button(d.dashboardUrl, 'Open your dashboard');
   return { subject: t.subject, html: layout({ preheader: t.subject, title: t.subject, body, tone: t.tone }), text: [greet(d.name), '', t.body, '', d.dashboardUrl].join('\n') };
 }
 
@@ -545,7 +550,7 @@ export function payoutRequested(d: { name: string | null; organizer: string; pay
     ? `Payout to send: ${d.organizer}, ${money(d.payout.amount, d.payout.currency)}`
     : `Payout request: ${d.organizer}, ${money(d.payout.amount, d.payout.currency)}`;
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(d.autoApproved
       ? `<b>${h(d.organizer)}</b> asked to be paid, and it was <b>approved automatically</b> (their account is set to auto-approve payouts). Please send the money, then record it as paid.`
       : `<b>${h(d.organizer)}</b> is asking to be paid.`) +
@@ -566,7 +571,7 @@ export function payoutDecided(d: { name: string | null; type: 'payout_approved' 
     payout_rejected: { subject: `Your withdrawal of ${amt} wasn’t approved`, line: 'Your withdrawal wasn’t approved. The money stays in your balance.', tone: 'red' as const },
   }[d.type];
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(h(t.line)) +
     (d.type === 'payout_rejected' && d.decisionNote ? `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px"><b>Reason:</b> ${h(d.decisionNote)}</div>` : '') +
     payoutTable(d.payout) +
@@ -580,7 +585,7 @@ export function payoutAccountChanged(d: { name: string | null; forAdmin: boolean
   if (d.forAdmin) {
     const subject = `Check payout details: ${d.organizer}`;
     const body =
-      p(greet(d.name)) +
+      p(h(greet(d.name))) +
       p(`<b>${h(d.organizer)}</b> ${d.first ? 'added' : 'changed'} where their money is sent. No payout can go there until an admin has checked it.`) +
       `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px">${h(where)}<br>Name: ${h(d.accountName)}</div>` +
       muted('Check the name matches the organizer (their business or the person you approved), ideally by calling them on a number you already have. A change right before a payout request is a common sign of a hijacked account.') +
@@ -590,7 +595,7 @@ export function payoutAccountChanged(d: { name: string | null; forAdmin: boolean
   }
   const subject = d.first ? 'Your withdrawal details were added' : 'Your withdrawal details were changed';
   const body =
-    p(greet(d.name)) +
+    p(h(greet(d.name))) +
     p(`Withdrawals for <b>${h(d.organizer)}</b> will now go to:`) +
     `<div style="background:${COLORS.paper};border-radius:6px;padding:10px 14px;margin:0 0 14px;font-size:14px">${h(where)}<br>Name: ${h(d.accountName)}</div>` +
     p('The platform team checks new withdrawal details before the first withdrawal, usually within a working day.') +

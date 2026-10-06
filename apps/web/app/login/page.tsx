@@ -1,5 +1,6 @@
 'use client';
 
+import { safeNext } from '@/lib/safeNext';
 import { FormEvent, Suspense, useState } from 'react';
 import { Logo } from '@/components/Logo';
 import { BackLink } from '@/components/BackLink';
@@ -31,7 +32,8 @@ function LoginForm() {
         router.replace(next.startsWith('/scan') ? next : '/scan');
       } else {
         // Phase 16: buyers go back to the storefront (only a path on this site).
-        router.replace(next.startsWith('/') && !next.startsWith('//') && !/^\/(organizer|admin|scan)/.test(next) ? next : '/tickets');
+        const safe = safeNext(next, '/tickets');
+        router.replace(/^\/(organizer|admin|scan)/.test(safe) ? '/tickets' : safe);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Sign-in failed');

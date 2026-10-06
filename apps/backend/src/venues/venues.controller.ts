@@ -35,9 +35,10 @@ export class VenuesController {
     return this.venuesService.findAll(user);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('venues/:id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.venuesService.findOne(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: { id: string; role: UserRole } | null) {
+    return this.venuesService.findOne(id, user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

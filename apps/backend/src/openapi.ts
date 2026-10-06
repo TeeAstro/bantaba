@@ -7,6 +7,8 @@ import { OptionalJwtAuthGuard } from './auth/guards/optional-jwt-auth.guard';
 import { ROLES_KEY } from './auth/decorators/roles.decorator';
 import { serverTimingEnabled, serverTimingMiddleware } from './common/server-timing';
 import { static as serveStatic } from 'express';
+import helmet from 'helmet';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { LOCAL_MEDIA_ROUTE, localMediaDir, storageDriver } from './storage/storage.service';
 
 export const API_VERSION = '1';
@@ -15,6 +17,16 @@ export const API_VERSION = '1';
 // main.ts and the OpenAPI export script, so the exported spec always
 // describes exactly the routes the server serves.
 export function configureApp(app: INestApplication) {
+  // Security review (Phase 21b):
+  // - Behind a load balancer or proxy, TRUST_PROXY = how many proxies sit in
+  //   front, so rate limits see each buyer's own address, not the proxy's.
+  //   0 (the default) when the server is reached directly: then the
+  //   X-Forwarded-For header is ignored, so nobody can fake their address.
+  const hops = Number(process.env.TRUST_PROXY ?? 0);
+  if (hops > 0) (app as NestExpressApplication).set('trust proxy', hops);
+  // - Standard security headers. The API only returns JSON and images, so
+  //   no page needs scripts from it; images may be shown on the web app.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } } }));
   // Server-Timing header on every response (see common/server-timing.ts).
   if (serverTimingEnabled()) app.use(serverTimingMiddleware);
   // Uploaded images, when they're kept on this server's disk
@@ -40,7 +52,8 @@ export function configureApp(app: INestApplication) {
   // commands and any payment webhook URL already registered with a
   // provider don't break. The alias is to be removed before launch
   // (Phase 21); new clients (the web app, the mobile apps) use /api/v1.
-  app.enableVersioning({ type: VersioningType.URI, defaultVersion: [API_VERSION, VERSION_NEUTRAL] });
+  // Security review (Phase 21b): in production only /api/v1 is served.
+  app.enableVersioning({ type: VersioningType.URI, defaultVersion: process.env.NODE_ENV === 'production' ? API_VERSION : [API_VERSION, VERSION_NEUTRAL] });
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
     credentials: true,

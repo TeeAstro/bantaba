@@ -5,10 +5,12 @@ import { lookalikeOf } from '../organizers/public-organizer';
 
 type Actor = { id: string; role: UserRole };
 
-// A card payment that succeeded after its order had closed (docs/payments.md):
-// charged, but no tickets. Open until an admin records the manual refund.
+// A payment that succeeded after its order had closed, or for an order
+// another payment had already paid (docs/payments.md): charged, but no
+// tickets for it. Open until an admin records the manual refund. Card and,
+// since the security review (Phase 21b), Wave.
 const FLAGGED: Prisma.PaymentWhereInput = {
-  provider: 'CARD',
+  provider: { in: ['CARD', 'WAVE'] },
   rawPayload: { path: ['paidAfterOrderClosed'], equals: true },
 };
 const OPEN_FLAG: Prisma.PaymentWhereInput = { ...FLAGGED, status: 'SUCCESSFUL' };

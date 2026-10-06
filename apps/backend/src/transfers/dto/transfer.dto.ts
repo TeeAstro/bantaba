@@ -1,8 +1,9 @@
+import { NormalizeEmail } from '../../common/email';
 import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class OfferTransferDto {
   /** Who gets the ticket. They accept by signing in (or signing up) with this address. */
-  @IsEmail() @MaxLength(254)
+  @NormalizeEmail() @IsEmail() @MaxLength(254)
   email!: string;
 }
 

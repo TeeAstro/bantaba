@@ -32,6 +32,12 @@ const MAX_TICKETS_PER_ORDER = Number(process.env.MAX_TICKETS_PER_ORDER ?? 10);
 // Guest checkout and paying an order are public; keep bots from holding
 // every ticket (per IP).
 const guestLimiter = new RateLimiter(10, 10 * 60_000);
+// Security review (Phase 21b): signed-in buyers too, per account.
+const checkoutLimiter = new RateLimiter(20, 10 * 60_000);
+// Unpaid orders with a payment started (a bank transfer holds for a day)
+// one account may have open for one event: stops one account holding
+// every ticket.
+const MAX_OPEN_PAYMENTS_PER_EVENT = Number(process.env.MAX_OPEN_PAYMENTS_PER_EVENT ?? 2);
 const ORDER_INCLUDE = {
   items: { include: { ticketType: true } },
   tickets: { include: { seat: { include: { section: true } }, ticketType: true } },
@@ -48,6 +54,7 @@ export class OrdersService {
   ) {}
 
   async checkout(user: AuthenticatedUser, dto: CheckoutDto) {
+    checkoutLimiter.check(`checkout:${user.id}`);
     return this.placeOrder({ id: user.id, email: user.email }, dto, null);
   }
 
@@ -63,6 +70,19 @@ export class OrdersService {
     let customer = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
     if (customer && customer.role !== UserRole.CUSTOMER) {
       throw new ConflictException('This email is used for Bantaba Host. Use another email to buy tickets.');
+    }
+    // Security review (Phase 21b): an account with a password whose email
+    // was never confirmed may have been made by someone who doesn't own the
+    // email, to collect that person's guest purchases. Before tickets land
+    // in it, its password and every session are cleared; the owner signs
+    // in with an email code (or resets the password) and has everything.
+    if (customer && !customer.emailVerifiedAt && customer.passwordSetAt) {
+      const id = customer.id;
+      customer = await this.prisma.$transaction(async (tx) => {
+        await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+        await tx.auditLog.create({ data: { actorId: null, actorRole: null, action: 'unverified_password_cleared', entityType: 'User', entityId: id, metadata: { reason: 'guest_checkout' } } });
+        return tx.user.update({ where: { id }, data: { passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }), passwordSetAt: null, sessionsRevokedAt: new Date() } });
+      });
     }
     if (!customer) {
       const phone = dto.phone?.replace(/[^0-9+]/g, '') || null;
@@ -148,12 +168,23 @@ export class OrdersService {
 
     // Phase 16: one unpaid hold per buyer per event. Going back and
     // choosing again replaces the earlier hold instead of piling them up.
-    // Orders with a payment already started are left alone.
-    const earlier = await this.prisma.ticketOrder.findMany({
-      where: { customerId: customer.id, eventId: dto.eventId, status: 'PENDING', payments: { none: {} } },
-      select: { id: true },
-    });
-    for (const o of earlier) await this.paymentsService.failOrder(o.id, null, 'replaced_by_new_checkout');
+    // Orders with a payment already started are left alone. Only for a
+    // signed-in buyer: a guest typing someone's email must not be able to
+    // cancel that person's hold (security review, Phase 21b); a guest's
+    // own earlier hold just runs out after 5 minutes.
+    if (guestToken === null) {
+      const earlier = await this.prisma.ticketOrder.findMany({
+        where: { customerId: customer.id, eventId: dto.eventId, status: 'PENDING', payments: { none: {} } },
+        select: { id: true },
+      });
+      for (const o of earlier) await this.paymentsService.failOrder(o.id, null, 'replaced_by_new_checkout');
+      const open = await this.prisma.ticketOrder.count({
+        where: { customerId: customer.id, eventId: dto.eventId, status: 'PENDING', expiresAt: { gt: new Date() }, payments: { some: { status: 'PENDING' } } },
+      });
+      if (open >= MAX_OPEN_PAYMENTS_PER_EVENT) {
+        throw new ConflictException('You already have unpaid orders for this event. Pay for one, or let it run out, before starting another.');
+      }
+    }
 
     // Step 1: reserve inventory and create a PENDING order, all inside one
     // DB transaction. No external network call happens in here — that's
@@ -411,9 +442,20 @@ export class OrdersService {
     return !!guestToken && !!order.guestTokenHash && order.guestTokenHash === hashToken(guestToken);
   }
 
-  // The order without its private key's hash.
-  private present<T extends { guestTokenHash: string | null }>(order: T) {
+  // The order without its private key's hash. Security review (Phase 21b):
+  // a ticket's QR is only shown while the buyer still holds it. After a
+  // transfer the ticket stays on this order but has a new holder and a new
+  // QR, which the buyer must not be able to load from here. The QR's hash
+  // is never sent.
+  private present<T extends { guestTokenHash: string | null; customerId?: string; tickets?: unknown[] }>(order: T) {
     const { guestTokenHash: _h, ...rest } = order;
+    if (Array.isArray(rest.tickets)) {
+      (rest as { tickets: unknown[] }).tickets = rest.tickets.map((t) => {
+        const { qrCredentialHash: _q, ...ticket } = t as { qrCredentialHash?: string; qrCodeSvg?: string | null; qrToken?: string; ownerId?: string; status?: string };
+        const theirs = ticket.ownerId === order.customerId && ticket.status !== 'TRANSFERRED';
+        return theirs ? ticket : { ...ticket, qrCodeSvg: null, qrToken: undefined, transferred: true };
+      });
+    }
     return rest;
   }
 }

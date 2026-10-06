@@ -29,6 +29,18 @@ const CODE_TTL_MINUTES = 10;
 const CODE_MAX_TRIES = 5;
 const codeIpLimiter = new RateLimiter(20, 60 * 60_000, 'Too many codes asked for. Wait a while and try again.');
 
+// Security review (Phase 21b): password guessing. Per email from one
+// address, and per address overall; sign-ups and resets per address.
+const TRY_LATER = 'Too many tries. Wait 15 minutes and try again.';
+const loginLimiter = new RateLimiter(10, 15 * 60_000, TRY_LATER);
+const loginIpLimiter = new RateLimiter(60, 15 * 60_000, TRY_LATER);
+const registerLimiter = new RateLimiter(10, 60 * 60_000, 'Too many new accounts from here. Try again later.');
+const resetLimiter = new RateLimiter(20, 60 * 60_000, TRY_LATER);
+// Compared against when the email has no account, so a wrong email takes
+// as long as a wrong password (no telling which emails exist by timing).
+let dummyHash: Promise<string> | null = null;
+const timingDummy = () => (dummyHash ??= argon2.hash(generateRandomToken(), { type: argon2.argon2id }));
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -38,7 +50,7 @@ export class AuthService {
   ) {}
 
   private async issueTokenPair(userId: string, role: UserRole) {
-    const payload: JwtPayload = { sub: userId, role };
+    const payload: JwtPayload = { sub: userId, role, at: Date.now() };
     const accessToken = await this.jwt.signAsync(payload, {
       secret: process.env.JWT_ACCESS_SECRET,
       expiresIn: ACCESS_TOKEN_EXPIRY,
@@ -68,7 +80,8 @@ export class AuthService {
     });
   }
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, ip = '') {
+    registerLimiter.check(`reg:${ip}`);
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -92,7 +105,8 @@ export class AuthService {
     return { user: this.toPublicUser(user), ...tokens };
   }
 
-  async registerOrganizer(dto: RegisterOrganizerDto) {
+  async registerOrganizer(dto: RegisterOrganizerDto, ip = '') {
+    registerLimiter.check(`reg:${ip}`);
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -139,7 +153,9 @@ export class AuthService {
     return { user: this.toPublicUser(user), organizer, ...tokens };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, ip = '') {
+    loginIpLimiter.check(`ip:${ip}`);
+    loginLimiter.check(`${ip}:${dto.email}`);
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -150,6 +166,7 @@ export class AuthService {
       new UnauthorizedException('Invalid email or password');
 
     if (!user) {
+      await argon2.verify(await timingDummy(), dto.password).catch(() => false);
       throw invalidCredentials();
     }
 
@@ -172,6 +189,13 @@ export class AuthService {
 
     if (!existingToken || existingToken.expiresAt < new Date()) {
       throw new UnauthorizedException('Refresh token is invalid or expired');
+    }
+
+    // Signed out on purpose (logout, password change, an email taken back):
+    // just refused. Only a token that was swapped for a newer one and then
+    // shows up again looks stolen (security review, Phase 21b).
+    if (existingToken.revokedAt && !existingToken.replacedByTokenId) {
+      throw new UnauthorizedException('Signed out. Please sign in again.');
     }
 
     if (existingToken.revokedAt) {
@@ -203,16 +227,20 @@ export class AuthService {
           expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
         },
       });
-      await tx.refreshToken.update({
-        where: { id: existingToken.id },
+      // Only one of two simultaneous refreshes with the same token wins;
+      // the other is treated like reuse (security review, Phase 21b).
+      const rotated = await tx.refreshToken.updateMany({
+        where: { id: existingToken.id, revokedAt: null },
         data: { revokedAt: new Date(), replacedByTokenId: created.id },
       });
+      if (rotated.count !== 1) throw new UnauthorizedException('This session was invalidated for security reasons. Please log in again.');
       return created;
     });
 
     const payload: JwtPayload = {
       sub: existingToken.userId,
       role: existingToken.user.role,
+      at: Date.now(),
     };
     const accessToken = await this.jwt.signAsync(payload, {
       secret: process.env.JWT_ACCESS_SECRET,
@@ -312,7 +340,19 @@ export class AuthService {
         if (!user || user.role !== UserRole.CUSTOMER) throw wrong();
       }
     } else if (!user.emailVerifiedAt) {
-      user = await this.prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
+      // Security review (Phase 21b): someone could sign up with a password
+      // on an email that isn't theirs. Whoever proves the email with a code
+      // owns the account: any password set before is cleared and every
+      // other session is signed out.
+      const hadPassword = !!user.passwordSetAt;
+      user = await this.prisma.$transaction(async (tx) => {
+        if (hadPassword) await tx.refreshToken.updateMany({ where: { userId: user!.id, revokedAt: null }, data: { revokedAt: new Date() } });
+        return tx.user.update({
+          where: { id: user!.id },
+          data: { emailVerifiedAt: new Date(), ...(hadPassword ? { passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }), passwordSetAt: null, sessionsRevokedAt: new Date() } : {}) },
+        });
+      });
+      if (hadPassword) await this.audit(user.id, user.role, 'unverified_password_cleared', 'User', user.id);
     }
 
     await this.audit(user.id, user.role, created ? 'register_email_code' : 'login_email_code', 'User', user.id);
@@ -364,7 +404,8 @@ export class AuthService {
     return genericResponse;
   }
 
-  async resetPassword(rawToken: string, newPassword: string) {
+  async resetPassword(rawToken: string, newPassword: string, ip = '') {
+    resetLimiter.check(`reset:${ip}`);
     const tokenHash = hashToken(rawToken);
     const resetToken = await this.prisma.passwordResetToken.findUnique({
       where: { tokenHash },
@@ -379,12 +420,13 @@ export class AuthService {
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: resetToken.userId },
-        data: { passwordHash, passwordSetAt: new Date() },
+        data: { passwordHash, passwordSetAt: new Date(), sessionsRevokedAt: new Date() },
       });
-      await tx.passwordResetToken.update({
-        where: { id: resetToken.id },
+      const used = await tx.passwordResetToken.updateMany({
+        where: { id: resetToken.id, usedAt: null },
         data: { usedAt: new Date() },
       });
+      if (used.count !== 1) throw new BadRequestException('Reset token is invalid or expired');
       // Password changed → every existing session should require a fresh
       // login, not just the device that requested the reset.
       await tx.refreshToken.updateMany({

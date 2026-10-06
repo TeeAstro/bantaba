@@ -60,9 +60,13 @@ export class FeesService {
   }
 
   /** Public, for the event page and the host's Tickets tab. No notes. */
-  async feeForEvent(eventId: string) {
-    const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { id: true, organizerId: true, feeIncluded: true } });
+  async feeForEvent(eventId: string, viewer: Actor | null = null) {
+    const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { id: true, organizerId: true, feeIncluded: true, status: true, organizer: { select: { userId: true } } } });
     if (!event) throw new NotFoundException('Event not found');
+    // Security review (Phase 21b): a host's deal is commercial; only shown
+    // for events on sale, or to the host and admins.
+    const live = ['PUBLISHED', 'SOLD_OUT'].includes(event.status);
+    if (!live && viewer?.role !== UserRole.ADMIN && event.organizer.userId !== viewer?.id) throw new NotFoundException('Event not found');
     const r = await this.resolve(event);
     return {
       ...withSummary(r.fee),
@@ -86,7 +90,7 @@ export class FeesService {
         this.prisma.auditLog.create({ data: { actorId: actor.id, actorRole: actor.role, action: 'fee_included_set', entityType: 'Event', entityId: eventId, metadata: { included } } }),
       ]);
     }
-    return this.feeForEvent(eventId);
+    return this.feeForEvent(eventId, actor);
   }
 
   async adminView(now = new Date()) {

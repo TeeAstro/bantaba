@@ -24,4 +24,10 @@ export class SetPasswordDto {
   @IsString()
   @MaxLength(200)
   currentPassword?: string;
+
+  /** This device's refresh token: kept, while every other session is signed out (security review, Phase 21b). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  keepRefreshToken?: string;
 }
