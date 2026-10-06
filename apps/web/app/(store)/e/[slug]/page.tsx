@@ -1,6 +1,6 @@
 'use client';
 
-import { Fee, feeFor } from '@/lib/fees';
+import { EventFee, feeFor } from '@/lib/fees';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -31,7 +31,7 @@ export default function EventPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [copied, setCopied] = useState(false);
   // Phase 20: the booking fee, so the bar shows what they'll pay before checkout.
-  const [fee, setFee] = useState<Fee | null>(null);
+  const [fee, setFee] = useState<EventFee | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,7 +39,7 @@ export default function EventPage() {
       .then(async (e) => {
         const [tt, f] = await Promise.all([
           api<StoreTicketType[]>(`/events/${e.id}/ticket-types`),
-          api<Fee>(`/events/${e.id}/booking-fee`, { auth: false }).catch(() => null),
+          api<EventFee>(`/events/${e.id}/booking-fee`, { auth: false }).catch(() => null),
         ]);
         if (!cancelled) setFee(f);
         if (cancelled) return;
@@ -59,7 +59,8 @@ export default function EventPage() {
   const count = items.reduce((n, i) => n + i.quantity, 0);
   const total = items.reduce((n, i) => n + i.quantity * (types.find((t) => t.id === i.ticketTypeId)?.price ?? 0), 0);
   const currency = types[0]?.currency ?? 'GMD';
-  const bookingFee = fee ? feeFor(fee, items.map((i) => ({ price: types.find((t) => t.id === i.ticketTypeId)?.price ?? 0, quantity: i.quantity }))) : 0;
+  // Phase 20b: when the host includes the fee, the prices are what buyers pay.
+  const bookingFee = fee && !fee.included ? feeFor(fee, items.map((i) => ({ price: types.find((t) => t.id === i.ticketTypeId)?.price ?? 0, quantity: i.quantity }))) : 0;
 
   const update = (next: Cart) => {
     setCart(next);
@@ -260,6 +261,7 @@ export default function EventPage() {
               <span>{countLabel}</span>
               <strong>{count ? dalasi(total + bookingFee, currency) : '—'}</strong>
               {count > 0 && bookingFee > 0 && <span className="s-bar-fee">Includes {dalasi(bookingFee, currency)} booking fee</span>}
+              {count > 0 && fee?.included && fee.kind !== 'none' && total > 0 && <span className="s-bar-fee">Fees included</span>}
             </div>
             <button type="button" className="s-btn" disabled={count === 0} onClick={() => router.push('/checkout')}>Get tickets</button>
           </div>

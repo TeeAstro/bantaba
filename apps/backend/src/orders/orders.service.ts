@@ -103,8 +103,9 @@ export class OrdersService {
 
     const event = await this.prisma.event.findUnique({ where: { id: dto.eventId }, include: { organizer: { select: { verificationStatus: true } } } });
     if (!event) throw new NotFoundException('Event not found');
-    // Phase 20: this host's booking fee (docs/payments.md, "Booking fee").
-    const fee = await this.fees.feeForOrganizer(event.organizerId);
+    // Phase 20: this event's booking fee (docs/payments.md, "Booking fee"):
+    // its deal, the host's deal or Bantaba's; on top, or inside the prices.
+    const { fee, included: feeIncluded } = await this.fees.forCheckout(event);
     // A suspended organizer's events stop selling at once (docs/organizer-trust.md).
     if (event.organizer.verificationStatus === 'SUSPENDED') {
       throw new ForbiddenException('Ticket sales for this event are paused');
@@ -253,7 +254,9 @@ export class OrdersService {
 
       // Free tickets never pay a fee (Phase 20).
       const platformFee = feeFor(fee, orderItemsData.map((i) => ({ price: i.unitPrice, quantity: i.quantity })));
-      const total = subtotal + platformFee;
+      // When the host includes the fee, the buyer pays the ticket prices and
+      // the fee comes out of the host's share (Phase 20b).
+      const total = feeIncluded ? subtotal : subtotal + platformFee;
       const expiresAt = new Date(Date.now() + RESERVATION_TTL_MINUTES * 60 * 1000);
 
       const created = await tx.ticketOrder.create({
@@ -263,6 +266,7 @@ export class OrdersService {
           guestTokenHash: guestToken ? hashToken(guestToken) : null,
           subtotal,
           platformFee,
+          feeIncluded,
           total,
           currency: currency ?? 'GMD',
           status: 'PENDING',

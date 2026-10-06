@@ -3722,7 +3722,7 @@
       "get": {
         "operationId": "Fees_forEvent",
         "summary": "",
-        "description": "Public: the fee buyers pay on top of this event's tickets, for the event page.",
+        "description": "Public: this event's booking fee, whether the host includes it, and any deal (no notes).",
         "parameters": [
           {
             "name": "id",
@@ -3743,11 +3743,57 @@
         ]
       }
     },
+    "/api/v1/events/{id}/fee-included": {
+      "put": {
+        "operationId": "Fees_setIncluded",
+        "summary": "",
+        "description": "The host chooses: buyers pay the fee on top, or it's inside the ticket prices.\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetFeeIncludedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/fees": {
       "get": {
         "operationId": "Fees_view",
         "summary": "",
-        "description": "Bantaba's fee, when it last changed, and hosts with their own.\n\n**Roles:** ADMIN",
+        "description": "Bantaba's fee, when it last changed, the refund rule, and deals for hosts and events.\n\n**Roles:** ADMIN",
         "parameters": [],
         "responses": {
           "200": {
@@ -3860,6 +3906,164 @@
             "required": true,
             "in": "path",
             "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/fees/refunds": {
+      "put": {
+        "operationId": "Fees_setRefundRule",
+        "summary": "",
+        "description": "Keep the fee when a buyer asks for a refund, or give it back.\n\n**Roles:** ADMIN",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRefundRuleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/fees/events/{eventId}": {
+      "put": {
+        "operationId": "Fees_setEvent",
+        "summary": "",
+        "description": "A deal for one event (\"none\" = no fee), optionally ending on a date.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetHostFeeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "Fees_removeEvent",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Fees"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** ADMIN"
+      }
+    },
+    "/api/v1/admin/fees/earnings": {
+      "get": {
+        "operationId": "Fees_earnings",
+        "summary": "",
+        "description": "Booking fees earned in the period, per slot, by host.\n\n**Roles:** ADMIN",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "today",
+                "7d",
+                "30d",
+                "year"
+              ],
               "type": "string"
             }
           }
@@ -4205,6 +4409,87 @@
         "operationId": "CheckIns_gateStats",
         "summary": "",
         "description": "Live numbers per gate: in, per minute (last 10 minutes), sent to their gate, let in at another.\n\n**Roles:** ORGANIZER, ADMIN",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Check Ins"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/scanner/events/{eventId}/sync": {
+      "post": {
+        "operationId": "CheckIns_sync",
+        "parameters": [
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfflineSyncDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing or expired access token"
+          },
+          "403": {
+            "description": "Signed in, but this role (or account) may not do this"
+          }
+        },
+        "tags": [
+          "Check Ins"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "description": "**Roles:** STAFF, ORGANIZER, ADMIN"
+      }
+    },
+    "/api/v1/events/{eventId}/gate-phones": {
+      "get": {
+        "operationId": "CheckIns_gatePhones",
+        "summary": "",
+        "description": "The phones scanning this event, and tickets let in twice without signal.\n\n**Roles:** ORGANIZER, ADMIN",
         "parameters": [
           {
             "name": "eventId",
@@ -8015,6 +8300,18 @@
           "provider"
         ]
       },
+      "SetFeeIncludedDto": {
+        "type": "object",
+        "properties": {
+          "included": {
+            "type": "boolean",
+            "description": "true = the booking fee is inside this event's ticket prices."
+          }
+        },
+        "required": [
+          "included"
+        ]
+      },
       "SetFeeDto": {
         "type": "object",
         "properties": {
@@ -8082,11 +8379,28 @@
           "note": {
             "type": "string",
             "maxLength": 120
+          },
+          "endsAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "When the deal ends (then the usual fee applies). Null or missing = no end."
           }
         },
         "required": [
           "kind",
           "amount"
+        ]
+      },
+      "SetRefundRuleDto": {
+        "type": "object",
+        "properties": {
+          "keepFee": {
+            "type": "boolean",
+            "description": "true = keep the booking fee when a buyer asks for a refund."
+          }
+        },
+        "required": [
+          "keepFee"
         ]
       },
       "CreateCheckInDto": {
@@ -8298,6 +8612,96 @@
         },
         "required": [
           "gateIds"
+        ]
+      },
+      "OfflineScanDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The phone's id for this scan: sending it twice is harmless."
+          },
+          "h": {
+            "type": "string",
+            "description": "sha256 (hex) of the QR code: the same hash the ticket list uses.",
+            "pattern": "/^[0-9a-f]{64}$/"
+          },
+          "gateId": {
+            "type": "string",
+            "nullable": true
+          },
+          "at": {
+            "type": "string",
+            "description": "When it was scanned, by the phone's clock."
+          },
+          "result": {
+            "type": "string",
+            "description": "What the phone showed.",
+            "enum": [
+              "VALID",
+              "ALREADY_USED",
+              "INVALID",
+              "CANCELLED",
+              "REFUNDED",
+              "WRONG_EVENT",
+              "WRONG_DATE",
+              "NO_ACCESS",
+              "WRONG_GATE"
+            ]
+          },
+          "letIn": {
+            "type": "boolean",
+            "description": "The phone let them in (a VALID, or a manager's \"Let in here\")."
+          },
+          "override": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "h",
+          "at",
+          "result",
+          "letIn"
+        ]
+      },
+      "OfflineSyncDto": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "description": "A random id the phone makes once and keeps.",
+            "minLength": 8,
+            "maxLength": 64
+          },
+          "gateId": {
+            "type": "string",
+            "nullable": true
+          },
+          "platform": {
+            "type": "string",
+            "description": "\"web\" or \"ios\"/\"android\" for the app.",
+            "maxLength": 20
+          },
+          "since": {
+            "type": "string",
+            "description": "serverTime from the last sync; missing = send the whole ticket list."
+          },
+          "pending": {
+            "type": "number",
+            "description": "Scans still waiting on the phone after this send (for the organizer's list).",
+            "minimum": 0
+          },
+          "scans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OfflineScanDto"
+            }
+          }
+        },
+        "required": [
+          "deviceId",
+          "scans"
         ]
       },
       "CreateVenueDto": {
@@ -8889,6 +9293,15 @@
             "type": "boolean",
             "description": "A manager let them in at the wrong gate."
           },
+          "offline": {
+            "type": "boolean",
+            "description": "Phase 21: scanned without signal and sent later."
+          },
+          "letIn": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Phase 21: for offline scans, whether the phone let them in."
+          },
           "ticketType": {
             "type": "string"
           },
@@ -8908,6 +9321,8 @@
           "gate",
           "expectedGate",
           "override",
+          "offline",
+          "letIn",
           "ticketType",
           "seat"
         ]

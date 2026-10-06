@@ -191,6 +191,8 @@ export function createApiClient(opts: {
     // Pass `timing` to get the server's own timing for this check-in (bake-off panel).
     checkIn: (body: Schemas['CreateCheckInDto'], timing?: { server?: ServerTiming | null }) =>
       request<CheckInResponse>('POST', '/check-ins', body, timing),
+    // Phase 21 (offline scanning): any POST, for the offline engine (lib/offlineScan.ts).
+    post: <T,>(path: string, body: unknown) => request<T>('POST', path, body),
 
     // Test hook: simulate an expired access token.
     _expireAccessToken() {

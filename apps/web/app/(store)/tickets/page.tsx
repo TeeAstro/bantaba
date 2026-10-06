@@ -35,7 +35,9 @@ const gateShort = (names: string[]) => {
   return n.length <= 1 ? n[0] ?? '' : `${n.slice(0, -1).join(', ')} & ${n[n.length - 1]}`;
 };
 interface Offer { id: string; ticketId: string; toEmail: string; status: string }
-interface Eligibility { tickets: { ticketId: string; allowed: boolean; reason?: string }[] }
+// Phase 20b: what they'd get back, and whether the booking fee comes too.
+type Eligible = { ticketId?: string; allowed: boolean; reason?: string; ticketAmount?: number; bookingFee?: number; includesBookingFee?: boolean; amount?: number };
+interface Eligibility { tickets: Eligible[] }
 
 type Group = { event: MyTicket['ticketType']['event']; tickets: MyTicket[] };
 
@@ -51,7 +53,7 @@ function TicketCard({ g, holder, offers, reload }: { g: Group; holder: string; o
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
-  const [eligible, setEligible] = useState<{ allowed: boolean; reason?: string } | null>(null);
+  const [eligible, setEligible] = useState<Eligible | null>(null);
   const t = live[Math.min(i, live.length - 1)];
   if (!t) return null;
   const e = g.event;
@@ -151,7 +153,7 @@ function TicketCard({ g, holder, offers, reload }: { g: Group; holder: string; o
             <input required type="email" value={email} onChange={(ev) => setEmail(ev.target.value)} autoFocus />
           </label>
           <p className="s-note">When they accept, the ticket moves to them and this QR stops working.</p>
-          <button className="s-btn s-btn-small" disabled={busy}>{busy ? 'Sending…' : 'Send ticket'}</button>
+          <button className="s-btn s-btn-small s-btn-plum" disabled={busy}>{busy ? 'Sending…' : 'Send ticket'}</button>
         </form>
       )}
       {panel === 'refund' && (
@@ -160,8 +162,17 @@ function TicketCard({ g, holder, offers, reload }: { g: Group; holder: string; o
             <p className="s-note">Checking…</p>
           ) : eligible.allowed ? (
             <>
-              <p className="s-note">The host decides, and you’re emailed either way. The booking fee isn’t refunded.</p>
-              <button type="button" className="s-btn s-btn-small" disabled={busy} onClick={() => run(() => api('/refunds', { method: 'POST', body: { orderId: t.orderId, ticketIds: [t.id] } }), 'Refund asked for. You’ll get an email when the host decides.')}>
+              {eligible.amount !== undefined && (
+                <div className="s-lines s-refund-lines">
+                  <div className="s-line"><span>{t.ticketType.name}</span><span>{dalasi(eligible.ticketAmount ?? 0, t.ticketType.currency)}</span></div>
+                  {!!eligible.bookingFee && (
+                    <div className="s-line s-line-soft"><span>Booking fee{eligible.includesBookingFee ? '' : ' (not refunded)'}</span><span>{dalasi(eligible.bookingFee, t.ticketType.currency)}</span></div>
+                  )}
+                  <div className="s-line s-line-total"><span>You’d get back</span><span>{dalasi(eligible.amount, t.ticketType.currency)}</span></div>
+                </div>
+              )}
+              <p className="s-note">The host decides, and you’re emailed either way.{eligible.bookingFee && !eligible.includesBookingFee ? ' If the event is cancelled you get the booking fee back too.' : ''}</p>
+              <button type="button" className="s-btn s-btn-small s-btn-plum" disabled={busy} onClick={() => run(() => api('/refunds', { method: 'POST', body: { orderId: t.orderId, ticketIds: [t.id] } }), 'Refund asked for. You’ll get an email when the host decides.')}>
                 {busy ? 'Sending…' : 'Ask for a refund'}
               </button>
             </>

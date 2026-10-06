@@ -1,11 +1,11 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Put, Query, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { FeesService } from './fees.service';
-import { SetFeeDto, SetHostFeeDto } from './dto/fee.dto';
+import { EarningsQueryDto, SetFeeDto, SetFeeIncludedDto, SetHostFeeDto, SetRefundRuleDto } from './dto/fee.dto';
 
 type Actor = { id: string; role: UserRole };
 
@@ -14,13 +14,21 @@ type Actor = { id: string; role: UserRole };
 export class FeesController {
   constructor(private readonly fees: FeesService) {}
 
-  /** Public: the fee buyers pay on top of this event's tickets, for the event page. */
+  /** Public: this event's booking fee, whether the host includes it, and any deal (no notes). */
   @Get('events/:id/booking-fee')
   forEvent(@Param('id', ParseUUIDPipe) id: string) {
     return this.fees.feeForEvent(id);
   }
 
-  /** Bantaba's fee, when it last changed, and hosts with their own. */
+  /** The host chooses: buyers pay the fee on top, or it's inside the ticket prices. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
+  @Put('events/:id/fee-included')
+  setIncluded(@CurrentUser() actor: Actor, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SetFeeIncludedDto) {
+    return this.fees.setIncluded(actor, id, dto.included);
+  }
+
+  /** Bantaba's fee, when it last changed, the refund rule, and deals for hosts and events. */
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Get('admin/fees')
@@ -50,5 +58,36 @@ export class FeesController {
   @Delete('admin/fees/hosts/:organizerId')
   removeHost(@CurrentUser() actor: Actor, @Param('organizerId', ParseUUIDPipe) organizerId: string) {
     return this.fees.removeHost(actor, organizerId);
+  }
+
+  /** Keep the fee when a buyer asks for a refund, or give it back. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Put('admin/fees/refunds')
+  setRefundRule(@CurrentUser() actor: Actor, @Body() dto: SetRefundRuleDto) {
+    return this.fees.setRefundRule(actor, dto.keepFee);
+  }
+
+  /** A deal for one event ("none" = no fee), optionally ending on a date. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Put('admin/fees/events/:eventId')
+  setEvent(@CurrentUser() actor: Actor, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: SetHostFeeDto) {
+    return this.fees.setEvent(actor, eventId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Delete('admin/fees/events/:eventId')
+  removeEvent(@CurrentUser() actor: Actor, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.fees.removeEvent(actor, eventId);
+  }
+
+  /** Booking fees earned in the period, per slot, by host. */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('admin/fees/earnings')
+  earnings(@Query() q: EarningsQueryDto) {
+    return this.fees.earnings(q.period ?? '30d');
   }
 }

@@ -8,7 +8,7 @@ Ticket buyers pay the platform's Wave and bank accounts, never the organizer dir
 
 ### How much an organizer can take out
 
-**Earned:** for each event, ticket sales after discounts, minus refunds. Booking fees paid by buyers belong to the platform and aren't part of it.
+**Earned:** for each event, ticket sales after discounts, minus refunds. Booking fees paid by buyers belong to the platform and aren't part of it. When the host includes the fee in their prices (Phase 20b, `TicketOrder.feeIncluded`), it comes out of their sales: a D500 ticket with a D35 fee earns them D465.
 
 When an event's money becomes **available**:
 

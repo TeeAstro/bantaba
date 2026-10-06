@@ -1648,9 +1648,30 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Public: the fee buyers pay on top of this event's tickets, for the event page. */
+        /** @description Public: this event's booking fee, whether the host includes it, and any deal (no notes). */
         get: operations["Fees_forEvent"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/fee-included": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description The host chooses: buyers pay the fee on top, or it's inside the ticket prices.
+         *
+         *     **Roles:** ORGANIZER, ADMIN
+         */
+        put: operations["Fees_setIncluded"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1666,7 +1687,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Bantaba's fee, when it last changed, and hosts with their own.
+         * @description Bantaba's fee, when it last changed, the refund rule, and deals for hosts and events.
          *
          *     **Roles:** ADMIN
          */
@@ -1705,6 +1726,70 @@ export interface paths {
          *     **Roles:** ADMIN
          */
         delete: operations["Fees_removeHost"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/fees/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description Keep the fee when a buyer asks for a refund, or give it back.
+         *
+         *     **Roles:** ADMIN
+         */
+        put: operations["Fees_setRefundRule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/fees/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * @description A deal for one event ("none" = no fee), optionally ending on a date.
+         *
+         *     **Roles:** ADMIN
+         */
+        put: operations["Fees_setEvent"];
+        post?: never;
+        /** @description **Roles:** ADMIN */
+        delete: operations["Fees_removeEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/fees/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Booking fees earned in the period, per slot, by host.
+         *
+         *     **Roles:** ADMIN
+         */
+        get: operations["Fees_earnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1860,6 +1945,44 @@ export interface paths {
          *     **Roles:** ORGANIZER, ADMIN
          */
         get: operations["CheckIns_gateStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scanner/events/{eventId}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description **Roles:** STAFF, ORGANIZER, ADMIN */
+        post: operations["CheckIns_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{eventId}/gate-phones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description The phones scanning this event, and tickets let in twice without signal.
+         *
+         *     **Roles:** ORGANIZER, ADMIN
+         */
+        get: operations["CheckIns_gatePhones"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3215,6 +3338,10 @@ export interface components {
         PayOrderDto: {
             provider: components["schemas"]["PaymentProviderType"];
         };
+        SetFeeIncludedDto: {
+            /** @description true = the booking fee is inside this event's ticket prices. */
+            included: boolean;
+        };
         SetFeeDto: {
             /** @enum {string} */
             kind: "order" | "ticket" | "pct";
@@ -3232,6 +3359,12 @@ export interface components {
             percentBp?: number;
             cap?: number | null;
             note?: string;
+            /** @description When the deal ends (then the usual fee applies). Null or missing = no end. */
+            endsAt?: string | null;
+        };
+        SetRefundRuleDto: {
+            /** @description true = keep the booking fee when a buyer asks for a refund. */
+            keepFee: boolean;
         };
         CreateCheckInDto: {
             qrToken: string;
@@ -3295,6 +3428,35 @@ export interface components {
         TicketTypeGatesDto: {
             /** @description The gates this standing ticket type enters through; empty = any gate. */
             gateIds: string[];
+        };
+        OfflineScanDto: {
+            /** @description The phone's id for this scan: sending it twice is harmless. */
+            id: string;
+            /** @description sha256 (hex) of the QR code: the same hash the ticket list uses. */
+            h: string;
+            gateId?: string | null;
+            /** @description When it was scanned, by the phone's clock. */
+            at: string;
+            /**
+             * @description What the phone showed.
+             * @enum {string}
+             */
+            result: "VALID" | "ALREADY_USED" | "INVALID" | "CANCELLED" | "REFUNDED" | "WRONG_EVENT" | "WRONG_DATE" | "NO_ACCESS" | "WRONG_GATE";
+            /** @description The phone let them in (a VALID, or a manager's "Let in here"). */
+            letIn: boolean;
+            override?: boolean;
+        };
+        OfflineSyncDto: {
+            /** @description A random id the phone makes once and keeps. */
+            deviceId: string;
+            gateId?: string | null;
+            /** @description "web" or "ios"/"android" for the app. */
+            platform?: string;
+            /** @description serverTime from the last sync; missing = send the whole ticket list. */
+            since?: string;
+            /** @description Scans still waiting on the phone after this send (for the organizer's list). */
+            pending?: number;
+            scans: components["schemas"]["OfflineScanDto"][];
         };
         CreateVenueDto: {
             name: string;
@@ -3464,6 +3626,10 @@ export interface components {
             expectedGate: string | null;
             /** @description A manager let them in at the wrong gate. */
             override: boolean;
+            /** @description Phase 21: scanned without signal and sent later. */
+            offline: boolean;
+            /** @description Phase 21: for offline scans, whether the phone let them in. */
+            letIn: boolean | null;
             ticketType: string;
             seat: components["schemas"]["SeatLabelDto"] | null;
         };
@@ -6512,6 +6678,43 @@ export interface operations {
             };
         };
     };
+    Fees_setIncluded: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFeeIncludedDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     Fees_view: {
         parameters: {
             query?: never;
@@ -6622,6 +6825,144 @@ export interface operations {
             path: {
                 organizerId: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_setRefundRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetRefundRuleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_setEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetHostFeeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_removeEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Fees_earnings: {
+        parameters: {
+            query?: {
+                period?: "today" | "7d" | "30d" | "year";
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -6909,6 +7250,76 @@ export interface operations {
         };
     };
     CheckIns_gateStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CheckIns_sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfflineSyncDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Signed in, but this role (or account) may not do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CheckIns_gatePhones: {
         parameters: {
             query?: never;
             header?: never;

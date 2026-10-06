@@ -88,6 +88,7 @@ export interface StoreOrder {
   status: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
   subtotal: number;
   platformFee: number;
+  feeIncluded?: boolean; // Phase 20b: the fee is inside the ticket prices
   total: number;
   currency: string;
   expiresAt: string | null;

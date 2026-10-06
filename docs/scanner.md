@@ -85,7 +85,7 @@ With the default `.env` (`NEXT_PUBLIC_API_URL=http://localhost:4000`), nothing c
 
 ## Known simplifications
 
-- **Online only.** No connection, no scanning. Offline scanning with later sync is Phase 16.
+- ~~Online only.~~ Since Phase 21 the scanner keeps working without signal: see "Offline" below.
 - **No scan rate limiting yet.** The Phase 0 security plan calls for it on check-in; it belongs with the Phase 18 security audit.
 - **No holder name on the result.** The verdict shows ticket type, zone and seat, not the buyer's name. ID checks at the door can be added if organizers want them.
 
@@ -126,3 +126,42 @@ Migration `20261005200000_gate_checks` adds `events.wrongGate` and `gatesOpenAt`
 
 Tests: `node gates-test.js` in `apps/backend` (backend started with `RATE_LIMITS=off`), 10/10.
 
+
+## Offline (Phase 21)
+
+Designed on the "Bantaba Host screens" canvas (OfflineReady, OfflineLetIn, OfflineUsed, OfflineBack, OfflineOrganizer). Both scanners: the web scanner (`apps/web/app/(scanner)/scan/[eventId]/page.tsx`) and the Bantaba Host app (`apps/mobile/src/app/scan/[eventId].tsx`). The logic is one file, `offlineScan.ts`, the same in `apps/web/lib/` and `apps/mobile/src/lib/`: keep the two copies identical.
+
+**The ticket list on the phone.** When a phone opens an event and picks its gate, it downloads the event's ticket list: for each ticket the sha256 hash of its QR code (the same hash the server keeps), its status, type, seat, gates and zone level. No names, and no QR codes: the list can't be used to make a ticket. While there's signal the phone syncs every minute and gets only what changed (new tickets, refunds, other gates' scans). The list and the scans waiting are saved on the phone (the browser's storage on the web; a file in the app's own folder in the app, `expo-file-system`), so closing the page or app loses nothing.
+
+**Without signal.** When a scan can't reach the server (or the browser says it's offline), the phone decides from its list with the same rules as `POST /check-ins`: status, gates-open time, wrong gate (a manager can still let them in), zone. A strip says **No signal. Keep scanning.** with the number of scans waiting. "Already scanned" says where and when: on this phone, or at another gate up to the last sync. A code that isn't in the list says **Not on this phone’s list** (a ticket for another event, or one bought minutes ago). The phone checks for signal every 15 seconds.
+
+**Back online.** The waiting scans are sent (oldest first) and the strip says **Back online · N scans sent**. Each scan keeps the phone's time (a time more than 3 days off is replaced by the time it arrived). The server records each one as an offline check-in. If the phone let someone in on a ticket that was already used (another phone without signal let it in too), refunded or cancelled, the phone shows it ("1 ticket was let in twice") and so does the organizer.
+
+**For the organizer** (event → At the gate → Check-ins):
+- **Gate phones:** each phone scanning the event (staff, gate, browser or app), whether it's been in contact in the last 2½ minutes, when it last sent scans made without signal, how many it says are waiting, and when its list was last updated.
+- **Let in without signal when they shouldn’t have been:** each ticket let in twice, or after a refund, with who let it in first and again.
+- Offline scans are tagged **Offline** in the scan list.
+
+**Limits.** Two phones without signal can't see each other's scans, so one ticket can get in at two gates; it shows up afterwards. A refund made after a phone lost signal isn't known to it until the signal is back. When the signal is bad, keep one gate per section.
+
+**API**
+
+| Route | Who | |
+|---|---|---|
+| `POST /scanner/events/{eventId}/sync` | staff assigned to the event, its organizer, admin | Body: `deviceId`, `gateId`, `platform`, `since` (last `serverTime`; missing = the whole list), `pending`, `scans: [{ id, h, gateId, at, result, letIn, override? }]`. Answer: `serverTime`, `full`, `event` (rules), `gates`, `types`, `tickets` (compact rows), `used`, `accepted` (scan ids saved; sending one twice is harmless), `conflicts`. |
+| `GET /events/{eventId}/gate-phones` | organizer, admin | `{ phones, waiting, letInTwice }` |
+
+`CheckIn` has `offline`, `letIn`, `clientScanId` (unique) and `deviceId`; `ScannerDevice` keeps each phone's state. Migration `20261005230000_offline_scanning`. Test: `node offline-test.js` (8 checks).
+
+## Auto scan and battery (Phase 21)
+
+Designed on the canvas (ScanManual, ScanAsleep, ScanSettings). The gear next to "Your gate" opens **Scanner settings**, saved on each phone:
+
+| Setting | Default | |
+|---|---|---|
+| Auto scan | on | The result shows for a moment, then the next ticket is taken by itself. Off: the result stays until **Scan next**. Also a switch on the scan screen. |
+| Camera off between scans | on | With auto scan off, the camera turns off after each scan and back on with Scan next (about half a second). |
+| Sleep when quiet | 30 s | 15 s, 30 s, 1 min or never. No scans for that long: the camera turns off and the screen says **Tap to scan**. |
+| Sound | on | Web scanner only (the app has no sounds yet). |
+| Vibrate | on | Two buzzes for the wrong gate. |
+| Keep screen on | on | The app keeps the screen awake; the web scanner asks the browser to (where it can). |

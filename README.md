@@ -1191,7 +1191,64 @@ and web app. Until an admin saves a fee, `TICKET_PLATFORM_FEE_MINOR_UNITS`
 | 5 | Remove | **Remove** on that host | They pay Bantaba's fee again |
 | 6 | Event page | Open an event, add a ticket | The bar shows the total and "Includes D… booking fee" |
 | 7 | Free tickets | Get only free tickets | No booking fee |
-| 8 | Automated | `node fees-test.js` in `apps/backend` | `7/7 passed` |
+| 8 | Automated | `node fees-test.js` in `apps/backend` | `11/11 passed` (since Phase 20b) |
+
+## Booking fee: deals, who pays, refunds, earnings (Phase 20b)
+
+Six additions to the booking fee. Details: `docs/payments.md` ("Phase 20b").
+Designed on the "Bantaba Host screens" canvas (FeesEarnings, FeesDeal,
+FeesHost, FeesBuyerIncluded, FeesBuyerRefund).
+
+1. **Earnings:** Admin → Fees shows booking fees earned (today, 7 days, 30 days, this year), a chart, the fee changes, and fees by host.
+2. **Who pays:** on an event's Tickets tab the host picks "Buyers pay it on top" or "Include it in my prices". Included: buyers see the price and "Fees included"; the fee comes out of the host's payout.
+3. **Deals that end:** a deal can have an "Until" date; after it, the usual fee applies by itself.
+4. **One event:** a deal can be for a single event (a charity match) instead of a whole host.
+5. **Hosts see the fee:** the Tickets tab shows "Buyer pays" and "You get" for each ticket type, and the price field says what the fee is.
+6. **Fee on refunds:** admins choose whether a buyer's own refund keeps the fee. Cancelled or changed events always give it back. Each ticket gives back only its own share of the fee. The buyer's refund screen shows what they'd get back.
+
+**After pulling:** `npx prisma migrate dev` in `apps/backend` (new migration
+`20261005220000_fee_deals`), then `npm run build` and restart the backend
+and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Earnings | Admin → Fees, switch Today / 7 days / 30 days / This year | Totals, chart and hosts change with the period |
+| 2 | Event deal | Add a deal → One event → pick an event → No fee → Save | Listed with "event"; that event's page shows no fee; the host's other events keep theirs |
+| 3 | Until | Add a host deal with an Until date | Listed with days left; the host's Tickets tab says "until … Then …" |
+| 4 | Who pays | As organizer: event → Tickets → Include it in my prices | Buyer pays = price; You get = price − fee; event page bar says "Fees included" |
+| 5 | Host's payout | Buy a ticket on that event, then Withdraw | Earned rises by the price less the fee |
+| 6 | Price hint | Tickets → Add a ticket type → type 500 | "Buyer pays … · you get …" under the price |
+| 7 | Refund screen | As buyer: My tickets → Ask for a refund (event with refunds on request) | Ticket, "Booking fee (not refunded)", "You’d get back" |
+| 8 | Give it back | Admin → Fees → Give the fee back, then ask again | Booking fee line without "(not refunded)"; total includes it |
+| 9 | Automated | `node fees-test.js` in `apps/backend` | `11/11 passed` |
+
+## Offline scanning and scanner settings (Phase 21)
+
+Gate phones keep the event's ticket list and keep scanning when the signal
+drops; the scans are sent when it's back. The organizer sees each gate
+phone and any ticket let in twice without signal. The scanner also gets
+**Auto scan** (off = a **Scan next** button, with the camera off between
+scans), **Sleep when quiet** and a settings sheet. Both the web scanner and
+the Bantaba Host app. Details: `docs/scanner.md` ("Offline", "Auto scan and
+battery"). Designed on the "Bantaba Host screens" canvas (Offline…, Scan…).
+
+**After pulling:** `npx prisma migrate dev` in `apps/backend` (new migration
+`20261005230000_offline_scanning`), `npm run build`, restart the backend and
+web app. In `apps/mobile`: `npm install` (adds `expo-file-system`), then
+`npx expo start`.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Ready | Open the scanner for an event, pick a gate | Green "Ready if the signal drops · N tickets on this phone" |
+| 2 | No signal | Turn on airplane mode (or Wi-Fi off), scan a ticket | Amber "No signal. Keep scanning.", **Let in**, "1 to send" |
+| 3 | Twice on this phone | Scan it again | "Already scanned · On this phone, 19:44" |
+| 4 | Back online | Turn the signal back on | Within 15 s: "Back online · N scans sent"; the door count goes up |
+| 5 | Let in twice | Two phones without signal let the same ticket in, then get signal | The second phone says "1 ticket was let in twice"; Check-ins lists it under "Let in without signal…" |
+| 6 | Gate phones | Organizer: event → At the gate → Check-ins | Each phone with gate, signal, last sent, waiting, list time |
+| 7 | Not in the list | Without signal, scan a ticket for another event | "Not on this phone’s list" |
+| 8 | Auto scan off | Turn off the Auto scan switch, scan | Camera turns off, **Scan next** brings it back |
+| 9 | Sleep | Settings → Sleep when quiet 15 s, wait | "Tap to scan" |
+| 10 | Automated | `node offline-test.js` in `apps/backend` | `8/8 passed` |
 
 ## Project structure
 

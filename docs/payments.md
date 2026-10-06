@@ -107,7 +107,37 @@ Free tickets never count. The arithmetic is `feeFor()` in `apps/backend/src/fees
 | `PUT /admin/fees/hosts/{organizerId}` | admin | as above, plus `none` and `note` |
 | `DELETE /admin/fees/hosts/{organizerId}` | admin | back to Bantaba's fee; 404 if they had none |
 
-Test: `node fees-test.js` (7 checks; puts back the fee that was set before it ran).
+### Phase 20b: deals, who pays, refunds, earnings
+
+**Deals** (Admin → Fees → Deals → Add a deal) are for **a host** or **one event**, with an optional **Until** date (`FeeRule.endsAt`). Which fee applies, in order: the event's deal, the host's deal, Bantaba's fee, the environment's. A deal past its date stops counting by itself (no job runs); it stays on the list, greyed, for 60 days. An event's deal with no date lasts as long as the event. Event deals are stored with `scope = 'event:<eventId>'`.
+
+**Who pays** is the host's choice per event (event → Tickets → Booking fee; `Event.feeIncluded`):
+
+| | Buyer pays | Host gets | `TicketOrder` |
+|---|---|---|---|
+| Buyers pay it on top (default) | D500 + D35 = D535 | D500 | `total = subtotal + platformFee` |
+| Include it in my prices | D500 | D465 | `total = subtotal`, `feeIncluded = true` |
+
+The fee is worked out the same way either way. Payouts, the host's dashboard and refunds subtract it from the host's share when `feeIncluded` is true. The Tickets tab shows "Buyer pays" and "You get" for each ticket type, and the price field says what the fee is. The event page bar says "Fees included" instead of adding a fee; checkout and the order email show no separate fee line.
+
+**Refunds:** see `docs/refunds-transfers.md`. Admin → Fees chooses whether a buyer's own refund keeps the fee (`FeeRule.keepOnRefund` on the global rule; default keep). Cancelled or changed events always give it back.
+
+**Earnings** (top of Admin → Fees): booking fees charged on orders paid in the period (today, 7 days, 30 days, this year), minus fees given back in refunds decided in the period; paid tickets; average per ticket; a chart per hour, day or month; the fee changes in the period with the average before and after; the top 8 hosts with their deal or "Includes fee".
+
+**More API (Phase 20b)**
+
+| Route | Who | |
+|---|---|---|
+| `GET /events/{id}/booking-fee` | public | also `included`, `deal: { for, endsAt, then }`, `keepOnRefund` |
+| `PUT /events/{id}/fee-included` | the event's organizer, admin | `{ included }` |
+| `PUT /admin/fees/hosts/{organizerId}` | admin | also `endsAt` (ISO, after now; null = no end) |
+| `PUT`/`DELETE /admin/fees/events/{eventId}` | admin | a deal for one event, same body |
+| `PUT /admin/fees/refunds` | admin | `{ keepFee }` |
+| `GET /admin/fees/earnings?period=today\|7d\|30d\|year` | admin | `{ period, totals, series, changes, hosts }` |
+
+`GET /admin/fees` now returns `deals` (hosts and events, with `endsAt` and `ended`) instead of `hosts`, plus `keepOnRefund`. Audit log actions: `event_fee_set`, `event_fee_removed`, `fee_refund_rule_changed`, `fee_included_set`.
+
+Test: `node fees-test.js` (11 checks; puts back the fee rules that were set before it ran).
 
 ## Inventory reservation and expiry
 

@@ -285,6 +285,7 @@ model User {
   notifications       Notification[]
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  scannerDevices      ScannerDevice[]
 
   @@map("users")
 }
@@ -607,10 +608,14 @@ model Event {
   // Phase 19 (gate checks, docs/scanner.md): what the scanner does with a
   // ticket at the wrong gate: "send" = send them to their gate (a manager
   // can still let them in), "allow" = let in and tell them their gate.
-  wrongGate   String    @default("send")
+  wrongGate      String          @default("send")
   // When the gates open; scanning before then says so. Null = the usual
   // window before the start (CHECKIN_WINDOW_BEFORE_MINUTES).
-  gatesOpenAt DateTime?
+  gatesOpenAt    DateTime?
+  // Phase 20b: the host includes the booking fee in their prices.
+  feeIncluded    Boolean         @default(false)
+  feeRule        FeeRule?
+  scannerDevices ScannerDevice[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -751,6 +756,9 @@ model TicketOrder {
   subtotal       Int
   discount       Int         @default(0)
   platformFee    Int         @default(0)
+  // Phase 20b: the fee was inside the ticket prices (total = subtotal - discount),
+  // so the host gets subtotal - discount - platformFee.
+  feeIncluded    Boolean     @default(false)
   paymentFee     Int         @default(0)
   total          Int
   currency       String      @default("GMD")
@@ -978,6 +986,14 @@ model CheckIn {
   expectedGate   Gate?         @relation("CheckInExpectedGate", fields: [expectedGateId], references: [id], onDelete: SetNull)
   override       Boolean       @default(false)
   scannedAt      DateTime      @default(now())
+  // Phase 21 (offline scanning, docs/scanner.md "Offline"): scanned on a
+  // phone without signal and sent later. scannedAt is the phone's time.
+  // letIn = the phone let them in; with a result other than VALID that's
+  // a ticket let in twice (or let in after a refund) while offline.
+  offline        Boolean       @default(false)
+  letIn          Boolean?
+  clientScanId   String?       @unique // the phone's id for the scan, so sending twice is harmless
+  deviceId       String?
 
   // Append-only: application code must never UPDATE or DELETE rows here.
   @@index([eventId])
@@ -986,25 +1002,54 @@ model CheckIn {
   @@map("check_ins")
 }
 
+// Phase 21 (offline scanning): each phone scanning an event, for the
+// organizer's "Gate phones" list. Updated every time the phone syncs.
+model ScannerDevice {
+  id         String    @id @default(uuid())
+  eventId    String
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId   String // random id the phone makes once
+  gateId     String?
+  platform   String?
+  lastSeenAt DateTime  @default(now())
+  lastSentAt DateTime? // last time it sent scans made without signal
+  pending    Int       @default(0) // scans waiting on the phone, as it last said
+  listAt     DateTime? // when its ticket list was last brought up to date
+
+  @@unique([eventId, userId, deviceId])
+  @@index([eventId])
+  @@map("scanner_devices")
+}
+
 // Phase 20 (docs/payments.md, "Booking fee"): the fee buyers pay on top of
 // the ticket price. One row with organizerId null is Bantaba's fee; a row
 // with an organizer is that host's own fee. No rows = the
 // TICKET_PLATFORM_FEE_MINOR_UNITS per order from the environment.
 model FeeRule {
-  id          String     @id @default(uuid())
-  // "global" for Bantaba's fee, else the organizer's id (one rule each).
-  scope       String     @unique
-  organizerId String?    @unique
-  organizer   Organizer? @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid())
+  // "global" for Bantaba's fee, the organizer's id for a host deal, or
+  // "event:<id>" for one event's deal (one rule each).
+  scope        String     @unique
+  organizerId  String?    @unique
+  organizer    Organizer? @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  eventId      String?    @unique
+  event        Event?     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  // A deal ends at this time (null = no end); then the next fee applies.
+  endsAt       DateTime?
+  // Global rule only: keep the booking fee when a buyer asks for a refund.
+  // Cancelled or changed events always give it back.
+  keepOnRefund Boolean    @default(true)
   // "order" = amount per order; "ticket" = amount per ticket; "pct" =
   // percentBp of each ticket's price plus amount, at most cap a ticket;
   // "none" = no fee. Free tickets never pay a fee.
-  kind        String
-  amount      Int        @default(0) // minor units
-  percentBp   Int        @default(0) // basis points: 500 = 5%
-  cap         Int? // minor units, per ticket, "pct" only
-  note        String? // why a host's fee differs ("federation matches")
-  updatedById String?
+  kind         String
+  amount       Int        @default(0) // minor units
+  percentBp    Int        @default(0) // basis points: 500 = 5%
+  cap          Int? // minor units, per ticket, "pct" only
+  note         String? // why a host's fee differs ("federation matches")
+  updatedById  String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

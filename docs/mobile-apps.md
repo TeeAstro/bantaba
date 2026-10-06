@@ -79,7 +79,7 @@ Possible outcomes:
 | Camera scanning | AVFoundation / Vision | CameraX + ML Kit |
 | NFC (Phase 11) | Core NFC | Android NFC (IsoDep / MIFARE) |
 | Secure storage | Keychain | Android Keystore |
-| Offline (Phase 16) | SQLite (GRDB) | Room |
+| Offline (built in Phase 21 in the Expo app with files, `expo-file-system`; see docs/scanner.md "Offline") | SQLite (GRDB) | Room |
 | API client | generated from `openapi.json` | generated from `openapi.json` |
 
 Shared across both, so they don't drift apart: the OpenAPI spec, design tokens (colours, spacing) as one JSON file, and all user-facing text (including the scan verdict wording from `docs/scanner.md`) as one strings file both apps import. If keeping shared logic in step becomes a burden, **Kotlin Multiplatform** can share non-UI code (API, offline sync) between the two while the screens stay fully native.

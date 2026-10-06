@@ -90,6 +90,7 @@ export class DashboardService {
 
     const soldByEvent = await this.soldTicketsByEvent(upcoming.map((e) => e.id));
     const refunded = await this.refundTotals({ order: { event: eventWhere } });
+    const included = await this.includedFees({ event: eventWhere });
     const { soldToday, ...extra } = await this.overviewExtras(organizer, upcoming.map((e) => e.id));
 
     return {
@@ -109,9 +110,10 @@ export class DashboardService {
         paidOrders: paid._count._all,
         ticketsSold,
         checkedIn,
-        // What the organizer earns: ticket prices minus discounts. The
+        // What the organizer earns: ticket prices minus discounts (and the
+        // booking fee when they include it in their prices, Phase 20b). The
         // platform fee is shown separately — it goes to the platform.
-        ticketRevenue: (paid._sum.subtotal ?? 0) - (paid._sum.discount ?? 0) - refunded.tickets,
+        ticketRevenue: (paid._sum.subtotal ?? 0) - (paid._sum.discount ?? 0) - included - refunded.tickets,
         platformFees: (paid._sum.platformFee ?? 0) - refunded.fees,
         grossCollected: (paid._sum.total ?? 0) - refunded.total,
         refunded: refunded.total,
@@ -374,7 +376,7 @@ export class DashboardService {
         reservedPending: Math.max(0, ticketTypes.reduce((n, t) => n + t.quantitySold, 0) - ticketsSold),
         checkedIn: usedCount,
         attendanceRate: ticketsSold > 0 ? usedCount / ticketsSold : 0,
-        ticketRevenue: (paid._sum.subtotal ?? 0) - (paid._sum.discount ?? 0) - refunded.tickets,
+        ticketRevenue: (paid._sum.subtotal ?? 0) - (paid._sum.discount ?? 0) - (await this.includedFees({ eventId })) - refunded.tickets,
         platformFees: (paid._sum.platformFee ?? 0) - refunded.fees,
         grossCollected: (paid._sum.total ?? 0) - refunded.total,
         currency: ticketTypes[0]?.currency ?? 'GMD',
@@ -422,6 +424,12 @@ export class DashboardService {
         ? Object.fromEntries(seatGroups.map((g) => [g.status, g._count._all]))
         : null,
     };
+  }
+
+  /** Booking fees inside paid orders' ticket prices (the host included them): not the host's money. */
+  private async includedFees(where: Prisma.TicketOrderWhereInput) {
+    const agg = await this.prisma.ticketOrder.aggregate({ where: { ...where, feeIncluded: true, status: { in: MONEY_ORDER_STATUSES } }, _sum: { platformFee: true } });
+    return agg._sum.platformFee ?? 0;
   }
 
   // Money returned or being returned (approved or processed refunds).

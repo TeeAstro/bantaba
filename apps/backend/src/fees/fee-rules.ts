@@ -44,3 +44,6 @@ export function describeFee(fee: Fee): string {
       return `${fee.percentBp / 100}%${fee.amount ? ` + ${D(fee.amount)}` : ''} per ticket${fee.cap === null ? '' : `, at most ${D(fee.cap)} a ticket`}`;
   }
 }
+
+/** The fee on one ticket at this price, for "Buyer pays / You get" (a per-order fee counts in full). */
+export const feeForTicket = (fee: Fee, price: number) => feeFor(fee, [{ price, quantity: 1 }]);

@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { CheckInsService } from './check-ins.service';
+import { OfflineScanService } from './offline.service';
+import { OfflineSyncDto } from './dto/offline.dto';
 import { CreateCheckInDto } from './dto/create-check-in.dto';
 import { GateRulesDto, TicketTypeGatesDto } from './dto/gate-rules.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,7 +20,10 @@ interface AuthenticatedUser {
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CheckInsController {
-  constructor(private readonly checkInsService: CheckInsService) {}
+  constructor(
+    private readonly checkInsService: CheckInsService,
+    private readonly offline: OfflineScanService,
+  ) {}
 
   // Who exactly may scan for a *specific* event is refined further
   // inside the service (an ORGANIZER must own the event; STAFF/ADMIN can
@@ -65,5 +70,25 @@ export class CheckInsController {
   @Get('events/:eventId/gate-stats')
   gateStats(@CurrentUser() user: AuthenticatedUser, @Param('eventId', ParseUUIDPipe) eventId: string) {
     return this.checkInsService.gateStats(user, eventId);
+  }
+
+  // ---------- Phase 21: offline scanning (docs/scanner.md, "Offline") ----------
+
+  /**
+   * A gate phone's sync, about once a minute with signal: sends the scans it
+   * made without signal, says how it's doing, and gets the ticket list (all
+   * of it, or what changed since `since`). 201 with the list.
+   */
+  @Roles(UserRole.STAFF, UserRole.ORGANIZER, UserRole.ADMIN)
+  @Post('scanner/events/:eventId/sync')
+  sync(@CurrentUser() user: AuthenticatedUser, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: OfflineSyncDto) {
+    return this.offline.sync(user, eventId, dto);
+  }
+
+  /** The phones scanning this event, and tickets let in twice without signal. */
+  @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
+  @Get('events/:eventId/gate-phones')
+  gatePhones(@CurrentUser() user: AuthenticatedUser, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.offline.gatePhones(user, eventId);
   }
 }

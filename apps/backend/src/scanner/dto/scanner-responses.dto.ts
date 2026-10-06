@@ -63,6 +63,12 @@ export class RecentScanDto {
   expectedGate!: string | null;
   /** A manager let them in at the wrong gate. */
   override!: boolean;
+
+  /** Phase 21: scanned without signal and sent later. */
+  offline!: boolean;
+
+  /** Phase 21: for offline scans, whether the phone let them in. */
+  letIn!: boolean | null;
   ticketType!: string;
   seat!: SeatLabelDto | null;
 }

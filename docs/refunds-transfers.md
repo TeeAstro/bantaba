@@ -24,7 +24,9 @@ The rules live in one place: `apps/backend/src/refunds/refund-rules.ts`. `GET /a
 ### How much
 
 - **Each ticket returns what was paid for it**: the price on the order, minus its share of any discount. When the last tickets of an order are refunded, the rounding is settled, so the refunds add up exactly to what was paid for tickets.
-- **The booking fee is refunded only when the event is cancelled**, whether automatically or later on request. Organizers can't refund it themselves (it's the platform's money); admins can.
+- **The booking fee goes back when the event is cancelled or its date or venue changed** (since Phase 20b; before, only when cancelled). On a buyer's own request under the refund policy, it depends on **Admin → Fees → "When a buyer asks for a refund"**: *Keep the fee* (the default) or *Give the fee back*. Organizers can't refund it themselves (it's the platform's money); admins can.
+- **Each ticket carries its own share of the fee** (Phase 20b, `ticketShare()` in `refund-rules.ts`), split by price so free tickets carry none. Refunding one ticket of three gives back that ticket's share, not the whole order's fee. When an admin or a cancellation refunds the last tickets with the fee, everything left of the fee goes back. When the host included the fee in their prices, the ticket's refund is its price less its fee share, plus the share if the fee goes back.
+- **The buyer's refund screen** (My tickets → Ask for a refund) shows the ticket amount, the booking fee (marked "not refunded" when kept) and what they'd get back. `GET /refunds/eligibility` returns `ticketAmount`, `bookingFee`, `includesBookingFee` and `amount` per ticket.
 
 ### What happens, step by step
 

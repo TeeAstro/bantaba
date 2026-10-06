@@ -21,6 +21,73 @@ interface GateSetup {
   ticketTypes: { id: string; name: string; seated: boolean; gateIds: string[] }[];
 }
 interface GateLine { in: number; perMinute: number; sentAway: number; letInOther: number }
+// Phase 21 (docs/scanner.md, "Offline"): phones scanning this event, and
+// tickets let in twice (or after a refund) while a phone had no signal.
+interface GatePhonesView {
+  phones: { id: string; staff: string; gate: string | null; platform: string | null; lastSeenAt: string; quietFor: number; lastSentAt: string | null; pending: number; listAt: string | null }[];
+  waiting: number;
+  letInTwice: { id: string; reason: 'twice' | 'refunded' | 'cancelled' | 'not_valid'; ticket: { type: string; seat: string[] | null; holder: string }; first: { at: string; gate: string | null; by: string | null } | null; again: { at: string; gate: string | null; by: string | null } }[];
+}
+const hm = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString('en-GB', { timeZone: 'Africa/Banjul', hour: '2-digit', minute: '2-digit' }) : '—');
+
+function GatePhones({ eventId }: { eventId: string }) {
+  const { data, reload } = useApi<GatePhonesView>(`/events/${eventId}/gate-phones`);
+  useEffect(() => {
+    const t = setInterval(reload, 15_000);
+    return () => clearInterval(t);
+  }, [reload]);
+  if (!data || (data.phones.length === 0 && data.letInTwice.length === 0)) return null;
+  const where = (x: { gate: string | null; at: string; by: string | null }) => `${x.gate ?? 'No gate'} · ${hm(x.at)}${x.by ? ` · ${x.by}` : ''}`;
+  return (
+    <div className="stack" style={{ gap: 12 }}>
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Gate phones</h2>
+          <span className="small faint">{data.waiting ? `${data.waiting} scans waiting on phones · ` : ''}Each phone keeps the ticket list and scans without signal</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Staff</th><th>Signal</th><th>Last sent</th><th className="right">Waiting to send</th><th className="right">List updated</th></tr>
+            </thead>
+            <tbody>
+              {data.phones.map((p) => (
+                <tr key={p.id}>
+                  <td><strong>{p.staff}</strong><span className="cell-sub">{p.gate ?? 'No gate'}{p.platform === 'web' ? ' · browser' : p.platform ? ' · app' : ''}</span></td>
+                  <td>{p.quietFor ? <span className="badge badge-gold">No contact for {p.quietFor} min</span> : <span className="badge badge-green">Online</span>}</td>
+                  <td className="num small">{hm(p.lastSentAt)}</td>
+                  <td className="right num">{p.pending ? `${p.pending}${p.quietFor ? ` (as of ${hm(p.lastSeenAt)})` : ''}` : <span className="faint">0</span>}</td>
+                  <td className="right num small">{hm(p.listAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {data.letInTwice.length > 0 && (
+        <section className="panel panel-pad stack off-twice" style={{ gap: 10 }}>
+          <h2 className="gr-h">Let in without signal when they shouldn’t have been <span className="badge badge-gold">{data.letInTwice.length}</span></h2>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Ticket</th><th>What happened</th><th>First</th><th>Again</th></tr></thead>
+              <tbody>
+                {data.letInTwice.map((x) => (
+                  <tr key={x.id}>
+                    <td><strong>{x.ticket.type}</strong>{x.ticket.seat ? ` · ${x.ticket.seat.join(' · ')}` : ''}<span className="cell-sub">{x.ticket.holder}</span></td>
+                    <td className="small">{x.reason === 'twice' ? 'Let in twice' : x.reason === 'refunded' ? 'Let in after a refund' : x.reason === 'cancelled' ? 'Let in, ticket cancelled' : 'Let in, ticket not valid'}</td>
+                    <td className="small">{x.first ? where(x.first) : '—'}</td>
+                    <td className="small">{where(x.again)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <span className="small muted">Two phones without signal can’t see each other’s scans. When the signal is bad, keep one gate per section.</span>
+        </section>
+      )}
+    </div>
+  );
+}
 interface GateStats {
   gates: (GateLine & { id: string; name: string })[];
   noGate: GateLine;
@@ -193,6 +260,7 @@ export function CheckInsTab({ eventId }: { eventId: string }) {
           {hasGates ? <GateNumbers eventId={eventId} /> : <GateRules key={`${setup.wrongGate}|${setup.gatesOpenAt}`} eventId={eventId} setup={setup} onSaved={setSetup} />}
         </div>
       )}
+      <GatePhones eventId={eventId} />
       <section className="panel">
         <div className="panel-head">
           <h2>Gate scans</h2>
@@ -215,6 +283,7 @@ export function CheckInsTab({ eventId }: { eventId: string }) {
                       <td className="num small">{dateTime(c.scannedAt)}</td>
                       <td>
                         <StatusBadge status={c.result === 'VALID' && c.override ? 'LET_IN_HERE' : c.result} />
+                        {c.offline && <span className="badge" style={{ marginLeft: 6 }} title="Scanned without signal, sent later">{c.letIn && c.result !== 'VALID' ? 'Let in offline' : 'Offline'}</span>}
                         {c.expectedGate && (
                           <span className="small muted" style={{ marginLeft: 6 }}>
                             {c.result === 'WRONG_GATE' ? `Sent to ${c.expectedGate.name}` : `Their gate: ${c.expectedGate.name}`}

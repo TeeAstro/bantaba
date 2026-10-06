@@ -73,7 +73,8 @@ export class PayoutsService {
              o.earned, r.refunded, r.pending
       FROM events e
       JOIN (
-        SELECT "eventId", SUM(subtotal - discount) AS earned
+        -- When the host included the booking fee in their prices, it comes out of their share (Phase 20b).
+        SELECT "eventId", SUM(subtotal - discount - CASE WHEN "feeIncluded" THEN "platformFee" ELSE 0 END) AS earned
         FROM ticket_orders
         WHERE status IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
         GROUP BY "eventId"

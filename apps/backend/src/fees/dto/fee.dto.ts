@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import { IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 // Guardrails (Phase 20): a typo shouldn't overcharge every buyer.
 export const MAX_FEE_AMOUNT = 50_000; // D500
@@ -30,7 +30,7 @@ export class SetFeeDto {
   cap?: number | null;
 }
 
-/** A host's own fee: also "none" (no fee), plus why. */
+/** A deal for a host or one event: also "none" (no fee), plus why and when it ends. */
 export class SetHostFeeDto {
   @IsIn(['order', 'ticket', 'pct', 'none'])
   kind!: 'order' | 'ticket' | 'pct' | 'none';
@@ -57,4 +57,28 @@ export class SetHostFeeDto {
   @IsString()
   @MaxLength(120)
   note?: string;
+
+  /** When the deal ends (then the usual fee applies). Null or missing = no end. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsDateString()
+  endsAt?: string | null;
+}
+
+export class SetRefundRuleDto {
+  /** true = keep the booking fee when a buyer asks for a refund. */
+  @IsBoolean()
+  keepFee!: boolean;
+}
+
+export class SetFeeIncludedDto {
+  /** true = the booking fee is inside this event's ticket prices. */
+  @IsBoolean()
+  included!: boolean;
+}
+
+export class EarningsQueryDto {
+  @IsOptional()
+  @IsIn(['today', '7d', '30d', 'year'])
+  period?: 'today' | '7d' | '30d' | 'year';
 }

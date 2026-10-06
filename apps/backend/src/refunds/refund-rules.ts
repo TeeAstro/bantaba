@@ -28,11 +28,15 @@ export type Eligibility =
 
 const DAY = 86_400_000;
 
+// Phase 20b: on a buyer's own request the booking fee stays with Bantaba
+// unless an admin chose "give the fee back" (keepFee = false). A cancelled
+// or changed event always gives it back: the buyer didn't cause it.
 export function refundEligibility(
   event: RuleEvent,
   ticket: { status: string; ownerId: string; purchasedAt: Date },
   order: { customerId: string },
   now = new Date(),
+  keepFee = true,
 ): Eligibility {
   if (ticket.ownerId !== order.customerId) {
     return { allowed: false, reason: 'This ticket was transferred to you, so the refund belongs to the person who bought it.' };
@@ -53,16 +57,16 @@ export function refundEligibility(
   if (now >= event.startDate) return { allowed: false, reason: 'The event has already started.' };
 
   if (event.scheduleChangedAt && ticket.purchasedAt < event.scheduleChangedAt) {
-    return { allowed: true, basis: 'changed', includeFee: false, until: event.startDate };
+    return { allowed: true, basis: 'changed', includeFee: true, until: event.startDate };
   }
 
   switch (event.refundPolicy) {
     case RefundPolicy.ANYTIME:
-      return { allowed: true, basis: 'policy', includeFee: false, until: event.startDate };
+      return { allowed: true, basis: 'policy', includeFee: !keepFee, until: event.startDate };
     case RefundPolicy.UNTIL_DAYS_BEFORE: {
       const until = new Date(event.startDate.getTime() - (event.refundDaysBefore ?? 0) * DAY);
       return now <= until
-        ? { allowed: true, basis: 'policy', includeFee: false, until }
+        ? { allowed: true, basis: 'policy', includeFee: !keepFee, until }
         : { allowed: false, reason: `Refunds closed ${event.refundDaysBefore} day${event.refundDaysBefore === 1 ? '' : 's'} before the event.` };
     }
     default:
@@ -70,13 +74,30 @@ export function refundEligibility(
   }
 }
 
-export function policyText(e: Pick<RuleEvent, 'refundPolicy' | 'refundDaysBefore'>): string {
+export function policyText(e: Pick<RuleEvent, 'refundPolicy' | 'refundDaysBefore'>, keepFee = true): string {
+  const fee = keepFee ? ' (booking fee not refunded)' : '';
   switch (e.refundPolicy) {
     case RefundPolicy.ANYTIME:
-      return 'Refunds on request until the event starts (booking fee not refunded).';
+      return `Refunds on request until the event starts${fee}.`;
     case RefundPolicy.UNTIL_DAYS_BEFORE:
-      return `Refunds on request until ${e.refundDaysBefore} day${e.refundDaysBefore === 1 ? '' : 's'} before the event (booking fee not refunded).`;
+      return `Refunds on request until ${e.refundDaysBefore} day${e.refundDaysBefore === 1 ? '' : 's'} before the event${fee}.`;
     default:
       return 'No refunds on request. You get your money back if the event is cancelled, and can ask for it if the date or venue changes.';
   }
+}
+
+/**
+ * What one ticket of an order is worth on a refund (Phase 20b): the ticket
+ * part (the host's money) and its share of the fees (Bantaba's booking fee
+ * and any card fee), split by price so free tickets carry none. When the
+ * host included the booking fee in their prices, it comes out of the ticket part.
+ */
+export function ticketShare(
+  order: { subtotal: number; discount: number; platformFee: number; paymentFee: number; feeIncluded: boolean },
+  price: number,
+): { ticket: number; fee: number } {
+  if (order.subtotal <= 0 || price <= 0) return { ticket: 0, fee: 0 };
+  const part = (n: number) => Math.floor((n * price) / order.subtotal);
+  const platform = part(order.platformFee);
+  return { ticket: price - part(order.discount) - (order.feeIncluded ? platform : 0), fee: platform + part(order.paymentFee) };
 }

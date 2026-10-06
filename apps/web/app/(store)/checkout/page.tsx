@@ -216,7 +216,8 @@ function CheckoutInner() {
           </div>
           <div className="s-lines">
             {lines.map((l) => <div key={l.key} className="s-line"><span>{l.label}</span><span>{dalasi(l.amount, currency)}</span></div>)}
-            {order && order.platformFee > 0 && <div className="s-line s-line-soft"><span>Booking fee</span><span>{dalasi(order.platformFee, currency)}</span></div>}
+            {order && order.platformFee > 0 && !order.feeIncluded && <div className="s-line s-line-soft"><span>Booking fee</span><span>{dalasi(order.platformFee, currency)}</span></div>}
+            {order && order.platformFee > 0 && order.feeIncluded && <div className="s-line s-line-soft"><span>Fees included</span><span /></div>}
             <div className="s-line s-line-total"><span>{order ? 'Total' : 'Tickets'}</span><span>{dalasi(total, currency)}</span></div>
           </div>
         </section>

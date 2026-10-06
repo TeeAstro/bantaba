@@ -23,7 +23,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { policyText, refundEligibility } from './refund-rules';
+import { policyText, refundEligibility, ticketShare } from './refund-rules';
 import { seatLabel } from '../venues/seating-rules';
 
 // Refunds (Phase 13, docs/refunds-transfers.md).
@@ -89,24 +89,28 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
   async eligibility(user: Actor, orderId: string) {
     const order = await this.prisma.ticketOrder.findUnique({
       where: { id: orderId },
-      include: { event: true, tickets: { include: { ticketType: { select: { name: true } }, refundItems: { include: { refund: { select: { status: true } } } } } } },
+      include: { event: true, items: true, tickets: { include: { ticketType: { select: { name: true } }, refundItems: { include: { refund: { select: { status: true } } } } } } },
     });
     if (!order || order.customerId !== user.id) throw new NotFoundException('Order not found');
     const now = new Date();
+    const keepFee = await this.keepFee(this.prisma);
+    const price = new Map(order.items.map((i) => [i.ticketTypeId, i.unitPrice]));
     return {
       orderId: order.id,
-      policy: { refundPolicy: order.event.refundPolicy, refundDaysBefore: order.event.refundDaysBefore, text: policyText(order.event) },
+      policy: { refundPolicy: order.event.refundPolicy, refundDaysBefore: order.event.refundDaysBefore, text: policyText(order.event, keepFee) },
       tickets: order.tickets
         .filter((t) => t.ownerId === user.id || t.status !== TicketStatus.ACTIVE)
         .map((t) => {
           const open = t.refundItems.some((i) => OPEN.includes(i.refund.status));
-          const e = open && t.status === TicketStatus.ACTIVE ? ({ allowed: false, reason: 'A refund for this ticket is already in progress.' } as const) : refundEligibility(order.event, t, order, now);
+          const e = open && t.status === TicketStatus.ACTIVE ? ({ allowed: false, reason: 'A refund for this ticket is already in progress.' } as const) : refundEligibility(order.event, t, order, now, keepFee);
+          const share = ticketShare(order, price.get(t.ticketTypeId) ?? 0);
           return {
             ticketId: t.id,
             ticketType: t.ticketType.name,
             status: t.status,
             allowed: e.allowed,
-            ...(e.allowed ? { basis: e.basis, until: e.until, includesBookingFee: e.includeFee } : { reason: e.reason }),
+            // Phase 20b: what they'd get back, and the fee kept or returned.
+            ...(e.allowed ? { basis: e.basis, until: e.until, includesBookingFee: e.includeFee, ticketAmount: share.ticket, bookingFee: share.fee, amount: share.ticket + (e.includeFee ? share.fee : 0) } : { reason: e.reason }),
           };
         }),
     };
@@ -179,10 +183,11 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
       if (wanted.length === 0) throw new BadRequestException('There are no tickets in this order that can be refunded');
       const tickets = await this.lockTickets(tx, ctx, wanted);
       const now = new Date();
+      const keepFee = await this.keepFee(tx);
       let includeFee = false;
       for (const t of tickets) {
         if (t.ownerId !== user.id) throw new ForbiddenException('You can only ask for a refund on tickets you hold');
-        const e = refundEligibility(ctx.order.event, t, ctx.order, now);
+        const e = refundEligibility(ctx.order.event, t, ctx.order, now, keepFee);
         if (!e.allowed) throw new BadRequestException(e.reason);
         includeFee = e.includeFee;
       }
@@ -421,6 +426,12 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
     return r;
   }
 
+  /** Phase 20b: does a buyer's own refund leave the booking fee with Bantaba? (Admin → Fees.) */
+  private async keepFee(db: Db) {
+    const g = await db.feeRule.findUnique({ where: { scope: 'global' }, select: { keepOnRefund: true } });
+    return g?.keepOnRefund ?? true;
+  }
+
   private async orderContext(db: Db, orderId: string) {
     const order = await db.ticketOrder.findUnique({
       where: { id: orderId },
@@ -478,17 +489,27 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
     const { order } = ctx;
     if (!ctx.payment) throw new BadRequestException('This order has no completed payment to refund');
     const unit = new Map(order.items.map((i) => [i.ticketTypeId, i.unitPrice]));
-    const share = (price: number) => (order.subtotal > 0 ? price - Math.floor((order.discount * price) / order.subtotal) : 0);
-    const items = tickets.map((t) => ({ ticketId: t.id, ticketTypeId: t.ticketTypeId, amount: share(unit.get(t.ticketTypeId) ?? 0) }));
-    // Refunding everything that's left: settle rounding so the ticket
-    // refunds add up exactly to what was paid for tickets.
+    const share = (ticketTypeId: string) => ticketShare(order, unit.get(ticketTypeId) ?? 0);
+    const items = tickets.map((t) => ({ ticketId: t.id, ticketTypeId: t.ticketTypeId, amount: share(t.ticketTypeId).ticket }));
+    // Each ticket's share of the fees (Phase 20b): a partial refund gives back
+    // only the refunded tickets' part, not the whole order's fee.
+    let feeAmount = opts.includeFee ? tickets.reduce((s, t) => s + share(t.ticketTypeId).fee, 0) : 0;
+    // Refunding everything that's left: settle rounding so the refunds add
+    // up exactly to what was paid.
     const remaining = order.tickets.filter((t) => !ctx.refundedTicketIds.has(t.id) && t.status !== TicketStatus.REFUNDED);
     if (items.length > 0 && remaining.length === items.length) {
-      const target = order.subtotal - order.discount - ctx.ticketRefunded;
+      const target = order.subtotal - order.discount - (order.feeIncluded ? order.platformFee : 0) - ctx.ticketRefunded;
       const sum = items.reduce((s, i) => s + i.amount, 0);
       items[items.length - 1].amount += target - sum;
+      if (opts.includeFee) {
+        const left = order.platformFee + order.paymentFee - ctx.feeRefunded;
+        // A buyer's own last ticket: its share, settled for rounding (the fee
+        // of tickets refunded before stays as it was). An admin or a
+        // cancellation returning the fee: all of what's left.
+        const before = order.tickets.filter((t) => ctx.refundedTicketIds.has(t.id) || t.status === TicketStatus.REFUNDED).reduce((s, t) => s + share(t.ticketTypeId).fee, 0);
+        feeAmount = Math.max(0, opts.kind === RefundKind.CUSTOMER_REQUEST ? Math.min(order.platformFee + order.paymentFee - before, left) : left);
+      }
     }
-    const feeAmount = opts.includeFee ? Math.max(0, order.platformFee + order.paymentFee - ctx.feeRefunded) : 0;
     const amount = items.reduce((s, i) => s + i.amount, 0) + feeAmount;
 
     const provider = this.payments.resolveProvider(ctx.payment.provider);

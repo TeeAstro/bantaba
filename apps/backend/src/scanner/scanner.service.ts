@@ -110,6 +110,8 @@ export class ScannerService {
           gate: { select: { name: true } },
           expectedGate: { select: { name: true } },
           override: true,
+          offline: true,
+          letIn: true,
           ticket: {
             select: {
               ticketType: { select: { name: true } },
@@ -131,6 +133,9 @@ export class ScannerService {
         gate: c.gate?.name ?? null,
         expectedGate: c.expectedGate?.name ?? null,
         override: c.override,
+        // Phase 21: sent from this phone after it had no signal; letIn = it let them in.
+        offline: c.offline,
+        letIn: c.letIn,
         ticketType: c.ticket.ticketType.name,
         seat: c.ticket.seat ? { section: c.ticket.seat.section.name, row: c.ticket.seat.row, number: c.ticket.seat.number } : null,
       })),

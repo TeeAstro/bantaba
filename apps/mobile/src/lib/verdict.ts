@@ -1,4 +1,5 @@
 import type { CheckInResponse, CheckInResult } from '../api/client';
+import type { LocalResult } from './offlineScan';
 
 export type Tone = 'ok' | 'warn' | 'bad';
 
@@ -8,7 +9,16 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { timeZ
 // and docs/scanner.md). If the apps go native, this moves to the shared
 // strings file both use (docs/mobile-apps.md).
 // Phase 19: WRONG_GATE says which gate to send them to (`big`).
-export function verdict(r: Pick<CheckInResponse, 'result' | 'ticket'> & Partial<CheckInResponse>): { tone: Tone; title: string; detail: string; big?: string } {
+// Phase 21: LocalResult = decided on this phone without signal.
+export function verdict(r0: (Pick<CheckInResponse, 'result' | 'ticket'> & Partial<CheckInResponse>) | LocalResult): { tone: Tone; title: string; detail: string; big?: string } {
+  if ('offline' in r0 && r0.offline) {
+    if (r0.notInList) return { tone: 'bad', title: 'Not on this phone’s list', detail: 'Not a ticket for this event, or bought in the last few minutes. Check again when there’s signal.' };
+    if (r0.result === 'ALREADY_USED') {
+      const u = r0.usedAt;
+      return { tone: 'warn', title: 'Already scanned', detail: u ? `${u.here ? 'On this phone' : `At ${u.gate ?? 'another gate'}`}, ${clock(u.at)}. Don’t let a second person in on it.` : 'This ticket has been used. Don’t let a second person in on it.' };
+    }
+  }
+  const r = r0 as Pick<CheckInResponse, 'result' | 'ticket'> & Partial<CheckInResponse>;
   const t = r.ticket;
   const theirs = r.expectedGates?.map((g) => g.name).join(' or ');
   switch (r.result as CheckInResult) {

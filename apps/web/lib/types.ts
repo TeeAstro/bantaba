@@ -172,6 +172,9 @@ export interface CheckInRow {
   // Phase 19: their own gate when scanned at another, and a manager's "Let in here"
   expectedGate?: { id: string; name: string } | null;
   override?: boolean;
+  // Phase 21: scanned without signal and sent later; letIn = the phone let them in
+  offline?: boolean;
+  letIn?: boolean | null;
   ticket: {
     ticketType: { name: string };
     owner: { fullName: string | null; email: string };
@@ -220,6 +223,8 @@ export interface ScanProgress {
     gate: string | null;
     expectedGate?: string | null;
     override?: boolean;
+    offline?: boolean;
+    letIn?: boolean | null;
     ticketType: string;
     seat: { section: string; row: string; number: string } | null;
   }[];
