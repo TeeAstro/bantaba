@@ -113,6 +113,17 @@ p { margin: 0; }
 .sidebar-foot { margin-top: auto; font-size: 13px; color: #94a3b8; padding: 0 8px; }
 .sidebar-foot button { margin-top: 8px; }
 
+/* Wide screens: the menu scrolls on its own so the account line and
+   Sign out always stay visible at the bottom, however long the menu is. */
+@media (min-width: 861px) {
+  .sidebar { overflow: hidden; }
+  .nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 -6px; padding: 0 6px; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+  .sidebar-foot { margin-top: 0; flex: none; padding: 14px 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+  .sidebar-foot > div { color: #e2e8f0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-foot .btn-link { justify-content: flex-start; gap: 10px; margin: 8px -10px 0; padding: 8px 10px; width: calc(100% + 20px); border-radius: 8px; color: #cbd5e1; font-size: 14px; }
+  .sidebar-foot .btn-link:hover { background: rgba(255, 255, 255, 0.06); color: #fff; text-decoration: none; }
+}
+
 .main { padding: 32px 40px 64px; max-width: 1180px; width: 100%; }
 
 @media (max-width: 860px) {
