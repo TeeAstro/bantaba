@@ -17,11 +17,13 @@ ENV NODE_ENV=production
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/* \
   && mkdir -p uploads mail-previews && chown node:node uploads mail-previews
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY package.json ./
-COPY prisma ./prisma
-COPY scripts ./scripts
+# Owned by the app's user: files copied from a Mac can be readable by
+# their owner only, which would stop the app from reading them.
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node package.json ./
+COPY --chown=node:node prisma ./prisma
+COPY --chown=node:node scripts ./scripts
 USER node
 EXPOSE 4000
 CMD ["node", "dist/main.js"]
