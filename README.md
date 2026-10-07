@@ -1320,6 +1320,28 @@ Render setup. Results, sizes and what to raise before a big on-sale in
 | 2 | Buy | Buy a ticket, as a guest and signed in | As before |
 | 3 | Automated | The `*-test.js` in `apps/backend` | All pass (storefront: the known leftover-data ones) |
 
+## Ways to pay and stacked tickets (Phase 23)
+
+- **Checkout:** Wave, Afrimoney, QMoney, Card (Visa / Mastercard) and Bank transfer, with their logos (`apps/web/public/pay/`).
+- **Admin → Ways to pay:** turn each way on or off. Wave goes through Modem Pay for now; switch it to **Wave direct** (cheaper) once Wave approves you and its keys are set.
+- **Wave direct** brought up to date with Wave's current API and webhook signing, ready for the approval.
+- **My tickets:** each event's tickets stacked like a wallet. Tap or swipe to bring one to the front (animated; instant when the phone asks for less motion). **Show all** lists every QR code to scan a group one after another, and keeps the screen on.
+- Full section names on tickets and in ticket emails ("Section 7B").
+- If Modem Pay or Wave can't be reached, buyers are told to try again or choose another way, and keep their hold.
+
+Details: `docs/payments.md`, "Ways to pay".
+
+**After pulling:** in `apps/backend`: `npx prisma migrate dev` (new migration `20261007130000_payment_methods`), then `npm run build`. Restart the backend and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Checkout | Buy a ticket, look at Pay with | Wave, Afrimoney, QMoney, Card, Bank transfer, with logos |
+| 2 | Turn one off | Admin → Ways to pay, switch QMoney off; refresh checkout | QMoney is gone |
+| 3 | Wave direct | Look at the Wave row | "Wave direct" greyed out until its keys are set |
+| 4 | Stacked tickets | Buy 3 seats, open My tickets, tap a ticket at the back | It slides to the front |
+| 5 | Show all | Tap Show all | All three QR codes, one under another |
+| 6 | Automated | `node payment-methods-test.js` in `apps/backend` | `8/8 passed` |
+
 ## Project structure
 
 ```

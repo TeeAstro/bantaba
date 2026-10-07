@@ -120,7 +120,9 @@ const eventText = (e: EventInfo) =>
 
 // Section, row, seat and gate as a small table, the way they're printed on a ticket.
 function ticketFacts(t: TicketInfo) {
-  const facts: [string, string][] = [['Section', t.section!.replace(/^section\s+/i, '')]];
+  // The full section name, as on the ticket in the app (Phase 23): "Section 7B", "VIP Green".
+  const name = t.section!.trim();
+  const facts: [string, string][] = [['Section', /^[0-9]+[a-z]?$/i.test(name) ? `Section ${name}` : name]];
   if (t.row) facts.push(['Row', t.row]);
   facts.push(['Seat', t.number ?? '']);
   if (t.gate) facts.push(['Gate', t.gate.replace(/^gate\s+/i, '')]);

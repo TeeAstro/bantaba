@@ -108,7 +108,8 @@ When `bantaba.gm` is registered:
    - `bantaba-web`: `NEXT_PUBLIC_API_URL=https://api.bantaba.gm`
 4. R2: connect `media.bantaba.gm` to the bucket, then set `MEDIA_PUBLIC_URL=https://media.bantaba.gm`. Images uploaded before keep their old (still working) address.
 5. Email service: verify `bantaba.gm` and set `MAIL_FROM=Bantaba <tickets@bantaba.gm>`.
-6. Modem Pay: set the webhook address to `https://api.bantaba.gm/api/v1/payments/webhook/card`.
+6. Modem Pay: set the webhook address to `https://api.bantaba.gm/api/v1/payments/webhook/card` (cards and mobile money).
+7. When Wave approves you: add `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET` on `bantaba-api`, set Wave's webhook to `https://api.bantaba.gm/api/v1/payments/webhook/wave`, then choose **Wave direct** in Admin → Ways to pay.
 
 NIC Gambia doesn't allow parked domains: the site has to be live, which it is.
 

@@ -94,6 +94,7 @@ const logMode = () => {
   const bt2 = await buy(b3.tok, ev, 1, 'BANK_TRANSFER');
   await run();
   await prisma.ticketOrder.update({ where: { id: bt2.order.id }, data: { expiresAt: new Date(Date.now() - 60_000) } });
+  await new Promise((r) => setTimeout(r, 5500)); // checkout sweeps lapsed holds at most every 5 s (load test, Phase 22b)
   await buy(b1.tok, ev, 1); // any checkout releases lapsed reservations (the timer does too, every minute)
   await run();
   const d1 = await rows({ orderId: bt2.order.id });

@@ -4,11 +4,12 @@ import { PaymentsService } from './payments.service';
 import { WaveProvider } from './providers/wave.provider';
 import { BankTransferProvider } from './providers/bank-transfer.provider';
 import { MockProvider } from './providers/mock.provider';
-import { CardProvider } from './providers/card.provider';
+import { ModemPayProvider } from './providers/modempay.provider';
+import { PaymentSettingsService } from './payment-settings.service';
 
 @Module({
   controllers: [PaymentsController],
-  providers: [PaymentsService, WaveProvider, BankTransferProvider, MockProvider, CardProvider],
-  exports: [PaymentsService],
+  providers: [PaymentsService, PaymentSettingsService, WaveProvider, BankTransferProvider, MockProvider, ModemPayProvider],
+  exports: [PaymentsService, PaymentSettingsService],
 })
 export class PaymentsModule {}

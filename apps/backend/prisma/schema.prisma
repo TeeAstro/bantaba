@@ -107,7 +107,19 @@ enum PaymentProviderType {
   BANK_TRANSFER
   PAYPAL
   CARD // Visa/Mastercard debit and credit cards, through Modem Pay's hosted checkout (docs/payments.md)
+  AFRIMONEY // mobile money, through Modem Pay (Phase 23)
+  QMONEY // mobile money, through Modem Pay (Phase 23)
   MOCK // dev/testing only — PaymentsService refuses this when NODE_ENV=production
+}
+
+// Phase 23: who actually took the money. Wave can go through Modem Pay or
+// straight to Wave (Admin → Ways to pay), so the method alone doesn't say.
+// Empty on older payments: WAVE was Wave direct, CARD Modem Pay.
+enum PaymentGateway {
+  MODEMPAY
+  WAVE
+  BANK
+  MOCK
 }
 
 enum PaymentStatus {
@@ -836,6 +848,7 @@ model Payment {
   order             TicketOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
   provider          PaymentProviderType
   providerReference String?             @unique // Wave session id / bank ref / PayPal order id
+  gateway           PaymentGateway?
   amount            Int
   currency          String              @default("GMD")
   status            PaymentStatus       @default(PENDING)

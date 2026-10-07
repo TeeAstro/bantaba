@@ -10,7 +10,7 @@ type Actor = { id: string; role: UserRole };
 // tickets for it. Open until an admin records the manual refund. Card and,
 // since the security review (Phase 21b), Wave.
 const FLAGGED: Prisma.PaymentWhereInput = {
-  provider: { in: ['CARD', 'WAVE'] },
+  provider: { in: ['CARD', 'WAVE', 'AFRIMONEY', 'QMONEY'] },
   rawPayload: { path: ['paidAfterOrderClosed'], equals: true },
 };
 const OPEN_FLAG: Prisma.PaymentWhereInput = { ...FLAGGED, status: 'SUCCESSFUL' };

@@ -11,6 +11,8 @@ export interface InitiatePaymentInput {
   amount: number; // minor units
   currency: string;
   customerEmail: string;
+  // Phase 23: the method the buyer chose (Modem Pay takes several).
+  method?: string;
 }
 
 export interface InitiatePaymentResult {
@@ -29,7 +31,9 @@ export interface InitiatePaymentResult {
 
 export interface WebhookEvent {
   providerReference: string;
-  status: 'SUCCESSFUL' | 'FAILED';
+  status: 'SUCCESSFUL' | 'FAILED' | 'IGNORED';
+  amountMinor?: number | null;
+  currency?: string | null;
   raw: unknown;
 }
 

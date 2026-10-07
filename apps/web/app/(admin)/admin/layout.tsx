@@ -21,6 +21,7 @@ const NAV: { href: string; label: string; icon: IconName; exact?: boolean; count
   { href: '/admin/refunds', label: 'Refunds', icon: 'refunds', count: (c) => c.manualRefundsToPay + c.failedProviderRefunds },
   { href: '/admin/card-payments', label: 'Card payments', icon: 'card', count: (c) => c.cardPaymentsFlagged },
   { href: '/admin/fees', label: 'Fees', icon: 'percent' },
+  { href: '/admin/ways-to-pay', label: 'Ways to pay', icon: 'wallet' },
   { group: 'System', href: '/admin/venues', label: 'Venues', icon: 'venue' },
   { href: '/admin/emails', label: 'Emails', icon: 'emails', count: (c) => c.failedEmails },
   { href: '/admin/audit', label: 'Audit log', icon: 'audit' },

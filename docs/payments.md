@@ -78,6 +78,27 @@ In the Modem Pay dashboard, set the webhook URL to `https://<your-api>/api/v1/pa
 
 Without the keys, a card checkout answers 503 "Card payments are not configured yet", the same as Wave.
 
+## Ways to pay (Phase 23)
+
+Buyers choose **Wave, Afrimoney, QMoney, Card or Bank transfer** at checkout. Admins switch each on or off in **Admin → Ways to pay**; buyers only see the ones that are on and can be taken (Modem Pay connected for the first four). Settings are kept in `platform_settings` under `payments` (`payments/payment-settings.service.ts`).
+
+| Method | Goes through | Notes |
+|---|---|---|
+| Wave | Modem Pay, or **Wave direct** once Wave approves the account | Switch on the Wave row in Admin → Ways to pay. Wave direct is cheaper; it can only be chosen when `WAVE_API_KEY` and `WAVE_WEBHOOK_SECRET` are set |
+| Afrimoney, QMoney | Modem Pay | Mobile money: the buyer approves on their phone |
+| Card | Modem Pay | Visa / Mastercard |
+| Bank transfer | Bantaba's bank details | As before |
+
+Each payment records its **gateway** (`Payment.gateway`: MODEMPAY, WAVE, BANK, MOCK), so a payment started through Modem Pay is confirmed and refunded through Modem Pay even if the Wave route changes afterwards. Modem Pay confirms every method through the same webhook (`/payments/webhook/card`, also `/payments/webhook/modempay`); Wave direct through `/payments/webhook/wave`.
+
+**Mobile money on Modem Pay's page.** Modem Pay's docs name the payment method groups `card`, `bank` and `wallet`. Wave, Afrimoney and QMoney are sent as `wallet`, so Modem Pay's page may ask the buyer to pick the wallet again. If Modem Pay can open one wallet directly, set its name per method, e.g. `MODEMPAY_METHODS_WAVE=wave` (or `MODEMPAY_WALLET_METHODS` for all three). Check this with the test keys.
+
+**Wave direct** follows Wave's current Checkout API: amounts in whole units, `client_reference` = our order, and webhooks signed with `Wave-Signature: t=…,v1=…` (HMAC-SHA256 of timestamp + raw body, refused after 5 minutes). Set the webhook in the Wave Business portal to `https://<your-api>/api/v1/payments/webhook/wave` with a signing secret. Not yet tried against a live account; confirm that Wave accepts GMD.
+
+**Unreachable gateway:** if Modem Pay or Wave can't be reached, the buyer gets "can't be reached right now, try again or choose another way to pay" (503) and keeps their hold.
+
+**Logos** are in `apps/web/public/pay/`. The Visa and Mastercard files come from their merchant brand packs; replace the Wave, Afrimoney and QMoney files with official ones from Modem Pay or each company before launch.
+
 ## Booking fee (Phase 20)
 
 Before Phase 20 every order paid a flat `TICKET_PLATFORM_FEE_MINOR_UNITS` (D50), even an order of free tickets. Now admins set the fee on **Admin → Fees** (`/admin/fees`).

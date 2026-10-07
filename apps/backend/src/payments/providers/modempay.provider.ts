@@ -2,12 +2,14 @@ import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import { InitiatePaymentInput, InitiatePaymentResult, PaymentProvider, returnUrl } from './payment-provider.interface';
 
-// Visa / Mastercard (debit and credit) through Modem Pay, a Gambian payment
-// gateway (https://docs.modempay.com). See docs/payments.md, "Card payments".
+// Modem Pay, a Gambian payment gateway (https://docs.modempay.com): cards
+// (Visa / Mastercard) and, since Phase 23, mobile money (Wave, Afrimoney,
+// QMoney). See docs/payments.md, "Card payments" and "Ways to pay".
 //
-// The customer types their card details on Modem Pay's hosted checkout
-// page, never on ours: card numbers never reach this server, which keeps
-// the platform out of most PCI-DSS card-security requirements.
+// The buyer pays on Modem Pay's hosted checkout page, never on ours: card
+// numbers never reach this server, which keeps the platform out of most
+// PCI-DSS card-security requirements. For mobile money the page asks for
+// the number and the buyer approves on their phone.
 //
 // Like Wave, this is written against the public docs and hasn't been run
 // against a live account yet (none exists). Two things to confirm with
@@ -19,10 +21,21 @@ import { InitiatePaymentInput, InitiatePaymentResult, PaymentProvider, returnUrl
 
 const BASE = () => process.env.MODEMPAY_API_BASE_URL ?? 'https://api.modempay.com/v1';
 
-export type CardEventKind = 'SUCCEEDED' | 'FAILED' | 'IGNORED';
+// What Modem Pay's checkout page offers for each method we send there.
+// Cards: "card". Mobile money: the docs' wallet group ("wallet"), where
+// the buyer picks Wave, Afrimoney or QMoney and approves on their phone.
+// Set MODEMPAY_WALLET_METHODS (comma separated) if Modem Pay names them
+// differently for your account, e.g. "wave" for Wave alone.
+const methodsFor = (method: string) => {
+  if (method === 'CARD') return ['card'];
+  const own = process.env[`MODEMPAY_METHODS_${method}`];
+  return (own ?? process.env.MODEMPAY_WALLET_METHODS ?? 'wallet').split(',').map((x) => x.trim()).filter(Boolean);
+};
 
-export interface CardWebhookEvent {
-  kind: CardEventKind;
+export type ModemPayEventKind = 'SUCCEEDED' | 'FAILED' | 'IGNORED';
+
+export interface ModemPayWebhookEvent {
+  kind: ModemPayEventKind;
   event: string;
   reference: string | null; // ours, from metadata
   amountMinor: number | null;
@@ -32,9 +45,9 @@ export interface CardWebhookEvent {
 }
 
 @Injectable()
-export class CardProvider implements PaymentProvider {
-  readonly name = 'CARD';
-  private readonly logger = new Logger('CardPayments');
+export class ModemPayProvider implements PaymentProvider {
+  readonly name = 'MODEMPAY';
+  private readonly logger = new Logger('ModemPay');
 
   private isConfigured() {
     return Boolean(process.env.MODEMPAY_SECRET_KEY && process.env.MODEMPAY_WEBHOOK_SECRET);
@@ -53,29 +66,36 @@ export class CardProvider implements PaymentProvider {
   async initiate(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
     if (!this.isConfigured()) {
       throw new ServiceUnavailableException(
-        'Card payments are not configured yet (MODEMPAY_SECRET_KEY / MODEMPAY_WEBHOOK_SECRET missing). ' +
-          'Use "WAVE" or "BANK_TRANSFER", or "MOCK" outside production, until a Modem Pay account is set up.',
+        'Modem Pay is not configured yet (MODEMPAY_SECRET_KEY / MODEMPAY_WEBHOOK_SECRET missing). ' +
+          'Use "BANK_TRANSFER", or "MOCK" outside production, until a Modem Pay account is set up.',
       );
     }
     // Our own reference, sent as metadata and matched when the webhook
     // arrives: the create response doesn't document a stable payment id.
-    const reference = `card_${randomUUID()}`;
+    const method = input.method ?? 'CARD';
+    const reference = `mp_${randomUUID()}`;
     const res = await fetch(`${BASE()}/payments`, {
+      signal: AbortSignal.timeout(20_000),
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.MODEMPAY_SECRET_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         data: {
           amount: this.toProviderAmount(input.amount),
           currency: input.currency,
-          payment_methods: ['card'],
+          payment_methods: methodsFor(method),
           title: process.env.APP_NAME ?? 'Bantaba',
           description: `Tickets, order ${input.orderId.slice(0, 8).toUpperCase()}`,
-          metadata: { reference, orderId: input.orderId },
+          metadata: { reference, orderId: input.orderId, method },
           return_url: returnUrl(process.env.CARD_RETURN_URL, '/checkout/success', input.orderId),
           cancel_url: returnUrl(process.env.CARD_CANCEL_URL, '/checkout/error', input.orderId),
           from_sdk: false,
         },
       }),
+    }).catch((err: Error) => {
+      // Can't be reached (network, timeout): the buyer is told to try again
+      // or choose another way; the hold is kept.
+      this.logger.warn(`Modem Pay not reachable: ${err.message}`);
+      throw new ServiceUnavailableException('The payment service can’t be reached right now. Try again in a moment, or choose another way to pay.');
     });
     if (!res.ok) {
       throw new ServiceUnavailableException(`The card payment service refused the request (HTTP ${res.status}): ${(await res.text()).slice(0, 300)}`);
@@ -105,12 +125,12 @@ export class CardProvider implements PaymentProvider {
     return timingSafeEqual(expected, provided);
   }
 
-  parseCardEvent(rawBody: Buffer): CardWebhookEvent {
+  parseEvent(rawBody: Buffer): ModemPayWebhookEvent {
     const body = JSON.parse(rawBody.toString('utf8')) as { event?: string; payload?: Record<string, unknown> };
     const event = String(body.event ?? '');
     const p = (body.payload ?? {}) as Record<string, any>;
     const meta = (p.metadata ?? p.payment_intent?.metadata ?? {}) as Record<string, unknown>;
-    const kind: CardEventKind =
+    const kind: ModemPayEventKind =
       event === 'charge.succeeded'
         ? 'SUCCEEDED'
         : // A declined card (charge.failed) isn't the end: the customer can try

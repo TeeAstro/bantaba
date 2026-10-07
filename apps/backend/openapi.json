@@ -591,10 +591,48 @@
         ]
       }
     },
-    "/api/v1/payments/webhook/wave": {
-      "post": {
-        "operationId": "Payments_waveWebhook[0]",
+    "/api/v1/payments/methods": {
+      "get": {
+        "operationId": "Payments_methods[0]",
         "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Ways to pay at checkout, in order (Phase 23). Public.",
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/api/v1/payments/admin/methods": {
+      "get": {
+        "operationId": "Payments_adminMethods[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Admin → Ways to pay: each method on or off, Wave's route, what's connected.",
+        "tags": [
+          "Payments"
+        ]
+      },
+      "put": {
+        "operationId": "Payments_setMethod[0]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPaymentMethodDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": ""
@@ -605,9 +643,76 @@
         ]
       }
     },
+    "/api/v1/payments/admin/wave-route": {
+      "put": {
+        "operationId": "Payments_setWaveRoute[0]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWaveRouteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Wave through Modem Pay, or straight to Wave once Wave Business is connected.",
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/api/v1/payments/webhook/wave": {
+      "post": {
+        "operationId": "Payments_waveWebhook[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
     "/api/v1/payments/webhook/card": {
       "post": {
-        "operationId": "Payments_cardWebhook[0]",
+        "operationId": "Payments_modemPayWebhook[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/api/v1/payments/webhook/modempay": {
+      "post": {
+        "operationId": "Payments_modemPayWebhook[1]",
         "parameters": [],
         "responses": {
           "200": {
@@ -2074,6 +2179,16 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2395,6 +2510,21 @@
           }
         },
         "summary": "Platform figures for the dashboard home: money, sales over time, activity, events, organizers.",
+        "tags": [
+          "AdminDashboard"
+        ]
+      }
+    },
+    "/api/v1/admin/request-info": {
+      "get": {
+        "operationId": "AdminDashboard_requestInfo[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "What this server sees of your request: your address as the limits see\nit and the proxy chain. Used once after deploying to set TRUST_PROXY\n(docs/deploy.md): `ip` should be your own public address.",
         "tags": [
           "AdminDashboard"
         ]
@@ -5493,6 +5623,44 @@
           "reference"
         ]
       },
+      "SetPaymentMethodDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "WAVE",
+              "AFRIMONEY",
+              "QMONEY",
+              "CARD",
+              "BANK_TRANSFER"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "method",
+          "enabled"
+        ]
+      },
+      "SetWaveRouteDto": {
+        "type": "object",
+        "properties": {
+          "route": {
+            "type": "string",
+            "description": "MODEMPAY: Wave through Modem Pay. DIRECT: straight to Wave (needs WAVE_API_KEY).",
+            "enum": [
+              "MODEMPAY",
+              "DIRECT"
+            ]
+          }
+        },
+        "required": [
+          "route"
+        ]
+      },
       "OfferTransferDto": {
         "type": "object",
         "properties": {
@@ -6029,9 +6197,22 @@
             ],
             "type": "string"
           },
+          "limits": {
+            "description": "Where sign-in and checkout limits are kept: \"redis\" (shared), \"redis-down\" (allowing everything until it's back) or \"memory\" (this server only).",
+            "enum": [
+              "redis",
+              "redis-down",
+              "memory"
+            ],
+            "type": "string"
+          },
           "status": {
             "type": "string",
-            "description": "\"ok\", or \"degraded\" when the database can't be reached."
+            "description": "\"ok\", or \"degraded\" when the database can't be reached (answered with 503)."
+          },
+          "version": {
+            "type": "string",
+            "description": "Build of the server (the git commit on Render), or \"dev\"."
           },
           "timestamp": {
             "type": "string"
@@ -6039,7 +6220,9 @@
         },
         "required": [
           "database",
+          "limits",
           "status",
+          "version",
           "timestamp"
         ]
       },
@@ -6417,6 +6600,8 @@
           "BANK_TRANSFER",
           "PAYPAL",
           "CARD",
+          "AFRIMONEY",
+          "QMONEY",
           "MOCK"
         ]
       },

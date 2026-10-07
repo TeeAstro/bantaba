@@ -40,7 +40,10 @@ export function pct(fraction: number): string {
 
 // "PUBLISHED" -> "Published", "GATE_STAFF" -> "Gate staff"
 const KEEP_UPPER = new Set(['vip', 'vvip']);
+// Names that aren't just the enum in lower case.
+const NAMED: Record<string, string> = { AFRIMONEY: 'Afrimoney', QMONEY: 'QMoney', MOCK: 'Test payment' };
 export function label(enumValue: string): string {
+  if (NAMED[enumValue]) return NAMED[enumValue];
   const s = enumValue
     .toLowerCase()
     .split('_')

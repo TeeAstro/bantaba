@@ -1305,3 +1305,26 @@ tr.fee-ended td { opacity: 0.55; }
 .sheet-row .seg { display: inline-flex; background: #0b1222; border: 1px solid #22304a; border-radius: 10px; padding: 3px; gap: 2px; flex-shrink: 0; }
 .sheet-row .seg button { border: 0; background: none; color: #94a3b8; font: inherit; font-size: 13px; font-weight: 600; padding: 6px 9px; border-radius: 7px; cursor: pointer; }
 .sheet-row .seg button[aria-checked="true"] { background: #1e3a8a; color: #fff; }
+
+/* Admin → Ways to pay (Phase 23) */
+.ways-chip { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #F1F5F9; color: #475569; }
+.ways-chip.ok { background: #DCFCE7; color: #14532D; }
+.ways-chip.warn { background: #FEF3C7; color: #78350F; }
+.ways-list { overflow: hidden; }
+.ways-row { display: flex; align-items: center; gap: 16px; padding: 16px 20px; }
+.ways-row + .ways-row { border-top: 1px solid var(--line); }
+.ways-row.off .ways-name, .ways-row.off .ways-via { opacity: 0.6; }
+.ways-name { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ways-name strong { font-size: 15px; }
+.ways-route { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.ways-route .segmented button:disabled { color: #94A3B8; background: #F8FAFC; cursor: not-allowed; }
+.ways-via { white-space: nowrap; }
+.ways-switch { width: 40px; height: 24px; border-radius: 999px; border: 0; padding: 0; position: relative; flex-shrink: 0; cursor: pointer; background: #CBD5E1; transition: background 0.15s; }
+.ways-switch span { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25); transition: left 0.15s; }
+.ways-switch[aria-checked='true'] { background: var(--teal); }
+.ways-switch[aria-checked='true'] span { left: 19px; }
+.ways-switch:disabled { cursor: progress; }
+@media (max-width: 720px) {
+  .ways-row { flex-wrap: wrap; }
+  .ways-route { align-items: flex-start; text-align: left; width: 100%; padding-left: 56px; }
+}

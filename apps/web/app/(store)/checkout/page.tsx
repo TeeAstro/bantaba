@@ -13,16 +13,19 @@ import { CheckoutHeader } from '@/components/store/CheckoutHeader';
 // minutes once the buyer is known (signed in: straight away; a guest: after
 // their details), then they choose how to pay.
 
-type Provider = 'WAVE' | 'CARD' | 'BANK_TRANSFER' | 'MOCK';
-const METHODS: { id: Provider; name: string; note: string }[] = [
-  { id: 'WAVE', name: 'Wave', note: 'Approve in the Wave app' },
-  { id: 'CARD', name: 'Card', note: 'Visa or Mastercard' },
-  { id: 'BANK_TRANSFER', name: 'Bank transfer', note: 'Pay within 24 hours' },
-];
-// Development only: pays straight away, so the whole flow can be tried
-// without Wave or a card account.
-const TEST = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_TEST_PAYMENTS === '1';
-if (TEST) METHODS.push({ id: 'MOCK', name: 'Test payment', note: 'For trying Bantaba out: pays at once, no money moves' });
+type Provider = 'WAVE' | 'AFRIMONEY' | 'QMONEY' | 'CARD' | 'BANK_TRANSFER' | 'MOCK';
+type Method = { id: Provider; name: string; note: string; logo?: string };
+// Phase 23: which methods are on comes from the server (Admin → Ways to
+// pay); how each looks lives here. Logos are the companies' own files
+// (public/pay); bank transfer and the test payment have icons.
+const LOOK: Record<Provider, { note: string; logo?: string }> = {
+  WAVE: { note: 'Approve in the Wave app', logo: '/pay/wave.png' },
+  AFRIMONEY: { note: 'Approve on your phone', logo: '/pay/afrimoney.png' },
+  QMONEY: { note: 'Approve on your phone', logo: '/pay/qmoney.png' },
+  CARD: { note: 'Debit or credit' },
+  BANK_TRANSFER: { note: 'Pay within 24 hours' },
+  MOCK: { note: 'For trying Bantaba out: pays at once, no money moves' },
+};
 
 const BUYER_KEY = 'bantaba.buyer';
 type Buyer = { fullName: string; email: string; phone: string };
@@ -57,11 +60,23 @@ function CheckoutInner() {
   const [types, setTypes] = useState<StoreTicketType[]>([]);
   const [order, setOrder] = useState<StoreOrder | null>(null);
   const [buyer, setBuyer] = useState<Buyer>({ fullName: '', email: '', phone: '' });
+  const [methods, setMethods] = useState<Method[]>([]);
   const [method, setMethod] = useState<Provider>('WAVE');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const holding = useRef(false);
+
+  // Ways to pay that are on right now.
+  useEffect(() => {
+    api<{ id: Provider; name: string }[]>('/payments/methods', { auth: false })
+      .then((list) => {
+        const known = list.filter((m) => m.id in LOOK).map((m) => ({ ...m, ...LOOK[m.id] }));
+        setMethods(known);
+        setMethod((cur) => (known.some((m) => m.id === cur) ? cur : known[0]?.id ?? cur));
+      })
+      .catch(() => setMethods([]));
+  }, []);
 
   // What's being bought: the cart, or an order already held (?order=).
   useEffect(() => {
@@ -147,7 +162,7 @@ function CheckoutInner() {
       router.replace(`/checkout/success?order=${order.id}`);
     } catch (err) {
       const e = err as ApiError;
-      setError(e.status === 503 ? `${METHODS.find((m) => m.id === method)?.name} isn’t available right now. Choose another way to pay.` : e.message);
+      setError(e.status === 503 ? `${methods.find((m) => m.id === method)?.name ?? 'That way to pay'} isn’t available right now. Choose another way to pay.` : e.message);
       setBusy(false);
     }
   }
@@ -260,12 +275,22 @@ function CheckoutInner() {
             ) : null}
             <section className="s-methods" aria-labelledby="pay-h">
               <h2 id="pay-h" className="s-h2" style={{ fontSize: 20 }}>Pay with</h2>
-              {METHODS.map((m) => (
+              {methods.map((m) => (
                 <button key={m.id} type="button" className="s-method" aria-pressed={method === m.id} onClick={() => setMethod(m.id)}>
                   <span className="s-dot" />
+                  <span className="s-method-mark" aria-hidden="true">
+                    {m.logo ? <img src={m.logo} alt="" width={40} height={40} /> : <span className="s-method-icon"><Icon name={m.id === 'BANK_TRANSFER' ? 'bank' : m.id === 'CARD' ? 'card' : 'check'} size={22} /></span>}
+                  </span>
                   <span className="s-method-text"><strong>{m.name}</strong><span>{m.note}</span></span>
+                  {m.id === 'CARD' && (
+                    <span className="s-cardmarks">
+                      <img src="/pay/visa.png" alt="Visa" width={40} height={13} />
+                      <img src="/pay/mastercard.png" alt="Mastercard" width={45} height={32} />
+                    </span>
+                  )}
                 </button>
               ))}
+              {methods.length === 0 && <p className="s-note">Loading ways to pay…</p>}
             </section>
             <p className="s-note">{refundLine(ev)}</p>
           </>
@@ -276,7 +301,7 @@ function CheckoutInner() {
         <div className="s-paybar">
           <div className="s-wrap s-narrow">
             <button type="button" className="s-btn s-btn-block" disabled={busy} onClick={pay}>
-              {busy ? 'One moment…' : method === 'BANK_TRANSFER' ? `Get bank details · ${dalasi(order.total, order.currency)}` : `Pay ${dalasi(order.total, order.currency)}${method === 'MOCK' ? '' : ` with ${METHODS.find((m) => m.id === method)?.name}`}`}
+              {busy ? 'One moment…' : method === 'BANK_TRANSFER' ? `Get bank details · ${dalasi(order.total, order.currency)}` : `Pay ${dalasi(order.total, order.currency)}${method === 'MOCK' ? '' : ` with ${method === 'CARD' ? 'card' : methods.find((m) => m.id === method)?.name ?? ''}`}`}
             </button>
           </div>
         </div>

@@ -390,7 +390,7 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
         const claimed = await this.prisma.refund.updateMany({ where: { id: r.id, attempts: r.attempts, status: RefundStatus.APPROVED }, data: { attempts: { increment: 1 } } });
         if (claimed.count === 0) continue;
         try {
-          const provider = this.payments.resolveProvider(r.payment.provider);
+          const provider = this.payments.providerForPayment(r.payment);
           if (!provider.refund) throw new Error(`${provider.name} can't refund by API`);
           const res = await provider.refund({ providerReference: r.payment.providerReference ?? '', amount: r.amount, currency: r.payment.currency, fullRefund: r.amount === r.payment.amount });
           await this.prisma.$transaction(async (tx) => {
@@ -517,7 +517,7 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
     }
     const amount = items.reduce((s, i) => s + i.amount, 0) + feeAmount;
 
-    const provider = this.payments.resolveProvider(ctx.payment.provider);
+    const provider = this.payments.providerForPayment(ctx.payment);
     const fullRefund = ctx.moneyRefunded === 0 && amount === ctx.payment.amount;
     const method = provider.refund && provider.canRefund?.({ amount, currency: order.currency, fullRefund }) ? RefundMethod.PROVIDER : RefundMethod.MANUAL;
 

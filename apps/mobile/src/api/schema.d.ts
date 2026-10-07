@@ -306,6 +306,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ways to pay at checkout, in order (Phase 23). Public. */
+        get: operations["Payments_methods[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/admin/methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin → Ways to pay: each method on or off, Wave's route, what's connected. */
+        get: operations["Payments_adminMethods[0]"];
+        put: operations["Payments_setMethod[0]"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/admin/wave-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Wave through Modem Pay, or straight to Wave once Wave Business is connected. */
+        put: operations["Payments_setWaveRoute[0]"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/webhook/wave": {
         parameters: {
             query?: never;
@@ -331,7 +382,23 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Payments_cardWebhook[0]"];
+        post: operations["Payments_modemPayWebhook[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/webhook/modempay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["Payments_modemPayWebhook[1]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1207,6 +1274,27 @@ export interface paths {
         };
         /** Platform figures for the dashboard home: money, sales over time, activity, events, organizers. */
         get: operations["AdminDashboard_stats[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/request-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What this server sees of your request: your address as the limits see
+         *     it and the proxy chain. Used once after deploying to set TRUST_PROXY
+         *     (docs/deploy.md): `ip` should be your own public address.
+         */
+        get: operations["AdminDashboard_requestInfo[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2632,6 +2720,18 @@ export interface components {
             /** @description Reference of the money sent back (bank transfer / Wave payout) */
             reference: string;
         };
+        SetPaymentMethodDto: {
+            /** @enum {string} */
+            method: "WAVE" | "AFRIMONEY" | "QMONEY" | "CARD" | "BANK_TRANSFER";
+            enabled: boolean;
+        };
+        SetWaveRouteDto: {
+            /**
+             * @description MODEMPAY: Wave through Modem Pay. DIRECT: straight to Wave (needs WAVE_API_KEY).
+             * @enum {string}
+             */
+            route: "MODEMPAY" | "DIRECT";
+        };
         OfferTransferDto: {
             /**
              * Format: email
@@ -2827,8 +2927,15 @@ export interface components {
         HealthDto: {
             /** @enum {string} */
             database: "connected" | "error";
-            /** @description "ok", or "degraded" when the database can't be reached. */
+            /**
+             * @description Where sign-in and checkout limits are kept: "redis" (shared), "redis-down" (allowing everything until it's back) or "memory" (this server only).
+             * @enum {string}
+             */
+            limits: "redis" | "redis-down" | "memory";
+            /** @description "ok", or "degraded" when the database can't be reached (answered with 503). */
             status: string;
+            /** @description Build of the server (the git commit on Render), or "dev". */
+            version: string;
             timestamp: string;
         };
         RegisterDto: {
@@ -2930,7 +3037,7 @@ export interface components {
             isActive?: boolean;
         };
         /** @enum {string} */
-        PaymentProviderType: "WAVE" | "BANK_TRANSFER" | "PAYPAL" | "CARD" | "MOCK";
+        PaymentProviderType: "WAVE" | "BANK_TRANSFER" | "PAYPAL" | "CARD" | "AFRIMONEY" | "QMONEY" | "MOCK";
         CheckoutItemDto: {
             /** Format: uuid */
             ticketTypeId: string;
@@ -3716,7 +3823,7 @@ export interface operations {
             };
         };
     };
-    "Payments_waveWebhook[0]": {
+    "Payments_methods[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3733,7 +3840,104 @@ export interface operations {
             };
         };
     };
-    "Payments_cardWebhook[0]": {
+    "Payments_adminMethods[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Payments_setMethod[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPaymentMethodDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Payments_setWaveRoute[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWaveRouteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Payments_waveWebhook[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    "Payments_modemPayWebhook[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    "Payments_modemPayWebhook[1]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4775,6 +4979,14 @@ export interface operations {
                     "application/json": components["schemas"]["HealthDto"];
                 };
             };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthDto"];
+                };
+            };
         };
     };
     "Auth_register[0]": {
@@ -5019,6 +5231,23 @@ export interface operations {
                 /** @description today (since midnight, by hour), 7d and 30d (by day), year (since 1 January, by month). Default 30d. */
                 period?: "today" | "7d" | "30d" | "year";
             };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AdminDashboard_requestInfo[0]": {
+        parameters: {
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;

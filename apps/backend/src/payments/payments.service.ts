@@ -8,7 +8,7 @@ import {
   ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { EventSeatStatus, PaymentProviderType, UserRole } from '@prisma/client';
+import { EventSeatStatus, PaymentGateway, PaymentProviderType, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BUSY_TX } from '../prisma/busy';
 import { generateRandomToken, hashToken } from '../common/token.util';
@@ -16,7 +16,8 @@ import { generateQrCodeSvg } from '../common/qr.util';
 import { WaveProvider } from './providers/wave.provider';
 import { BankTransferProvider } from './providers/bank-transfer.provider';
 import { MockProvider } from './providers/mock.provider';
-import { CardProvider } from './providers/card.provider';
+import { ModemPayProvider } from './providers/modempay.provider';
+import { PaymentSettingsService } from './payment-settings.service';
 import { PaymentProvider } from './providers/payment-provider.interface';
 import { NotificationsService } from '../notifications/notifications.service';
 import { organizerPermissions } from '../organizers/organizer-permissions';
@@ -36,7 +37,8 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
     private readonly waveProvider: WaveProvider,
     private readonly bankTransferProvider: BankTransferProvider,
     private readonly mockProvider: MockProvider,
-    private readonly cardProvider: CardProvider,
+    private readonly modemPay: ModemPayProvider,
+    private readonly settings: PaymentSettingsService,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -56,6 +58,27 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
     if (this.sweepTimer) clearInterval(this.sweepTimer);
   }
 
+  // Who handles a payment (Phase 23): the gateway that took it. Wave can
+  // be Modem Pay or Wave direct (Admin → Ways to pay); older payments have
+  // no gateway saved, where WAVE meant Wave direct and CARD Modem Pay.
+  private byGateway(gateway: PaymentGateway): PaymentProvider {
+    switch (gateway) {
+      case PaymentGateway.MODEMPAY:
+        return this.modemPay;
+      case PaymentGateway.WAVE:
+        return this.waveProvider;
+      case PaymentGateway.BANK:
+        return this.bankTransferProvider;
+      case PaymentGateway.MOCK:
+        return this.mockProvider;
+    }
+  }
+
+  providerForPayment(payment: { provider: PaymentProviderType; gateway: PaymentGateway | null }): PaymentProvider {
+    if (payment.gateway) return this.byGateway(payment.gateway);
+    return this.resolveProvider(payment.provider);
+  }
+
   resolveProvider(type: PaymentProviderType): PaymentProvider {
     switch (type) {
       case PaymentProviderType.WAVE:
@@ -65,7 +88,9 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       case PaymentProviderType.MOCK:
         return this.mockProvider;
       case PaymentProviderType.CARD:
-        return this.cardProvider;
+      case PaymentProviderType.AFRIMONEY:
+      case PaymentProviderType.QMONEY:
+        return this.modemPay;
       case PaymentProviderType.PAYPAL:
         throw new BadRequestException('PayPal is not implemented yet');
       default:
@@ -83,19 +108,25 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
     providerType: PaymentProviderType,
     customerEmail: string,
   ) {
-    const provider = this.resolveProvider(providerType);
+    if (providerType === PaymentProviderType.PAYPAL) throw new BadRequestException('PayPal is not implemented yet');
+    // Phase 23: switched off in Admin → Ways to pay, or not connected.
+    await this.settings.ensureAvailable(providerType);
+    const gateway = await this.settings.gatewayFor(providerType);
+    const provider = this.byGateway(gateway);
 
     const result = await provider.initiate({
       orderId: order.id,
       amount: order.total,
       currency: order.currency,
       customerEmail,
+      method: providerType,
     });
 
     const payment = await this.prisma.payment.create({
       data: {
         orderId: order.id,
         provider: providerType,
+        gateway,
         providerReference: result.providerReference,
         amount: order.total,
         currency: order.currency,
@@ -385,9 +416,10 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
     }
 
     const event = this.waveProvider.parseWebhookEvent(rawBody);
-    const payment = await this.prisma.payment.findUnique({
-      where: { providerReference: event.providerReference },
-    });
+    if (event.status === 'IGNORED') return { received: true };
+    const found = event.providerReference ? await this.prisma.payment.findUnique({ where: { providerReference: event.providerReference } }) : null;
+    // Only payments Wave itself took (not Wave through Modem Pay).
+    const payment = found && (found.gateway === PaymentGateway.WAVE || (!found.gateway && found.provider === PaymentProviderType.WAVE)) ? found : null;
     if (!payment) {
       // A webhook for a reference we don't recognize is logged, not
       // errored loudly back to Wave — retrying it won't help, and Wave
@@ -396,6 +428,11 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
     }
 
     if (event.status === 'SUCCESSFUL') {
+      if (event.amountMinor != null && event.amountMinor !== payment.amount) {
+        this.logger.error(`Wave payment ${payment.id}: paid ${event.amountMinor} ${event.currency}, expected ${payment.amount} ${payment.currency}. Not completing the order.`);
+        await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: { event: 'wave_succeeded', amount: event.amountMinor, currency: event.currency, mismatch: true } } });
+        return { received: true, matched: true, completed: false, reason: 'amount_mismatch' };
+      }
       await this.completeOrder(payment.orderId, payment.id);
       await this.flagIfNotClaimed(payment.id, payment.orderId, { event: 'wave_succeeded', at: new Date().toISOString() });
     } else {
@@ -408,23 +445,23 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
   // the amount and currency must also match what we asked for, so a
   // misconfigured amount unit or a tampered metadata reference can never
   // turn a smaller payment into a paid order.
-  async handleCardWebhook(rawBody: Buffer, signatureHeader: string | undefined) {
-    if (!this.cardProvider.verifyWebhookSignature(rawBody, signatureHeader)) {
-      throw new UnauthorizedException('Invalid card webhook signature');
+  async handleModemPayWebhook(rawBody: Buffer, signatureHeader: string | undefined) {
+    if (!this.modemPay.verifyWebhookSignature(rawBody, signatureHeader)) {
+      throw new UnauthorizedException('Invalid Modem Pay webhook signature');
     }
-    const ev = this.cardProvider.parseCardEvent(rawBody);
+    const ev = this.modemPay.parseEvent(rawBody);
     if (ev.kind === 'IGNORED') return { received: true, event: ev.event };
     const payment = ev.reference
-      ? await this.prisma.payment.findFirst({ where: { providerReference: ev.reference, provider: PaymentProviderType.CARD } })
+      ? await this.prisma.payment.findFirst({ where: { providerReference: ev.reference, OR: [{ gateway: PaymentGateway.MODEMPAY }, { gateway: null, provider: PaymentProviderType.CARD }] } })
       : null;
     if (!payment) {
-      this.logger.warn(`Card webhook ${ev.event} for an unknown payment (reference ${ev.reference ?? 'missing'})`);
+      this.logger.warn(`Modem Pay webhook ${ev.event} for an unknown payment (reference ${ev.reference ?? 'missing'})`);
       return { received: true, matched: false };
     }
     const note = { event: ev.event, chargeId: ev.chargeId, amount: ev.amountMinor, currency: ev.currency, at: new Date().toISOString() };
     if (ev.kind === 'SUCCEEDED') {
       if (ev.amountMinor !== payment.amount || (ev.currency && ev.currency !== payment.currency)) {
-        this.logger.error(`Card payment ${payment.id}: paid ${ev.amountMinor} ${ev.currency}, expected ${payment.amount} ${payment.currency}. Not completing the order; check MODEMPAY_AMOUNT_UNIT and the Modem Pay dashboard.`);
+        this.logger.error(`Modem Pay payment ${payment.id}: paid ${ev.amountMinor} ${ev.currency}, expected ${payment.amount} ${payment.currency}. Not completing the order; check MODEMPAY_AMOUNT_UNIT and the Modem Pay dashboard.`);
         await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: { ...note, mismatch: true } } });
         return { received: true, matched: true, completed: false, reason: 'amount_mismatch' };
       }
@@ -435,7 +472,7 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       return { received: true, matched: true, completed: true };
     }
     await this.prisma.payment.update({ where: { id: payment.id }, data: { rawPayload: note } });
-    await this.failIfCurrent(payment, 'card_payment_failed');
+    await this.failIfCurrent(payment, 'modempay_payment_failed');
     return { received: true, matched: true, completed: false };
   }
 
