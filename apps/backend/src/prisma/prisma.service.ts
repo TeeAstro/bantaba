@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { serverTimingEnabled, trackPrismaTiming } from '../common/server-timing';
+import { pooledDatabaseUrl } from './busy';
 
 @Injectable()
 export class PrismaService
@@ -15,7 +16,7 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
-    super();
+    super({ datasources: { db: { url: pooledDatabaseUrl() } } });
     if (serverTimingEnabled()) trackPrismaTiming(this);
   }
 

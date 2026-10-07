@@ -7,7 +7,6 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import * as argon2 from 'argon2';
 import { normalizeName, uniqueOrganizerSlug } from '../organizers/public-organizer';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,6 +18,7 @@ import { RegisterDto } from './dto/register.dto';
 import { RegisterOrganizerDto } from './dto/register-organizer.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './jwt-payload.interface';
+import { hashPassword, passwordNeedsRehash, verifyPassword, unusablePasswordHash } from '../common/password';
 
 // e.g. '15m'; typed as the jwt library's duration string.
 const ACCESS_TOKEN_EXPIRY = (process.env.JWT_ACCESS_EXPIRES_IN ?? '15m') as JwtSignOptions['expiresIn'];
@@ -39,8 +39,7 @@ const registerLimiter = new RateLimiter('register', 10, 60 * 60_000, 'Too many n
 const resetLimiter = new RateLimiter('reset', 20, 60 * 60_000, TRY_LATER);
 // Compared against when the email has no account, so a wrong email takes
 // as long as a wrong password (no telling which emails exist by timing).
-let dummyHash: Promise<string> | null = null;
-const timingDummy = () => (dummyHash ??= argon2.hash(generateRandomToken(), { type: argon2.argon2id }));
+const timingDummy = () => unusablePasswordHash();
 
 @Injectable()
 export class AuthService {
@@ -90,7 +89,7 @@ export class AuthService {
       throw new ConflictException('An account with this email already exists');
     }
 
-    const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
+    const passwordHash = await hashPassword(dto.password);
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
@@ -123,7 +122,7 @@ export class AuthService {
       throw new ConflictException('That name belongs to a verified organizer. If you represent them, contact the platform team.');
     }
 
-    const passwordHash = await argon2.hash(dto.password, { type: argon2.argon2id });
+    const passwordHash = await hashPassword(dto.password);
 
     // User + Organizer created together, inside one transaction: an
     // Organizer row should never exist without its User, or vice versa.
@@ -167,13 +166,17 @@ export class AuthService {
       new UnauthorizedException('Invalid email or password');
 
     if (!user) {
-      await argon2.verify(await timingDummy(), dto.password).catch(() => false);
+      await verifyPassword(await timingDummy(), dto.password);
       throw invalidCredentials();
     }
 
-    const passwordMatches = await argon2.verify(user.passwordHash, dto.password);
+    const passwordMatches = await verifyPassword(user.passwordHash, dto.password);
     if (!passwordMatches) {
       throw invalidCredentials();
+    }
+    // Hashed with older, slower settings: store it with the current ones.
+    if (passwordNeedsRehash(user.passwordHash)) {
+      await this.prisma.user.updateMany({ where: { id: user.id, passwordHash: user.passwordHash }, data: { passwordHash: await hashPassword(dto.password) } });
     }
 
     await this.audit(user.id, user.role, 'login', 'User', user.id);
@@ -332,7 +335,7 @@ export class AuthService {
             email,
             role: UserRole.CUSTOMER,
             emailVerifiedAt: new Date(),
-            passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }),
+            passwordHash: await unusablePasswordHash(),
           },
         });
         created = true;
@@ -350,7 +353,7 @@ export class AuthService {
         if (hadPassword) await tx.refreshToken.updateMany({ where: { userId: user!.id, revokedAt: null }, data: { revokedAt: new Date() } });
         return tx.user.update({
           where: { id: user!.id },
-          data: { emailVerifiedAt: new Date(), ...(hadPassword ? { passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }), passwordSetAt: null, sessionsRevokedAt: new Date() } : {}) },
+          data: { emailVerifiedAt: new Date(), ...(hadPassword ? { passwordHash: await unusablePasswordHash(), passwordSetAt: null, sessionsRevokedAt: new Date() } : {}) },
         });
       });
       if (hadPassword) await this.audit(user.id, user.role, 'unverified_password_cleared', 'User', user.id);
@@ -416,7 +419,7 @@ export class AuthService {
       throw new BadRequestException('Reset token is invalid or expired');
     }
 
-    const passwordHash = await argon2.hash(newPassword, { type: argon2.argon2id });
+    const passwordHash = await hashPassword(newPassword);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({

@@ -1,10 +1,10 @@
 import { RateLimiter } from '../common/rate-limit';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventStatus, Organizer, OrganizerVerificationStatus, Payout, PayoutMethod, PayoutStatus, Prisma, UserRole } from '@prisma/client';
-import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService, Db } from '../notifications/notifications.service';
 import { BANK_ACCOUNT_RE, normalizeWaveNumber, PayoutAccountDto, RequestPayoutDto } from './dto/payout.dto';
+import { verifyPassword } from '../common/password';
 
 type Actor = { id: string; role: UserRole };
 
@@ -177,7 +177,7 @@ export class PayoutsService {
   async setAccount(user: Actor, dto: PayoutAccountDto) {
     const u = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     await accountLimiter.check(user.id);
-    if (!(await argon2.verify(u.passwordHash, dto.password))) throw new BadRequestException('That password isn’t right.');
+    if (!(await verifyPassword(u.passwordHash, dto.password))) throw new BadRequestException('That password isn’t right.');
     const o = await this.organizerFor(user);
 
     const method = dto.method as PayoutMethod;

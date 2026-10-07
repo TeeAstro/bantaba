@@ -6,10 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventStatus, UserRole } from '@prisma/client';
-import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AssignStaffDto, UpdateStaffAssignmentDto } from './dto/event-staff.dto';
+import { hashPassword } from '../common/password';
 
 interface AuthenticatedUser {
   id: string;
@@ -100,7 +100,7 @@ export class EventStaffService {
         data: {
           email,
           fullName: dto.fullName,
-          passwordHash: await argon2.hash(dto.password, { type: argon2.argon2id }),
+          passwordHash: await hashPassword(dto.password),
           passwordSetAt: new Date(),
           role: UserRole.STAFF,
           staffOrganizerId: event.organizerId,

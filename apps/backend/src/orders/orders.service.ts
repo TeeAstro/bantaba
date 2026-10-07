@@ -6,8 +6,8 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { UserRole, EventStatus, EventSeatStatus, PaymentProviderType, Prisma } from '@prisma/client';
-import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
+import { BUSY_TX } from '../prisma/busy';
 import { PaymentsService } from '../payments/payments.service';
 import { generateRandomToken, hashToken } from '../common/token.util';
 import { RateLimiter } from '../common/rate-limit';
@@ -16,6 +16,7 @@ import { seatLabel } from '../venues/seating-rules';
 
 import { FeesService } from '../fees/fees.service';
 import { feeFor } from '../fees/fee-rules';
+import { unusablePasswordHash } from '../common/password';
 
 interface AuthenticatedUser {
   id: string;
@@ -81,7 +82,7 @@ export class OrdersService {
       customer = await this.prisma.$transaction(async (tx) => {
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
         await tx.auditLog.create({ data: { actorId: null, actorRole: null, action: 'unverified_password_cleared', entityType: 'User', entityId: id, metadata: { reason: 'guest_checkout' } } });
-        return tx.user.update({ where: { id }, data: { passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }), passwordSetAt: null, sessionsRevokedAt: new Date() } });
+        return tx.user.update({ where: { id }, data: { passwordHash: await unusablePasswordHash(), passwordSetAt: null, sessionsRevokedAt: new Date() } });
       });
     }
     if (!customer) {
@@ -96,7 +97,7 @@ export class OrdersService {
             role: UserRole.CUSTOMER,
             // No password yet: an unguessable one nobody knows. They sign in
             // with an email code, or set one with "Forgot password".
-            passwordHash: await argon2.hash(generateRandomToken(), { type: argon2.argon2id }),
+            passwordHash: await unusablePasswordHash(),
           },
         });
         await this.prisma.auditLog.create({
@@ -119,13 +120,10 @@ export class OrdersService {
     // availability. A timer does this every minute too (Phase 12,
     // PaymentsService.onApplicationBootstrap); this keeps checkout correct
     // between runs.
-    await this.paymentsService.releaseExpiredReservations();
+    await this.paymentsService.releaseExpiredReservations({ atMostEveryMs: 5000 });
 
     const event = await this.prisma.event.findUnique({ where: { id: dto.eventId }, include: { organizer: { select: { verificationStatus: true } } } });
     if (!event) throw new NotFoundException('Event not found');
-    // Phase 20: this event's booking fee (docs/payments.md, "Booking fee"):
-    // its deal, the host's deal or Bantaba's; on top, or inside the prices.
-    const { fee, included: feeIncluded } = await this.fees.forCheckout(event);
     // A suspended organizer's events stop selling at once (docs/organizer-trust.md).
     if (event.organizer.verificationStatus === 'SUSPENDED') {
       throw new ForbiddenException('Ticket sales for this event are paused');
@@ -166,6 +164,23 @@ export class OrdersService {
       throw new BadRequestException(`At most ${MAX_TICKETS_PER_ORDER} tickets per order`);
     }
 
+    // Sold out: say so at once (load test, Phase 22). In an on-sale rush
+    // most buyers end up here, and each one otherwise ran a whole checkout
+    // first. Only a quick look: the locked update below still decides.
+    const stock = await this.prisma.ticketType.findMany({
+      where: { id: { in: [...quantitiesByType.keys()] }, eventId: dto.eventId },
+      select: { id: true, name: true, quantitySold: true, quantityTotal: true },
+    });
+    for (const t of stock) {
+      if (t.quantitySold + (quantitiesByType.get(t.id) ?? 0) > t.quantityTotal) {
+        throw new ConflictException(`Not enough "${t.name}" tickets available`);
+      }
+    }
+
+    // Phase 20: this event's booking fee (docs/payments.md, "Booking fee"):
+    // its deal, the host's deal or Bantaba's; on top, or inside the prices.
+    const { fee, included: feeIncluded } = await this.fees.forCheckout(event);
+
     // Phase 16: one unpaid hold per buyer per event. Going back and
     // choosing again replaces the earlier hold instead of piling them up.
     // Orders with a payment already started are left alone. Only for a
@@ -198,6 +213,7 @@ export class OrdersService {
       let subtotal = 0;
       let currency: string | null = null;
       const seatClaims: { seatId: string; ticketTypeId: string }[] = [];
+      const counts: { ticketTypeId: string; quantity: number; name: string }[] = [];
 
       for (const [ticketTypeId, quantity] of quantitiesByType) {
         const ticketType = await tx.ticketType.findUnique({
@@ -264,20 +280,11 @@ export class OrdersService {
           );
         }
 
-        // Atomic conditional update — see docs/ticketing.md for the full
-        // explanation of why this specific pattern is what actually
-        // prevents overselling under concurrent requests.
-        const affected = await tx.$executeRaw`
-          UPDATE ticket_types
-          SET "quantitySold" = "quantitySold" + ${quantity}
-          WHERE id = ${ticketTypeId}
-            AND "quantitySold" + ${quantity} <= "quantityTotal"
-        `;
-        if (affected === 0) {
-          throw new ConflictException(
-            `Not enough "${ticketType.name}" tickets available`,
-          );
+        // A quick look first: sold out already, so no transaction work.
+        if (ticketType.quantitySold + quantity > ticketType.quantityTotal) {
+          throw new ConflictException(`Not enough "${ticketType.name}" tickets available`);
         }
+        counts.push({ ticketTypeId, quantity, name: ticketType.name });
 
         orderItemsData.push({ ticketTypeId, quantity, unitPrice: ticketType.price });
         subtotal += ticketType.price * quantity;
@@ -341,8 +348,27 @@ export class OrdersService {
         }
       }
 
+      // Atomic conditional update — see docs/ticketing.md for the full
+      // explanation of why this specific pattern is what actually
+      // prevents overselling under concurrent requests. Done last (load
+      // test, Phase 22): it locks the ticket type's row until the commit,
+      // and every buyer of that type waits on that lock, so it should be
+      // held for as short a time as possible. Same order of types for
+      // everyone, so two orders can't wait on each other.
+      for (const c of [...counts].sort((a, b) => a.ticketTypeId.localeCompare(b.ticketTypeId))) {
+        const affected = await tx.$executeRaw`
+          UPDATE ticket_types
+          SET "quantitySold" = "quantitySold" + ${c.quantity}
+          WHERE id = ${c.ticketTypeId}
+            AND "quantitySold" + ${c.quantity} <= "quantityTotal"
+        `;
+        if (affected === 0) {
+          throw new ConflictException(`Not enough "${c.name}" tickets available`);
+        }
+      }
+
       return created;
-    });
+    }, BUSY_TX);
 
     // Phase 16: no provider yet — the tickets are only held while the buyer
     // chooses how to pay (POST /orders/:id/pay).

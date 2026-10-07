@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe, VersioningType, VERSION_NEUTRAL } from '@nestjs/common';
 import { GUARDS_METADATA, PATH_METADATA } from '@nestjs/common/constants';
-import { ModulesContainer } from '@nestjs/core';
+import { HttpAdapterHost, ModulesContainer } from '@nestjs/core';
+import { BusyFilter } from './prisma/busy';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './auth/guards/optional-jwt-auth.guard';
@@ -66,6 +67,9 @@ export function configureApp(app: INestApplication) {
       transform: true, // turn plain JSON into DTO class instances
     }),
   );
+  // A rush that can't get a database connection in time: 503 "try again"
+  // instead of a 500 (load test, Phase 22; prisma/busy.ts).
+  app.useGlobalFilters(new BusyFilter(app.get(HttpAdapterHost).httpAdapter));
 }
 
 const controllerTag = (name: string) =>

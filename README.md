@@ -1297,8 +1297,28 @@ run Bantaba online is in the repository. The steps to put it on Render
 |---|---|---|---|
 | 1 | Everything still works | Store, checkout, host pages, admin, scanner | As before |
 | 2 | Health | `http://localhost:4000/api/v1/health` | `"status":"ok"`, `"limits":"memory"` (or `"redis"` with `REDIS_URL`) |
-| 3 | Containers | `docker compose up -d --build`, open http://localhost:3000 | The store loads (empty: no sample events) |
+| 3 | Containers | `docker compose up -d --build`, open http://localhost:3000 | The store loads, with the same events as your npm setup (same database) |
 | 4 | Automated | `node security-test.js` and the other `*-test.js` in `apps/backend` | All pass (storefront: the known 3) |
+
+## Load test (Phase 22b)
+
+An on-sale rush, browsing and the gates, on servers the size of the
+Render setup. Results, sizes and what to raise before a big on-sale in
+**`docs/load-test.md`**.
+
+- No ticket was ever sold twice: 500 buyers at once for 200 tickets → exactly 200 sold; 300 buyers fighting over the same seats → no seat sold twice.
+- **Fixed:** a rush gave "Internal server error" (too few database connections, too short a wait); buyers now queue, and get "Lots of people are buying right now. Try again in a moment." if it's really full.
+- **Fixed:** sold-out buyers are turned away at once, and the ticket count is locked for as short a time as possible.
+- **Fixed:** password hashing used about 450 ms of CPU each, so guest checkouts and sign-ins jammed the server. Now the OWASP settings (about 70 ms); old passwords still work and are upgraded at the next sign-in. Guests no longer need a hash of their own.
+- `render.yaml` now asks for a 0.5 CPU / 1 GB database: the smallest one was the bottleneck.
+
+**After pulling:** `npm run build` in `apps/backend`, restart the backend. No new packages, no database changes.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Sign in | Sign in with an existing account | Works as before (the password is quietly upgraded) |
+| 2 | Buy | Buy a ticket, as a guest and signed in | As before |
+| 3 | Automated | The `*-test.js` in `apps/backend` | All pass (storefront: the known leftover-data ones) |
 
 ## Project structure
 

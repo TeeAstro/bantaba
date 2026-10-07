@@ -51,7 +51,7 @@ function arg(name) {
         fullName,
         role: 'ADMIN',
         emailVerifiedAt: new Date(),
-        passwordHash: await argon2.hash(randomBytes(32).toString('hex'), { type: argon2.argon2id }),
+        passwordHash: await argon2.hash(randomBytes(32).toString('hex'), { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 }),
       },
     });
     await prisma.auditLog.create({ data: { action: 'admin_created', entityType: 'User', entityId: user.id, metadata: { by: 'scripts/setup.js' } } }).catch(() => undefined);

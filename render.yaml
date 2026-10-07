@@ -2,8 +2,9 @@
 # New → Blueprint → pick this repository. Render creates everything below
 # and asks for each value marked `sync: false`.
 #
-# Sizes are Render's defaults (0.5 CPU / 512 MB for each service, the
-# smallest paid database); change them in the dashboard as sales grow.
+# Sizes (docs/load-test.md): 0.5 CPU / 512 MB for each service (Render's
+# default) and a 0.5 CPU / 1 GB database: the smallest database was what
+# slowed an on-sale rush down. Raise them before a very big on-sale.
 # The limits store is on the free plan: it only keeps short-lived counts.
 # Region: Frankfurt, the closest Render region to The Gambia.
 
@@ -117,6 +118,7 @@ services:
 databases:
   - name: bantaba-db
     region: frankfurt
+    plan: 0.5c-1g
     databaseName: bantaba
     user: bantaba
     postgresMajorVersion: '16'

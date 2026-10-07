@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { EventSeatStatus, PaymentProviderType, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { BUSY_TX } from '../prisma/busy';
 import { generateRandomToken, hashToken } from '../common/token.util';
 import { generateQrCodeSvg } from '../common/qr.util';
 import { WaveProvider } from './providers/wave.provider';
@@ -284,7 +285,7 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       await this.notifications.orderConfirmed(tx, order);
 
       return { ...order, status: 'PAID' as const, tickets };
-    });
+    }, BUSY_TX);
   }
 
   // Releases the inventory hold and cancels the order/payment. Used for
@@ -342,13 +343,28 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
         const wasBankTransfer = await tx.payment.count({ where: { orderId: order.id, provider: PaymentProviderType.BANK_TRANSFER } });
         if (wasBankTransfer > 0) await this.notifications.orderExpired(tx, order);
       }
-    });
+    }, BUSY_TX);
   }
 
   // Releases reservations whose time is up. Runs every minute (see
   // onApplicationBootstrap) and still at the start of every checkout
   // (OrdersService), so inventory is freed even if the timer is off.
-  async releaseExpiredReservations() {
+  private lastRelease = 0;
+  private releasing: Promise<void> | null = null;
+
+  // atMostEveryMs: checkout calls this before every order; in a rush that
+  // would be hundreds of identical sweeps a second (load test, Phase 22).
+  // One sweep every few seconds keeps holds that ran out from blocking
+  // anyone for long; the timer sweeps every minute regardless.
+  async releaseExpiredReservations(opts: { atMostEveryMs?: number } = {}): Promise<void> {
+    if (this.releasing) return this.releasing;
+    if (opts.atMostEveryMs && Date.now() - this.lastRelease < opts.atMostEveryMs) return;
+    this.lastRelease = Date.now();
+    this.releasing = this.sweepExpired().finally(() => (this.releasing = null));
+    return this.releasing;
+  }
+
+  private async sweepExpired() {
     const expired = await this.prisma.ticketOrder.findMany({
       where: { status: 'PENDING', expiresAt: { lt: new Date() } },
       include: { payments: true },

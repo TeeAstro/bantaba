@@ -19,10 +19,11 @@ you can create.
 All of it is described in `render.yaml` (a Render "Blueprint"). Region:
 Frankfurt, the closest Render region to The Gambia.
 
-**Rough cost at launch:** two small services and the smallest paid
-database on Render (about $20–30 a month together; the limits store is
-free), R2 free up to 10 GB, an email service's free or entry plan.
-Check current prices on each site.
+**Rough cost at launch:** two small services (0.5 CPU each) and a 0.5 CPU / 1 GB
+database on Render, the limits store free, R2 free up to 10 GB, an email
+service's free or entry plan. Check current prices on each site. Sizes
+come from the load test (`docs/load-test.md`), which also says what to
+raise before a very big on-sale.
 
 ## Before you start
 
