@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
+import { rateLimitStore } from '../common/rate-limit';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -24,6 +26,22 @@ export class AdminDashboardController {
   @Get('stats')
   stats(@Query() q: AdminStatsQueryDto) {
     return this.statsService.stats(q.period ?? '30d');
+  }
+
+  /**
+   * What this server sees of your request: your address as the limits see
+   * it and the proxy chain. Used once after deploying to set TRUST_PROXY
+   * (docs/deploy.md): `ip` should be your own public address.
+   */
+  @Get('request-info')
+  requestInfo(@Req() req: Request) {
+    const xff = String(req.headers['x-forwarded-for'] ?? '');
+    return {
+      ip: req.ip,
+      forwardedFor: xff ? xff.split(',').map((s) => s.trim()) : [],
+      trustProxy: Number(process.env.TRUST_PROXY ?? 0),
+      limits: rateLimitStore(),
+    };
   }
 
   /** Counts of everything waiting for an admin (the "Needs attention" home). */

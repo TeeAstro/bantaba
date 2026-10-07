@@ -96,6 +96,6 @@ Both load from Google Fonts in `app/layout.tsx`. If they can't load, the system 
 
 ## Not changed yet
 
-- **Mobile app identifiers.** The staff app's display name is now "Bantaba Host". Its bundle ID, package and link scheme (`com.eventticketing.staff`, `etp-staff`) are unchanged: decide them once, before the first store release.
+- **Mobile app identifiers.** The staff app is "Bantaba Host": package and bundle ID `gm.bantaba.host`, link scheme `bantaba-host` (Phase 22, set before the first store release; they can't change after it).
 - **The public organizer page** (`/o/<slug>`) is buyer-facing but still uses the Host look until the storefront is built.
 - **The repository and folder names** are still `event-ticketing-platform`.

@@ -16,7 +16,7 @@ Nothing else is implemented yet — no auth, no events, no payments. Those come 
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22.12 or newer (`node -v`; NestJS 12 needs it)
 - Docker + Docker Compose
 - This project was scaffolded in a sandboxed environment with no network access, so **`npm install` and `docker compose up` need to be run by you**, on your machine, the first time. The commands below tell you exactly what to run and what to expect.
 
@@ -1270,6 +1270,35 @@ and 6 low problems found and fixed; details and what's left in
 | 4 | Test payments | Remove `ALLOW_MOCK_PAYMENTS` from `.env`, restart, buy with the test option | Refused |
 | 5 | Headers | Open any page, check the response headers | Content-Security-Policy and X-Frame-Options: DENY |
 | 6 | Automated | `node security-test.js` in `apps/backend` (backend running) | `15/15 passed` |
+
+## Upgrades and deployment setup (Phase 22)
+
+The frameworks are on their current versions and everything needed to
+run Bantaba online is in the repository. The steps to put it on Render
+(accounts, settings, domain, the first admin, the Android app) are in
+**`docs/deploy.md`**.
+
+- **Upgrades:** NestJS 10 → 12 (Express 5), Next.js 14 → 16, React 18 → 19, TypeScript 6. `npm audit`: 0 problems in both apps.
+- **Docker:** `apps/backend/Dockerfile`, `apps/web/Dockerfile`; `docker compose up -d --build` runs the whole platform in containers.
+- **Render:** `render.yaml` creates the API, website, database and a Redis limits store (Frankfurt). Database changes are applied before each new API version starts.
+- **Shared limits:** with `REDIS_URL` the sign-in and checkout limits are kept in Redis, shared by every server.
+- **Health check:** `/api/v1/health` answers 503 when the database is down, and shows the deployed version and the limits store.
+- **First admin on a new database:** `node scripts/setup.js --admin you@example.com --name "Your Name"` (categories plus an admin; set its password with "Forgot password").
+- **Before launch:** test Modem Pay keys work on the live server only with `MODEMPAY_TEST_MODE=true`.
+- **Bantaba Host app:** ID `gm.bantaba.host`; `apps/mobile/eas.json` builds an installable Android app or a Play Store upload.
+
+**After pulling:**
+- Check `node -v` is 22.12 or newer.
+- `npm install` in `apps/backend` and `apps/web` (all the new versions), then `npm run build` in `apps/backend`.
+- `REDIS_URL` in `apps/backend/.env` is optional now: delete it if Redis isn't running locally, or keep `docker compose up -d redis` running.
+- Restart the backend and web app. No database changes.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Everything still works | Store, checkout, host pages, admin, scanner | As before |
+| 2 | Health | `http://localhost:4000/api/v1/health` | `"status":"ok"`, `"limits":"memory"` (or `"redis"` with `REDIS_URL`) |
+| 3 | Containers | `docker compose up -d --build`, open http://localhost:3000 | The store loads (empty: no sample events) |
+| 4 | Automated | `node security-test.js` and the other `*-test.js` in `apps/backend` | All pass (storefront: the known 3) |
 
 ## Project structure
 

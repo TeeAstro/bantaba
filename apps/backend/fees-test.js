@@ -159,6 +159,8 @@ const iso = (h) => new Date(Date.now() + h * 3600e3).toISOString();
       `elig ${elig.amount}/${elig.bookingFee}; kept ${r1.amount}/${r1.feeAmount}; back ${r2.amount}/${r2.feeAmount}; included ${r3.amount}/${r3.feeAmount}, ${r4.amount}/${r4.feeAmount}`);
 
     // K — the earnings report counts these paid orders' fees and the fee given back
+    // (the host approves the two refunds that return a fee: D22.50 + D22.50)
+    for (const r of [r2, r3]) await api('POST', `/refunds/${r.id}/approve`, a.token);
     const earn = await api('GET', '/admin/fees/earnings?period=today', admin);
     const mine = earn.data.hosts.find((h) => h.organizer.id === a.id);
     const seriesSum = earn.data.series.reduce((n, x) => n + x.fees, 0);

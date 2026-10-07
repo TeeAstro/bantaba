@@ -11,12 +11,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Outbox rows, newest first.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["Notifications_list"];
+        /** Outbox rows, newest first. */
+        get: operations["Notifications_list[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32,12 +28,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Counts by status, for a quick health check.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["Notifications_summary"];
+        /** Counts by status, for a quick health check. */
+        get: operations["Notifications_summary[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -55,12 +47,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Queue a FAILED or CANCELLED message again (e.g. after fixing the mail settings).
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Notifications_retry"];
+        /** Queue a FAILED or CANCELLED message again (e.g. after fixing the mail settings). */
+        post: operations["Notifications_retry[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -76,12 +64,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Send everything that's due now instead of waiting for the next poll.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Notifications_run"];
+        /** Send everything that's due now instead of waiting for the next poll. */
+        post: operations["Notifications_run[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -97,12 +81,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Queue due event reminders now instead of waiting for the next scan.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Notifications_scanReminders"];
+        /** Queue due event reminders now instead of waiting for the next scan. */
+        post: operations["Notifications_scanReminders[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -116,8 +96,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** CUSTOMER */
-        get: operations["Refunds_eligibility"];
+        get: operations["Refunds_eligibility[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -135,12 +114,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Ask for a refund. The organizer decides; you're emailed either way.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        post: operations["Refunds_request"];
+        /** Ask for a refund. The organizer decides; you're emailed either way. */
+        post: operations["Refunds_request[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -154,12 +129,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Your refunds and requests.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        get: operations["Refunds_mine"];
+        /** Your refunds and requests. */
+        get: operations["Refunds_mine[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -177,12 +148,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Take back a request that hasn't been decided yet.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        post: operations["Refunds_withdraw"];
+        /** Take back a request that hasn't been decided yet. */
+        post: operations["Refunds_withdraw[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -196,15 +163,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        get: operations["Refunds_listForEvent"];
+        get: operations["Refunds_listForEvent[0]"];
         put?: never;
-        /**
-         * @description Refund tickets directly (no request needed). Tickets stop working immediately.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        post: operations["Refunds_refundTickets"];
+        /** Refund tickets directly (no request needed). Tickets stop working immediately. */
+        post: operations["Refunds_refundTickets[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -220,8 +182,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        post: operations["Refunds_approve"];
+        post: operations["Refunds_approve[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -237,8 +198,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        post: operations["Refunds_reject"];
+        post: operations["Refunds_reject[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -252,8 +212,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ADMIN */
-        get: operations["Refunds_adminList"];
+        get: operations["Refunds_adminList[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -271,12 +230,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description A manual refund has been paid back: record the reference and tell the customer.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Refunds_markPaid"];
+        /** A manual refund has been paid back: record the reference and tell the customer. */
+        post: operations["Refunds_markPaid[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -292,12 +247,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Try a failed provider refund again.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Refunds_retry"];
+        /** Try a failed provider refund again. */
+        post: operations["Refunds_retry[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -313,12 +264,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Send due provider refunds now.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Refunds_run"];
+        /** Send due provider refunds now. */
+        post: operations["Refunds_run[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -334,12 +281,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Refund one payment in full: all its tickets and the booking fee (Phase 6 endpoint, now real).
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Refunds_refundPayment"];
+        /** Refund one payment in full: all its tickets and the booking fee (Phase 6 endpoint, now real). */
+        post: operations["Refunds_refundPayment[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -355,12 +298,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Refund everyone for a cancelled event whose organizer chose to handle refunds.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Refunds_refundAll"];
+        /** Refund everyone for a cancelled event whose organizer chose to handle refunds. */
+        post: operations["Refunds_refundAll[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -376,7 +315,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Payments_waveWebhook"];
+        post: operations["Payments_waveWebhook[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -392,7 +331,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Payments_cardWebhook"];
+        post: operations["Payments_cardWebhook[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -408,8 +347,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        post: operations["Payments_confirmBankTransfer"];
+        post: operations["Payments_confirmBankTransfer[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -425,12 +363,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Offer one of your tickets to someone by email.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        post: operations["Transfers_offer"];
+        /** Offer one of your tickets to someone by email. */
+        post: operations["Transfers_offer[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -444,12 +378,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Transfers you've sent and received.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        get: operations["Transfers_mine"];
+        /** Transfers you've sent and received. */
+        get: operations["Transfers_mine[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -467,12 +397,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Take back an offer that hasn't been accepted yet.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        post: operations["Transfers_cancel"];
+        /** Take back an offer that hasn't been accepted yet. */
+        post: operations["Transfers_cancel[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -488,12 +414,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Email a fresh link (the previous one stops working).
-         *
-         *     **Roles:** CUSTOMER
-         */
-        post: operations["Transfers_resend"];
+        /** Email a fresh link (the previous one stops working). */
+        post: operations["Transfers_resend[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -509,8 +431,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description What's being offered (no sign-in needed; the token is the proof). POST so the token stays out of URLs and logs. */
-        post: operations["Transfers_preview"];
+        /** What's being offered (no sign-in needed; the token is the proof). POST so the token stays out of URLs and logs. */
+        post: operations["Transfers_preview[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -526,8 +448,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Accept: signed in with the address the ticket was sent to. The ticket gets a new QR code. */
-        post: operations["Transfers_accept"];
+        /** Accept: signed in with the address the ticket was sent to. The ticket gets a new QR code. */
+        post: operations["Transfers_accept[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -543,8 +465,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Decline (no sign-in needed). */
-        post: operations["Transfers_decline"];
+        /** Decline (no sign-in needed). */
+        post: operations["Transfers_decline[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -558,12 +480,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Organizers with their approval, trust level and effective permissions.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["OrganizersAdmin_list"];
+        /** Organizers with their approval, trust level and effective permissions. */
+        get: operations["OrganizersAdmin_list[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -579,19 +497,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ADMIN */
-        get: operations["OrganizersAdmin_get"];
+        get: operations["OrganizersAdmin_get[0]"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description Approve/suspend, set the trust level, override single permissions or limits.
-         *
-         *     **Roles:** ADMIN
-         */
-        patch: operations["OrganizersAdmin_update"];
+        /** Approve/suspend, set the trust level, override single permissions or limits. */
+        patch: operations["OrganizersAdmin_update[0]"];
         trace?: never;
     };
     "/api/v1/admin/events/review": {
@@ -601,12 +514,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Events waiting for review, oldest first.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["OrganizersAdmin_reviewQueue"];
+        /** Events waiting for review, oldest first. */
+        get: operations["OrganizersAdmin_reviewQueue[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -624,12 +533,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Approve: the event goes on sale and the organizer is emailed.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["OrganizersAdmin_approve"];
+        /** Approve: the event goes on sale and the organizer is emailed. */
+        post: operations["OrganizersAdmin_approve[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -645,12 +550,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Send back to draft with a note telling the organizer what to change.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["OrganizersAdmin_reject"];
+        /** Send back to draft with a note telling the organizer what to change. */
+        post: operations["OrganizersAdmin_reject[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -664,8 +565,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description An organizer's public profile: picture, banner, about, contact, social links, upcoming and recent events. By URL name (slug) or id. */
-        get: operations["OrganizerProfile_publicProfile"];
+        /** An organizer's public profile: picture, banner, about, contact, social links, upcoming and recent events. By URL name (slug) or id. */
+        get: operations["OrganizerProfile_publicProfile[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -681,18 +582,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Your profile, as you'd edit it.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        get: operations["OrganizerProfile_getMine"];
-        /**
-         * @description Update your about, location, website, contact details and social links.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        put: operations["OrganizerProfile_update"];
+        /** Your profile, as you'd edit it. */
+        get: operations["OrganizerProfile_getMine[0]"];
+        /** Update your about, location, website, contact details and social links. */
+        put: operations["OrganizerProfile_update[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -710,15 +603,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Upload your profile picture (logo: 1:1, stored 800×800) or banner
+         * Upload your profile picture (logo: 1:1, stored 800×800) or banner
          *     (3:1, stored 1920×640). JPEG, PNG or WebP up to 10 MB; crop or fit as
          *     for event images.
-         *
-         *     **Roles:** ORGANIZER
          */
-        post: operations["OrganizerProfile_uploadImage"];
-        /** @description **Roles:** ORGANIZER */
-        delete: operations["OrganizerProfile_removeImage"];
+        post: operations["OrganizerProfile_uploadImage[0]"];
+        delete: operations["OrganizerProfile_removeImage[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -737,12 +627,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description Admin moderation: edit or clear an organizer's profile text.
-         *
-         *     **Roles:** ADMIN
-         */
-        patch: operations["OrganizerProfile_adminUpdate"];
+        /** Admin moderation: edit or clear an organizer's profile text. */
+        patch: operations["OrganizerProfile_adminUpdate[0]"];
         trace?: never;
     };
     "/api/v1/admin/organizers/{id}/images/{kind}": {
@@ -755,12 +641,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * @description Admin moderation: remove an organizer's profile picture or banner.
-         *
-         *     **Roles:** ADMIN
-         */
-        delete: operations["OrganizerProfile_adminRemoveImage"];
+        /** Admin moderation: remove an organizer's profile picture or banner. */
+        delete: operations["OrganizerProfile_adminRemoveImage[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -773,10 +655,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Events_findPublished"];
+        get: operations["Events_findPublished[0]"];
         put?: never;
-        /** @description **Roles:** ORGANIZER */
-        post: operations["Events_create"];
+        post: operations["Events_create[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -790,8 +671,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER */
-        get: operations["Events_findMine"];
+        get: operations["Events_findMine[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -807,12 +687,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Events_findOne"];
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        put: operations["Events_update"];
+        get: operations["Events_findOne[0]"];
+        put: operations["Events_update[0]"];
         post?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        delete: operations["Events_remove"];
+        delete: operations["Events_remove[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -827,8 +705,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        post: operations["Events_publish"];
+        post: operations["Events_publish[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -844,8 +721,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        post: operations["Events_cancel"];
+        post: operations["Events_cancel[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -862,22 +738,16 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Upload the event's banner (3:1, stored as 1920×640) or poster (2:3,
+         * Upload the event's banner (3:1, stored as 1920×640) or poster (2:3,
          *     stored as 1000×1500). JPEG, PNG or WebP up to 10 MB. Optional crop as
          *     fractions of the image; without one the largest centred area is used.
          *     mode=fit keeps the whole image instead, on a blurred or plain-colour
          *     background.
          *     Returns the updated event.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
          */
-        post: operations["EventImages_upload"];
-        /**
-         * @description Remove the event's banner or poster. Returns the updated event.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        delete: operations["EventImages_remove"];
+        post: operations["EventImages_upload[0]"];
+        /** Remove the event's banner or poster. Returns the updated event. */
+        delete: operations["EventImages_remove[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -890,7 +760,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Categories_findAll"];
+        get: operations["Categories_findAll[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -909,12 +779,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * @description Organizer: take back changes still waiting for review (the event keeps its approved details).
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        delete: operations["EventChanges_withdraw"];
+        /** Organizer: take back changes still waiting for review (the event keeps its approved details). */
+        delete: operations["EventChanges_withdraw[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -927,12 +793,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Admin: changes to approved events waiting for review, oldest first, each field as from → to.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["EventChanges_list"];
+        /** Admin: changes to approved events waiting for review, oldest first, each field as from → to. */
+        get: operations["EventChanges_list[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -950,12 +812,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Admin: apply the changes. Ticket holders are emailed about a new date or venue.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["EventChanges_approve"];
+        /** Admin: apply the changes. Ticket holders are emailed about a new date or venue. */
+        post: operations["EventChanges_approve[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -971,12 +829,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Admin: turn the changes down with a reason; the event keeps its approved details.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["EventChanges_reject"];
+        /** Admin: turn the changes down with a reason; the event keeps its approved details. */
+        post: operations["EventChanges_reject[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -990,8 +844,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER */
-        get: operations["Payouts_summary"];
+        get: operations["Payouts_summary[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1007,19 +860,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Your payouts, newest first.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        get: operations["Payouts_mine"];
+        /** Your payouts, newest first. */
+        get: operations["Payouts_mine[0]"];
         put?: never;
-        /**
-         * @description Ask for a payout. An admin approves it and sends the money.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        post: operations["Payouts_request"];
+        /** Ask for a payout. An admin approves it and sends the money. */
+        post: operations["Payouts_request[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1034,12 +879,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Set where your money is sent (needs your password). An admin checks the details before the first payout to them.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        put: operations["Payouts_setAccount"];
+        /** Set where your money is sent (needs your password). An admin checks the details before the first payout to them. */
+        put: operations["Payouts_setAccount[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1056,12 +897,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Withdraw a request that hasn't been approved yet.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        post: operations["Payouts_cancel"];
+        /** Withdraw a request that hasn't been approved yet. */
+        post: operations["Payouts_cancel[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1075,8 +912,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ADMIN */
-        get: operations["Payouts_adminList"];
+        get: operations["Payouts_adminList[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1092,12 +928,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description One organizer's balance, payout account and payouts.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["Payouts_adminOrganizer"];
+        /** One organizer's balance, payout account and payouts. */
+        get: operations["Payouts_adminOrganizer[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1115,12 +947,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Confirm an organizer's payout details are genuine (e.g. by calling them).
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Payouts_verifyAccount"];
+        /** Confirm an organizer's payout details are genuine (e.g. by calling them). */
+        post: operations["Payouts_verifyAccount[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1136,8 +964,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ADMIN */
-        post: operations["Payouts_approve"];
+        post: operations["Payouts_approve[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1153,8 +980,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ADMIN */
-        post: operations["Payouts_reject"];
+        post: operations["Payouts_reject[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1170,12 +996,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Record that the money was sent, with its reference. Approves it too if it wasn't yet.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["Payouts_markPaid"];
+        /** Record that the money was sent, with its reference. Approves it too if it wasn't yet. */
+        post: operations["Payouts_markPaid[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1189,7 +1011,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Health_check"];
+        get: operations["Health_check[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1207,7 +1029,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Auth_register"];
+        post: operations["Auth_register[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1223,7 +1045,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Auth_registerOrganizer"];
+        post: operations["Auth_registerOrganizer[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1239,7 +1061,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Auth_login"];
+        post: operations["Auth_login[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1255,7 +1077,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Auth_refresh"];
+        post: operations["Auth_refresh[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1271,7 +1093,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Auth_logout"];
+        post: operations["Auth_logout[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1287,8 +1109,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Buyers (Phase 16): email me a 6-digit sign-in code. Host accounts get a note to use their password instead. */
-        post: operations["Auth_requestEmailCode"];
+        /** Buyers (Phase 16): email me a 6-digit sign-in code. Host accounts get a note to use their password instead. */
+        post: operations["Auth_requestEmailCode[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1304,8 +1126,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Sign in with the code; makes a buyer account if there isn't one (`created: true`). */
-        post: operations["Auth_verifyEmailCode"];
+        /** Sign in with the code; makes a buyer account if there isn't one (`created: true`). */
+        post: operations["Auth_verifyEmailCode[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1321,7 +1143,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Auth_forgotPassword"];
+        post: operations["Auth_forgotPassword[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1337,7 +1159,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["Auth_resetPassword"];
+        post: operations["Auth_resetPassword[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1351,7 +1173,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Auth_me"];
+        get: operations["Auth_me[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1367,8 +1189,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ADMIN */
-        get: operations["Admin_ping"];
+        get: operations["Admin_ping[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1384,12 +1205,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Platform figures for the dashboard home: money, sales over time, activity, events, organizers.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminDashboard_stats"];
+        /** Platform figures for the dashboard home: money, sales over time, activity, events, organizers. */
+        get: operations["AdminDashboard_stats[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1405,12 +1222,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Counts of everything waiting for an admin (the "Needs attention" home).
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminDashboard_attention"];
+        /** Counts of everything waiting for an admin (the "Needs attention" home). */
+        get: operations["AdminDashboard_attention[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1426,12 +1239,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Card payments that succeeded after their order closed: the customer was charged but has no tickets.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminDashboard_cardFlags"];
+        /** Card payments that succeeded after their order closed: the customer was charged but has no tickets. */
+        get: operations["AdminDashboard_cardFlags[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1449,12 +1258,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Record that a flagged card payment was refunded by hand in the Modem Pay dashboard.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["AdminDashboard_resolveCardFlag"];
+        /** Record that a flagged card payment was refunded by hand in the Modem Pay dashboard. */
+        post: operations["AdminDashboard_resolveCardFlag[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1468,12 +1273,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Audit log, newest first, filterable by action, entity and actor.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminDashboard_auditLog"];
+        /** Audit log, newest first, filterable by action, entity and actor. */
+        get: operations["AdminDashboard_auditLog[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1489,12 +1290,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Actions and entity types that appear in the audit log, with counts.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminDashboard_auditLogFacets"];
+        /** Actions and entity types that appear in the audit log, with counts. */
+        get: operations["AdminDashboard_auditLogFacets[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1512,8 +1309,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        post: operations["TicketTypes_create"];
+        post: operations["TicketTypes_create[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1527,7 +1323,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["TicketTypes_findForEvent"];
+        get: operations["TicketTypes_findForEvent[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1544,8 +1340,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        put: operations["TicketTypes_update"];
+        put: operations["TicketTypes_update[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1562,12 +1357,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Signed-in buyer. Without `provider`, only holds the tickets (pay with POST /orders/:id/pay).
-         *
-         *     **Roles:** CUSTOMER
-         */
-        post: operations["Orders_checkout"];
+        /** Signed-in buyer. Without `provider`, only holds the tickets (pay with POST /orders/:id/pay). */
+        post: operations["Orders_checkout[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1583,8 +1374,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Buying without signing in. Returns `orderToken`, the guest's private key to this order (send it as X-Order-Token). */
-        post: operations["Orders_guestCheckout"];
+        /** Buying without signing in. Returns `orderToken`, the guest's private key to this order (send it as X-Order-Token). */
+        post: operations["Orders_guestCheckout[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1598,7 +1389,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Orders_findMine"];
+        get: operations["Orders_findMine[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1614,8 +1405,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description The buyer, an admin, or a guest with X-Order-Token. */
-        get: operations["Orders_findOne"];
+        /** The buyer, an admin, or a guest with X-Order-Token. */
+        get: operations["Orders_findOne[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1633,8 +1424,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Pay a held order: Wave, card or bank transfer. Starting a payment keeps the tickets held while it's finished. */
-        post: operations["Orders_pay"];
+        /** Pay a held order: Wave, card or bank transfer. Starting a payment keeps the tickets held while it's finished. */
+        post: operations["Orders_pay[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1648,8 +1439,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Public: this event's booking fee, whether the host includes it, and any deal (no notes). */
-        get: operations["Fees_forEvent"];
+        /** Public: this event's booking fee, whether the host includes it, and any deal (no notes). */
+        get: operations["Fees_forEvent[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1666,12 +1457,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description The host chooses: buyers pay the fee on top, or it's inside the ticket prices.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        put: operations["Fees_setIncluded"];
+        /** The host chooses: buyers pay the fee on top, or it's inside the ticket prices. */
+        put: operations["Fees_setIncluded[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1686,18 +1473,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Bantaba's fee, when it last changed, the refund rule, and deals for hosts and events.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["Fees_view"];
-        /**
-         * @description Change Bantaba's fee. New orders only; orders already placed keep theirs.
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["Fees_setGlobal"];
+        /** Bantaba's fee, when it last changed, the refund rule, and deals for hosts and events. */
+        get: operations["Fees_view[0]"];
+        /** Change Bantaba's fee. New orders only; orders already placed keep theirs. */
+        put: operations["Fees_setGlobal[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1713,19 +1492,11 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Give a host their own fee ("none" = no fee).
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["Fees_setHost"];
+        /** Give a host their own fee ("none" = no fee). */
+        put: operations["Fees_setHost[0]"];
         post?: never;
-        /**
-         * @description Back to Bantaba's fee.
-         *
-         *     **Roles:** ADMIN
-         */
-        delete: operations["Fees_removeHost"];
+        /** Back to Bantaba's fee. */
+        delete: operations["Fees_removeHost[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1739,12 +1510,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Keep the fee when a buyer asks for a refund, or give it back.
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["Fees_setRefundRule"];
+        /** Keep the fee when a buyer asks for a refund, or give it back. */
+        put: operations["Fees_setRefundRule[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1760,15 +1527,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description A deal for one event ("none" = no fee), optionally ending on a date.
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["Fees_setEvent"];
+        /** A deal for one event ("none" = no fee), optionally ending on a date. */
+        put: operations["Fees_setEvent[0]"];
         post?: never;
-        /** @description **Roles:** ADMIN */
-        delete: operations["Fees_removeEvent"];
+        delete: operations["Fees_removeEvent[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1781,12 +1543,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Booking fees earned in the period, per slot, by host.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["Fees_earnings"];
+        /** Booking fees earned in the period, per slot, by host. */
+        get: operations["Fees_earnings[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1802,7 +1560,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Tickets_findMine"];
+        get: operations["Tickets_findMine[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1818,7 +1576,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Tickets_findOne"];
+        get: operations["Tickets_findOne[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1834,7 +1592,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Tickets_getQr"];
+        get: operations["Tickets_getQr[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1852,8 +1610,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** STAFF, ORGANIZER, ADMIN */
-        post: operations["CheckIns_checkIn"];
+        post: operations["CheckIns_checkIn[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1867,8 +1624,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        get: operations["CheckIns_findForEvent"];
+        get: operations["CheckIns_findForEvent[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1884,8 +1640,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        get: operations["CheckIns_gateSetup"];
+        get: operations["CheckIns_gateSetup[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1902,8 +1657,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        put: operations["CheckIns_setGateRules"];
+        put: operations["CheckIns_setGateRules[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1919,12 +1673,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description The gates a standing ticket type enters through (seated ones use their section's gate).
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        put: operations["CheckIns_setTicketTypeGates"];
+        /** The gates a standing ticket type enters through (seated ones use their section's gate). */
+        put: operations["CheckIns_setTicketTypeGates[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1939,12 +1689,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Live numbers per gate: in, per minute (last 10 minutes), sent to their gate, let in at another.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        get: operations["CheckIns_gateStats"];
+        /** Live numbers per gate: in, per minute (last 10 minutes), sent to their gate, let in at another. */
+        get: operations["CheckIns_gateStats[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1962,8 +1708,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** STAFF, ORGANIZER, ADMIN */
-        post: operations["CheckIns_sync"];
+        post: operations["CheckIns_sync[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1977,12 +1722,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description The phones scanning this event, and tickets let in twice without signal.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        get: operations["CheckIns_gatePhones"];
+        /** The phones scanning this event, and tickets let in twice without signal. */
+        get: operations["CheckIns_gatePhones[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1999,13 +1740,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description Venues to hold an event at: for an organizer, their own and Bantaba's
+         * Venues to hold an event at: for an organizer, their own and Bantaba's
          *     they can use; for admins, all; for anyone else, Bantaba's open ones.
          */
-        get: operations["Venues_findAll"];
+        get: operations["Venues_findAll[0]"];
         put?: never;
-        /** @description **Roles:** ADMIN */
-        post: operations["Venues_create"];
+        post: operations["Venues_create[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2019,7 +1759,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["Venues_findOne"];
+        get: operations["Venues_findOne[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2037,8 +1777,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ADMIN */
-        post: operations["Venues_createSection"];
+        post: operations["Venues_createSection[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2054,8 +1793,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ADMIN */
-        post: operations["Venues_createAccessZone"];
+        post: operations["Venues_createAccessZone[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2071,8 +1809,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ADMIN */
-        post: operations["Venues_createGate"];
+        post: operations["Venues_createGate[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2087,8 +1824,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description **Roles:** ADMIN */
-        put: operations["Venues_updateGate"];
+        put: operations["Venues_updateGate[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2105,8 +1841,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ADMIN */
-        post: operations["Venues_setSeatsBlocked"];
+        post: operations["Venues_setSeatsBlocked[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2120,19 +1855,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Every venue: sections, seats, drawing yes/no, coming events, who made it (owner null = Bantaba) and who can use it.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminVenues_list"];
+        /** Every venue: sections, seats, drawing yes/no, coming events, who made it (owner null = Bantaba) and who can use it. */
+        get: operations["AdminVenues_list[0]"];
         put?: never;
-        /**
-         * @description A new Bantaba venue.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["AdminVenues_create"];
+        /** A new Bantaba venue. */
+        post: operations["AdminVenues_create[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2147,12 +1874,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Who can use a Bantaba venue: { sharing: "everyone" } or { sharing: "chosen", organizerIds }.
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["AdminVenues_setSharing"];
+        /** Who can use a Bantaba venue: { sharing: "everyone" } or { sharing: "chosen", organizerIds }. */
+        put: operations["AdminVenues_setSharing[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2169,12 +1892,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Add a section by name (venues without a drawing). Returns the venue.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["AdminVenues_addSection"];
+        /** Add a section by name (venues without a drawing). Returns the venue. */
+        post: operations["AdminVenues_addSection[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2189,27 +1908,15 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Set a section's rows, seats per row, taken-out places and gate.
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["AdminVenues_updateSection"];
+        /** Set a section's rows, seats per row, taken-out places and gate. */
+        put: operations["AdminVenues_updateSection[0]"];
         post?: never;
-        /**
-         * @description Remove a section that isn't in the drawing. Returns the venue.
-         *
-         *     **Roles:** ADMIN
-         */
-        delete: operations["AdminVenues_deleteSection"];
+        /** Remove a section that isn't in the drawing. Returns the venue. */
+        delete: operations["AdminVenues_deleteSection[0]"];
         options?: never;
         head?: never;
-        /**
-         * @description Rename a section that isn't in the drawing. Returns the venue.
-         *
-         *     **Roles:** ADMIN
-         */
-        patch: operations["AdminVenues_renameSection"];
+        /** Rename a section that isn't in the drawing. Returns the venue. */
+        patch: operations["AdminVenues_renameSection[0]"];
         trace?: never;
     };
     "/api/v1/admin/venues/{id}": {
@@ -2219,23 +1926,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description A venue with its drawing, gates and each section's seat grid.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminVenues_detail"];
+        /** A venue with its drawing, gates and each section's seat grid. */
+        get: operations["AdminVenues_detail[0]"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description Rename a venue, or change what its seats face ("Stage", "Pitch"…).
-         *
-         *     **Roles:** ADMIN
-         */
-        patch: operations["AdminVenues_update"];
+        /** Rename a venue, or change what its seats face ("Stage", "Pitch"…). */
+        patch: operations["AdminVenues_update[0]"];
         trace?: never;
     };
     "/api/v1/admin/venues/{id}/gates": {
@@ -2247,12 +1946,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Add a gate. Returns { id, name }.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["AdminVenues_addGate"];
+        /** Add a gate. Returns { id, name }. */
+        post: operations["AdminVenues_addGate[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2269,13 +1964,11 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Read an SVG drawing without saving it: its sections, which match the
+         * Read an SVG drawing without saving it: its sections, which match the
          *     venue's and which are new, sections it would remove (and whether they
          *     can go), and the cleaned SVG for a preview.
-         *
-         *     **Roles:** ADMIN
          */
-        post: operations["AdminVenues_check"];
+        post: operations["AdminVenues_check[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2290,12 +1983,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Save an SVG drawing as the venue's map. Returns the venue.
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["AdminVenues_apply"];
+        /** Save an SVG drawing as the venue's map. Returns the venue. */
+        put: operations["AdminVenues_apply[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2310,19 +1999,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Their own venues and Bantaba's they can use; kind: yours | bantaba | shared.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        get: operations["OrganizerVenues_list"];
+        /** Their own venues and Bantaba's they can use; kind: yours | bantaba | shared. */
+        get: operations["OrganizerVenues_list[0]"];
         put?: never;
-        /**
-         * @description A new venue of their own, private to them.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        post: operations["OrganizerVenues_create"];
+        /** A new venue of their own, private to them. */
+        post: operations["OrganizerVenues_create[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2336,19 +2017,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description A venue they can use, with `editable` true for their own.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        get: operations["OrganizerVenues_detail"];
+        /** A venue they can use, with `editable` true for their own. */
+        get: operations["OrganizerVenues_detail[0]"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** @description **Roles:** ORGANIZER */
-        patch: operations["OrganizerVenues_update"];
+        patch: operations["OrganizerVenues_update[0]"];
         trace?: never;
     };
     "/api/v1/organizer/venues/{id}/gates": {
@@ -2360,8 +2036,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER */
-        post: operations["OrganizerVenues_addGate"];
+        post: operations["OrganizerVenues_addGate[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2377,8 +2052,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER */
-        post: operations["OrganizerVenues_check"];
+        post: operations["OrganizerVenues_check[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2393,8 +2067,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description **Roles:** ORGANIZER */
-        put: operations["OrganizerVenues_apply"];
+        put: operations["OrganizerVenues_apply[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2411,8 +2084,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description **Roles:** ORGANIZER */
-        post: operations["OrganizerVenues_addSection"];
+        post: operations["OrganizerVenues_addSection[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2427,15 +2099,12 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description **Roles:** ORGANIZER */
-        put: operations["OrganizerVenues_updateSection"];
+        put: operations["OrganizerVenues_updateSection[0]"];
         post?: never;
-        /** @description **Roles:** ORGANIZER */
-        delete: operations["OrganizerVenues_deleteSection"];
+        delete: operations["OrganizerVenues_deleteSection[0]"];
         options?: never;
         head?: never;
-        /** @description **Roles:** ORGANIZER */
-        patch: operations["OrganizerVenues_renameSection"];
+        patch: operations["OrganizerVenues_renameSection[0]"];
         trace?: never;
     };
     "/api/v1/events/{id}/seat-map": {
@@ -2445,8 +2114,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description For buyers: the venue drawing, seated ticket types and every section with its price and free seats. */
-        get: operations["Seating_seatMap"];
+        /** For buyers: the venue drawing, seated ticket types and every section with its price and free seats. */
+        get: operations["Seating_seatMap[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2462,8 +2131,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description For buyers: one section's seats, row by row (closed seats show as BLOCKED). */
-        get: operations["Seating_sectionSeats"];
+        /** For buyers: one section's seats, row by row (closed seats show as BLOCKED). */
+        get: operations["Seating_sectionSeats[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2479,12 +2148,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description For the organizer: every section, what it's sold as and its seat counts, plus the ticket types.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        get: operations["Seating_view"];
+        /** For the organizer: every section, what it's sold as and its seat counts, plus the ticket types. */
+        get: operations["Seating_view[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2500,18 +2165,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description For the organizer: one section's seats, with seats closed for this event as CLOSED.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        get: operations["Seating_ownerSectionSeats"];
-        /**
-         * @description Set what a section is sold as (null = not on sale) and its closed seats. Returns the event's seating.
-         *
-         *     **Roles:** ORGANIZER, ADMIN
-         */
-        put: operations["Seating_updateSection"];
+        /** For the organizer: one section's seats, with seats closed for this event as CLOSED. */
+        get: operations["Seating_ownerSectionSeats[0]"];
+        /** Set what a section is sold as (null = not on sale) and its closed seats. Returns the event's seating. */
+        put: operations["Seating_updateSection[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2528,12 +2185,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Save one of your events as a template: details, ticket types and seating, never dates or sales.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        post: operations["Templates_save"];
+        /** Save one of your events as a template: details, ticket types and seating, never dates or sales. */
+        post: operations["Templates_save[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2547,12 +2200,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Your templates, most recently used first.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        get: operations["Templates_list"];
+        /** Your templates, most recently used first. */
+        get: operations["Templates_list[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2571,12 +2220,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** @description **Roles:** ORGANIZER */
-        delete: operations["Templates_remove"];
+        delete: operations["Templates_remove[0]"];
         options?: never;
         head?: never;
-        /** @description **Roles:** ORGANIZER */
-        patch: operations["Templates_rename"];
+        patch: operations["Templates_rename[0]"];
         trace?: never;
     };
     "/api/v1/templates/{id}/events": {
@@ -2588,12 +2235,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description A new draft event from a template. Returns { eventId, slug, skipped: { sections, closedSeats } }.
-         *
-         *     **Roles:** ORGANIZER
-         */
-        post: operations["Templates_use"];
+        /** A new draft event from a template. Returns { eventId, slug, skipped: { sections, closedSeats } }. */
+        post: operations["Templates_use[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2607,23 +2250,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Name, phone, email and whether a password is set.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        get: operations["Me_get"];
+        /** Name, phone, email and whether a password is set. */
+        get: operations["Me_get[0]"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description Change the name and phone. The email can't be changed here.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        patch: operations["Me_update"];
+        /** Change the name and phone. The email can't be changed here. */
+        patch: operations["Me_update[0]"];
         trace?: never;
     };
     "/api/v1/me/password": {
@@ -2634,12 +2269,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Set a password (or change it, with the current one). Email codes keep working.
-         *
-         *     **Roles:** CUSTOMER
-         */
-        put: operations["Me_setPassword"];
+        /** Set a password (or change it, with the current one). Email codes keep working. */
+        put: operations["Me_setPassword[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2654,8 +2285,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** CUSTOMER */
-        get: operations["Me_orders"];
+        get: operations["Me_orders[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2671,8 +2301,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER */
-        get: operations["Dashboard_overview"];
+        get: operations["Dashboard_overview[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2688,8 +2317,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        get: operations["Dashboard_eventDashboard"];
+        get: operations["Dashboard_eventDashboard[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2705,8 +2333,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        get: operations["Dashboard_orders"];
+        get: operations["Dashboard_orders[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2722,8 +2349,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        get: operations["Dashboard_tickets"];
+        get: operations["Dashboard_tickets[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2739,8 +2365,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER */
-        get: operations["EventStaff_roster"];
+        get: operations["EventStaff_roster[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2756,11 +2381,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        get: operations["EventStaff_list"];
+        get: operations["EventStaff_list[0]"];
         put?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        post: operations["EventStaff_assign"];
+        post: operations["EventStaff_assign[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2775,11 +2398,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        put: operations["EventStaff_update"];
+        put: operations["EventStaff_update[0]"];
         post?: never;
-        /** @description **Roles:** ORGANIZER, ADMIN */
-        delete: operations["EventStaff_remove"];
+        delete: operations["EventStaff_remove[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2792,8 +2413,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** STAFF, ORGANIZER */
-        get: operations["Scanner_events"];
+        get: operations["Scanner_events[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2809,8 +2429,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description **Roles:** STAFF, ORGANIZER */
-        get: operations["Scanner_progress"];
+        get: operations["Scanner_progress[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2826,7 +2445,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["AppConfig_get"];
+        get: operations["AppConfig_get[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2842,8 +2461,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Discover: Trending, then events grouped by host (at most two each), with price labels. */
-        get: operations["Storefront_discover"];
+        /** Discover: Trending, then events grouped by host (at most two each), with price labels. */
+        get: operations["Storefront_discover[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2859,12 +2478,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description The row as buyers see it, the picks, what's next in line and hidden events.
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminTrending_view"];
+        /** The row as buyers see it, the picks, what's next in line and hidden events. */
+        get: operations["AdminTrending_view[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2880,12 +2495,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description Events on sale that could be picked (canPick: the host has a blue tick).
-         *
-         *     **Roles:** ADMIN
-         */
-        get: operations["AdminTrending_search"];
+        /** Events on sale that could be picked (canPick: the host has a blue tick). */
+        get: operations["AdminTrending_search[0]"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2903,12 +2514,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Pick an event (up to 3, blue-tick hosts only).
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["AdminTrending_addPick"];
+        /** Pick an event (up to 3, blue-tick hosts only). */
+        post: operations["AdminTrending_addPick[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2925,16 +2532,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** @description **Roles:** ADMIN */
-        delete: operations["AdminTrending_removePick"];
+        delete: operations["AdminTrending_removePick[0]"];
         options?: never;
         head?: never;
-        /**
-         * @description Change how long a pick is shown.
-         *
-         *     **Roles:** ADMIN
-         */
-        patch: operations["AdminTrending_updatePick"];
+        /** Change how long a pick is shown. */
+        patch: operations["AdminTrending_updatePick[0]"];
         trace?: never;
     };
     "/api/v1/admin/trending/picks/order": {
@@ -2945,12 +2547,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * @description Put the picks in a new order.
-         *
-         *     **Roles:** ADMIN
-         */
-        put: operations["AdminTrending_reorder"];
+        /** Put the picks in a new order. */
+        put: operations["AdminTrending_reorder[0]"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2967,12 +2565,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * @description Take an event out of the best sellers.
-         *
-         *     **Roles:** ADMIN
-         */
-        post: operations["AdminTrending_hide"];
+        /** Take an event out of the best sellers. */
+        post: operations["AdminTrending_hide[0]"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2989,12 +2583,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /**
-         * @description Let a hidden event back in.
-         *
-         *     **Roles:** ADMIN
-         */
-        delete: operations["AdminTrending_unhide"];
+        /** Let a hidden event back in. */
+        delete: operations["AdminTrending_unhide[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3013,12 +2603,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * @description Cards in the row (4, 6 or 8) and one event per host.
-         *
-         *     **Roles:** ADMIN
-         */
-        patch: operations["AdminTrending_settings"];
+        /** Cards in the row (4, 6 or 8) and one event per host. */
+        patch: operations["AdminTrending_settings[0]"];
         trace?: never;
     };
 }
@@ -3026,6 +2612,7 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         RequestRefundDto: {
+            /** Format: uuid */
             orderId: string;
             /** @description Tickets to refund; omit for all of your valid tickets in the order */
             ticketIds?: string[];
@@ -3046,21 +2633,22 @@ export interface components {
             reference: string;
         };
         OfferTransferDto: {
-            /** @description Who gets the ticket. They accept by signing in (or signing up) with this address. */
+            /**
+             * Format: email
+             * @description Who gets the ticket. They accept by signing in (or signing up) with this address.
+             */
             email: string;
         };
         TransferTokenDto: {
             /** @description The token from the emailed link (the part after #token=) */
             token: string;
         };
-        /**
-         * @description APPROVED lets them publish; SUSPENDED stops all their ticket sales at once.
-         * @enum {string}
-         */
+        /** @enum {string} */
         OrganizerVerificationStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
         /** @enum {string} */
         OrganizerTrustLevel: "NEW" | "TRUSTED";
         UpdateOrganizerTrustDto: {
+            /** @description APPROVED lets them publish; SUSPENDED stops all their ticket sales at once. */
             verificationStatus?: components["schemas"]["OrganizerVerificationStatus"];
             trustLevel?: components["schemas"]["OrganizerTrustLevel"];
             /** @description Override; null = level default */
@@ -3106,7 +2694,10 @@ export interface components {
             location?: string | null;
             /** @description Your website, starting with https:// */
             website?: string | null;
-            /** @description Public contact email (can differ from your sign-in email) */
+            /**
+             * Format: email
+             * @description Public contact email (can differ from your sign-in email)
+             */
             contactEmail?: string | null;
             /** @description Public contact phone */
             contactPhone?: string | null;
@@ -3126,15 +2717,19 @@ export interface components {
             socialLinks?: {
                 [key: string]: string;
             };
+            /** @description When ticket holders may ask for a refund. Default NONE. */
             refundPolicy?: components["schemas"]["RefundPolicy"];
             name: string;
+            /** Format: uuid */
             categoryId: string;
+            /** Format: uuid */
             venueId: string;
             description?: string;
             startDate: string;
             endDate: string;
             ageRestriction?: number;
             rules?: string;
+            /** Format: email */
             contactEmail?: string;
             contactPhone?: string;
             /** @description With UNTIL_DAYS_BEFORE: refunds close this many days before the start (0–365). */
@@ -3151,15 +2746,19 @@ export interface components {
             socialLinks?: {
                 [key: string]: string;
             };
+            /** @description When ticket holders may ask for a refund. Default NONE. */
             refundPolicy?: components["schemas"]["RefundPolicy"];
             name?: string;
+            /** Format: uuid */
             categoryId?: string;
+            /** Format: uuid */
             venueId?: string;
             description?: string;
             startDate?: string;
             endDate?: string;
             ageRestriction?: number;
             rules?: string;
+            /** Format: email */
             contactEmail?: string;
             contactPhone?: string;
             /** @description With UNTIL_DAYS_BEFORE: refunds close this many days before the start (0–365). */
@@ -3173,16 +2772,23 @@ export interface components {
          */
         CancellationRefundMode: "AUTOMATIC" | "ORGANIZER";
         CancelEventDto: {
+            /** @description AUTOMATIC (default): every ticket holder is refunded in full, booking fee included. ORGANIZER: you handle it; ticket holders may request a refund at any time. */
             refundMode?: components["schemas"]["CancellationRefundMode"];
         };
         DecideEventChangesDto: {
-            /** @description The change request's id, from GET /admin/events/changes */
+            /**
+             * Format: uuid
+             * @description The change request's id, from GET /admin/events/changes
+             */
             requestId: string;
             /** @description The request's updatedAt as you saw it: if the organizer edited it since, the decision is refused */
             updatedAt: string;
         };
         RejectEventChangesDto: {
-            /** @description The change request's id, from GET /admin/events/changes */
+            /**
+             * Format: uuid
+             * @description The change request's id, from GET /admin/events/changes
+             */
             requestId: string;
             /** @description The request's updatedAt as you saw it: if the organizer edited it since, the decision is refused */
             updatedAt: string;
@@ -3226,6 +2832,7 @@ export interface components {
             timestamp: string;
         };
         RegisterDto: {
+            /** Format: email */
             email: string;
             password: string;
             fullName?: string;
@@ -3246,11 +2853,13 @@ export interface components {
             refreshToken: string;
         };
         RegisterOrganizerDto: {
+            /** Format: email */
             email: string;
             password: string;
             businessName: string;
         };
         LoginDto: {
+            /** Format: email */
             email: string;
             password: string;
         };
@@ -3267,14 +2876,17 @@ export interface components {
             success: boolean;
         };
         RequestEmailCodeDto: {
+            /** Format: email */
             email: string;
         };
         VerifyEmailCodeDto: {
+            /** Format: email */
             email: string;
             /** @description The 6 digits from the email */
             code: string;
         };
         ForgotPasswordDto: {
+            /** Format: email */
             email: string;
         };
         ResetPasswordDto: {
@@ -3295,10 +2907,12 @@ export interface components {
         TicketTypeCategory: "REGULAR" | "VIP" | "VVIP" | "EARLY_BIRD" | "STUDENT" | "GROUP" | "FAMILY" | "GENERAL_ADMISSION" | "BACKSTAGE" | "MEET_AND_GREET" | "SEASON_PASS" | "DAY_PASS";
         CreateTicketTypeDto: {
             category?: components["schemas"]["TicketTypeCategory"];
+            /** Format: uuid */
             eventId: string;
             name: string;
             price: number;
             quantityTotal: number;
+            /** Format: uuid */
             accessZoneId?: string;
             salesStart?: string;
             salesEnd?: string;
@@ -3309,6 +2923,7 @@ export interface components {
             name?: string;
             price?: number;
             quantityTotal?: number;
+            /** Format: uuid */
             accessZoneId?: string;
             salesStart?: string;
             salesEnd?: string;
@@ -3317,20 +2932,24 @@ export interface components {
         /** @enum {string} */
         PaymentProviderType: "WAVE" | "BANK_TRANSFER" | "PAYPAL" | "CARD" | "MOCK";
         CheckoutItemDto: {
+            /** Format: uuid */
             ticketTypeId: string;
             quantity: number;
             seatIds?: string[];
         };
         CheckoutDto: {
             provider?: components["schemas"]["PaymentProviderType"];
+            /** Format: uuid */
             eventId: string;
             items: components["schemas"]["CheckoutItemDto"][];
         };
         GuestCheckoutDto: {
             provider?: components["schemas"]["PaymentProviderType"];
+            /** Format: uuid */
             eventId: string;
             items: components["schemas"]["CheckoutItemDto"][];
             fullName: string;
+            /** Format: email */
             email: string;
             /** @description e.g. +220 301 2345 */
             phone?: string;
@@ -3368,7 +2987,9 @@ export interface components {
         };
         CreateCheckInDto: {
             qrToken: string;
+            /** Format: uuid */
             gateId?: string;
+            /** Format: uuid */
             eventId?: string;
             override?: boolean;
         };
@@ -3389,6 +3010,7 @@ export interface components {
             number: string;
         };
         ScannedTicketDto: {
+            /** @description Status before this scan (a VALID scan has just set it to USED). */
             status: components["schemas"]["TicketStatus"];
             id: string;
             ticketType: components["schemas"]["NamedRefDto"];
@@ -3430,10 +3052,14 @@ export interface components {
             gateIds: string[];
         };
         OfflineScanDto: {
-            /** @description The phone's id for this scan: sending it twice is harmless. */
+            /**
+             * Format: uuid
+             * @description The phone's id for this scan: sending it twice is harmless.
+             */
             id: string;
             /** @description sha256 (hex) of the QR code: the same hash the ticket list uses. */
             h: string;
+            /** Format: uuid */
             gateId?: string | null;
             /** @description When it was scanned, by the phone's clock. */
             at: string;
@@ -3449,6 +3075,7 @@ export interface components {
         OfflineSyncDto: {
             /** @description A random id the phone makes once and keeps. */
             deviceId: string;
+            /** Format: uuid */
             gateId?: string | null;
             /** @description "web" or "ios"/"android" for the app. */
             platform?: string;
@@ -3479,10 +3106,12 @@ export interface components {
         };
         CreateGateDto: {
             name: string;
+            /** Format: uuid */
             accessZoneId?: string;
         };
         UpdateGateDto: {
             name?: string;
+            /** Format: uuid */
             accessZoneId?: string | null;
         };
         SetSeatsBlockedDto: {
@@ -3524,11 +3153,17 @@ export interface components {
             firstRow?: string;
             /** @description Places with no seat, as "row-place" counted from 1: ["1-12", "2-12"] for an aisle. */
             removed: string[];
-            /** @description The gate its ticket holders go in by. null = none; leave out to keep it. */
+            /**
+             * Format: uuid
+             * @description The gate its ticket holders go in by. null = none; leave out to keep it.
+             */
             gateId?: string | null;
         };
         EventSectionDto: {
-            /** @description The ticket type the section is sold as; null = not on sale. */
+            /**
+             * Format: uuid
+             * @description The ticket type the section is sold as; null = not on sale.
+             */
             ticketTypeId: string | null;
             /** @description Every seat in the section that is closed for this event (cameras, sound desk). Leave out to keep them. */
             closedSeatIds?: string[];
@@ -3568,13 +3203,16 @@ export interface components {
         StaffRole: "GATE_STAFF" | "SCANNER_OPERATOR" | "SECURITY" | "MANAGER" | "CASHIER" | "VIP_STAFF" | "EVENT_ADMINISTRATOR";
         AssignStaffDto: {
             role: components["schemas"]["StaffRole"];
+            /** Format: email */
             email: string;
+            /** Format: uuid */
             assignedGateId?: string;
             fullName?: string;
             password?: string;
         };
         UpdateStaffAssignmentDto: {
             role?: components["schemas"]["StaffRole"];
+            /** Format: uuid */
             assignedGateId?: string | null;
         };
         /** @enum {string} */
@@ -3655,6 +3293,7 @@ export interface components {
             latestVersion: components["schemas"]["PlatformVersionsDto"];
         };
         AddTrendingPickDto: {
+            /** Format: uuid */
             eventId: string;
             /** @description Shown until (YYYY-MM-DD = the end of that day). Default and latest: the end of the event. */
             until?: string;
@@ -3668,6 +3307,7 @@ export interface components {
             ids: string[];
         };
         HideTrendingEventDto: {
+            /** Format: uuid */
             eventId: string;
         };
         TrendingSettingsDto: {
@@ -3688,7 +3328,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    Notifications_list: {
+    "Notifications_list[0]": {
         parameters: {
             query?: {
                 status?: "PENDING" | "SENT" | "FAILED" | "CANCELLED";
@@ -3710,23 +3350,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Notifications_summary: {
+    "Notifications_summary[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3741,23 +3367,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Notifications_retry: {
+    "Notifications_retry[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3774,23 +3386,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Notifications_run: {
+    "Notifications_run[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3805,23 +3403,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Notifications_scanReminders: {
+    "Notifications_scanReminders[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3836,23 +3420,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_eligibility: {
+    "Refunds_eligibility[0]": {
         parameters: {
             query: {
                 orderId: string;
@@ -3869,23 +3439,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_request: {
+    "Refunds_request[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3904,23 +3460,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_mine: {
+    "Refunds_mine[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3934,26 +3476,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": Record<string, never>;
                 };
-            };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
-    Refunds_withdraw: {
+    "Refunds_withdraw[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -3970,23 +3498,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_listForEvent: {
+    "Refunds_listForEvent[0]": {
         parameters: {
             query?: {
                 status?: "REQUESTED" | "APPROVED" | "REJECTED" | "PROCESSED" | "WITHDRAWN";
@@ -4008,23 +3522,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_refundTickets: {
+    "Refunds_refundTickets[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4045,23 +3545,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_approve: {
+    "Refunds_approve[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4082,23 +3568,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_reject: {
+    "Refunds_reject[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4119,23 +3591,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_adminList: {
+    "Refunds_adminList[0]": {
         parameters: {
             query?: {
                 status?: "REQUESTED" | "APPROVED" | "REJECTED" | "PROCESSED" | "WITHDRAWN";
@@ -4155,23 +3613,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_markPaid: {
+    "Refunds_markPaid[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4192,23 +3636,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_retry: {
+    "Refunds_retry[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4225,23 +3655,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_run: {
+    "Refunds_run[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4256,23 +3672,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_refundPayment: {
+    "Refunds_refundPayment[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4293,23 +3695,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Refunds_refundAll: {
+    "Refunds_refundAll[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4326,23 +3714,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payments_waveWebhook: {
+    "Payments_waveWebhook[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4359,7 +3733,7 @@ export interface operations {
             };
         };
     };
-    Payments_cardWebhook: {
+    "Payments_cardWebhook[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4378,7 +3752,7 @@ export interface operations {
             };
         };
     };
-    Payments_confirmBankTransfer: {
+    "Payments_confirmBankTransfer[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4397,23 +3771,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Transfers_offer: {
+    "Transfers_offer[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4434,23 +3794,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Transfers_mine: {
+    "Transfers_mine[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4465,23 +3811,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Transfers_cancel: {
+    "Transfers_cancel[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4498,23 +3830,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Transfers_resend: {
+    "Transfers_resend[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4531,23 +3849,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Transfers_preview: {
+    "Transfers_preview[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4568,35 +3872,7 @@ export interface operations {
             };
         };
     };
-    Transfers_accept: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TransferTokenDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    Transfers_decline: {
+    "Transfers_accept[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4617,7 +3893,28 @@ export interface operations {
             };
         };
     };
-    OrganizersAdmin_list: {
+    "Transfers_decline[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferTokenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "OrganizersAdmin_list[0]": {
         parameters: {
             query?: {
                 verificationStatus?: components["schemas"]["OrganizerVerificationStatus"];
@@ -4639,23 +3936,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizersAdmin_get: {
+    "OrganizersAdmin_get[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4672,23 +3955,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizersAdmin_update: {
+    "OrganizersAdmin_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4709,23 +3978,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizersAdmin_reviewQueue: {
+    "OrganizersAdmin_reviewQueue[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4740,23 +3995,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizersAdmin_approve: {
+    "OrganizersAdmin_approve[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4773,23 +4014,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizersAdmin_reject: {
+    "OrganizersAdmin_reject[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4810,23 +4037,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerProfile_publicProfile: {
+    "OrganizerProfile_publicProfile[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4845,7 +4058,7 @@ export interface operations {
             };
         };
     };
-    OrganizerProfile_getMine: {
+    "OrganizerProfile_getMine[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4860,23 +4073,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerProfile_update: {
+    "OrganizerProfile_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4895,23 +4094,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerProfile_uploadImage: {
+    "OrganizerProfile_uploadImage[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4949,23 +4134,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerProfile_removeImage: {
+    "OrganizerProfile_removeImage[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -4982,23 +4153,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerProfile_adminUpdate: {
+    "OrganizerProfile_adminUpdate[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5019,23 +4176,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerProfile_adminRemoveImage: {
+    "OrganizerProfile_adminRemoveImage[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5053,23 +4196,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Events_findPublished: {
+    "Events_findPublished[0]": {
         parameters: {
             query?: {
                 search?: string;
@@ -5093,7 +4222,7 @@ export interface operations {
             };
         };
     };
-    Events_create: {
+    "Events_create[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5112,23 +4241,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Events_findMine: {
+    "Events_findMine[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5143,23 +4258,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Events_findOne: {
+    "Events_findOne[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5180,7 +4281,7 @@ export interface operations {
             };
         };
     };
-    Events_update: {
+    "Events_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5203,23 +4304,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Events_remove: {
+    "Events_remove[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5236,23 +4323,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Events_publish: {
+    "Events_publish[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5269,23 +4342,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Events_cancel: {
+    "Events_cancel[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5306,23 +4365,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventImages_upload: {
+    "EventImages_upload[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5363,23 +4408,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventImages_remove: {
+    "EventImages_remove[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5399,23 +4430,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Categories_findAll: {
+    "Categories_findAll[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5428,11 +4445,13 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
-    EventChanges_withdraw: {
+    "EventChanges_withdraw[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5449,23 +4468,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventChanges_list: {
+    "EventChanges_list[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5480,23 +4485,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventChanges_approve: {
+    "EventChanges_approve[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5517,23 +4508,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventChanges_reject: {
+    "EventChanges_reject[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5554,23 +4531,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_summary: {
+    "Payouts_summary[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5585,23 +4548,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_mine: {
+    "Payouts_mine[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5616,23 +4565,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_request: {
+    "Payouts_request[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5651,23 +4586,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_setAccount: {
+    "Payouts_setAccount[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5688,23 +4609,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_cancel: {
+    "Payouts_cancel[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5721,23 +4628,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_adminList: {
+    "Payouts_adminList[0]": {
         parameters: {
             query?: {
                 status?: "REQUESTED" | "APPROVED" | "PAID" | "REJECTED" | "CANCELLED";
@@ -5754,23 +4647,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_adminOrganizer: {
+    "Payouts_adminOrganizer[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5787,23 +4666,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_verifyAccount: {
+    "Payouts_verifyAccount[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5826,23 +4691,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_approve: {
+    "Payouts_approve[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5859,23 +4710,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_reject: {
+    "Payouts_reject[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5896,23 +4733,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Payouts_markPaid: {
+    "Payouts_markPaid[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5933,23 +4756,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Health_check: {
+    "Health_check[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5968,7 +4777,7 @@ export interface operations {
             };
         };
     };
-    Auth_register: {
+    "Auth_register[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5991,7 +4800,7 @@ export interface operations {
             };
         };
     };
-    Auth_registerOrganizer: {
+    "Auth_registerOrganizer[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6012,7 +4821,7 @@ export interface operations {
             };
         };
     };
-    Auth_login: {
+    "Auth_login[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6035,7 +4844,7 @@ export interface operations {
             };
         };
     };
-    Auth_refresh: {
+    "Auth_refresh[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6059,7 +4868,7 @@ export interface operations {
             };
         };
     };
-    Auth_logout: {
+    "Auth_logout[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6082,7 +4891,7 @@ export interface operations {
             };
         };
     };
-    Auth_requestEmailCode: {
+    "Auth_requestEmailCode[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6103,7 +4912,7 @@ export interface operations {
             };
         };
     };
-    Auth_verifyEmailCode: {
+    "Auth_verifyEmailCode[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6126,7 +4935,7 @@ export interface operations {
             };
         };
     };
-    Auth_forgotPassword: {
+    "Auth_forgotPassword[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6147,7 +4956,7 @@ export interface operations {
             };
         };
     };
-    Auth_resetPassword: {
+    "Auth_resetPassword[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6168,7 +4977,7 @@ export interface operations {
             };
         };
     };
-    Auth_me: {
+    "Auth_me[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6185,16 +4994,9 @@ export interface operations {
                     "application/json": components["schemas"]["CurrentUserDto"];
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Admin_ping: {
+    "Admin_ping[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6209,23 +5011,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminDashboard_stats: {
+    "AdminDashboard_stats[0]": {
         parameters: {
             query?: {
                 /** @description today (since midnight, by hour), 7d and 30d (by day), year (since 1 January, by month). Default 30d. */
@@ -6243,23 +5031,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminDashboard_attention: {
+    "AdminDashboard_attention[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6274,23 +5048,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminDashboard_cardFlags: {
+    "AdminDashboard_cardFlags[0]": {
         parameters: {
             query?: {
                 /** @description open (default): still to refund; resolved: refunded by hand; all */
@@ -6308,23 +5068,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminDashboard_resolveCardFlag: {
+    "AdminDashboard_resolveCardFlag[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6345,23 +5091,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminDashboard_auditLog: {
+    "AdminDashboard_auditLog[0]": {
         parameters: {
             query?: {
                 /** @description e.g. organizer_trust_updated, payout_approved, card_paid_after_order_closed */
@@ -6385,23 +5117,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminDashboard_auditLogFacets: {
+    "AdminDashboard_auditLogFacets[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6416,23 +5134,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    TicketTypes_create: {
+    "TicketTypes_create[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6451,23 +5155,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    TicketTypes_findForEvent: {
+    "TicketTypes_findForEvent[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6486,7 +5176,7 @@ export interface operations {
             };
         };
     };
-    TicketTypes_update: {
+    "TicketTypes_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6507,23 +5197,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Orders_checkout: {
+    "Orders_checkout[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6544,23 +5220,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Orders_guestCheckout: {
+    "Orders_guestCheckout[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6583,7 +5245,7 @@ export interface operations {
             };
         };
     };
-    Orders_findMine: {
+    "Orders_findMine[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6600,16 +5262,9 @@ export interface operations {
                     "application/json": Record<string, never>[];
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Orders_findOne: {
+    "Orders_findOne[0]": {
         parameters: {
             query?: never;
             header: {
@@ -6634,7 +5289,7 @@ export interface operations {
             };
         };
     };
-    Orders_pay: {
+    "Orders_pay[0]": {
         parameters: {
             query?: never;
             header: {
@@ -6663,7 +5318,7 @@ export interface operations {
             };
         };
     };
-    Fees_forEvent: {
+    "Fees_forEvent[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6682,7 +5337,7 @@ export interface operations {
             };
         };
     };
-    Fees_setIncluded: {
+    "Fees_setIncluded[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6703,23 +5358,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_view: {
+    "Fees_view[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6734,23 +5375,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_setGlobal: {
+    "Fees_setGlobal[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6769,23 +5396,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_setHost: {
+    "Fees_setHost[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6806,23 +5419,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_removeHost: {
+    "Fees_removeHost[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6839,23 +5438,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_setRefundRule: {
+    "Fees_setRefundRule[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6874,23 +5459,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_setEvent: {
+    "Fees_setEvent[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6911,23 +5482,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_removeEvent: {
+    "Fees_removeEvent[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -6944,23 +5501,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Fees_earnings: {
+    "Fees_earnings[0]": {
         parameters: {
             query?: {
                 period?: "today" | "7d" | "30d" | "year";
@@ -6977,23 +5520,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Tickets_findMine: {
+    "Tickets_findMine[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7007,19 +5536,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": Record<string, never>;
                 };
-            };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
-    Tickets_findOne: {
+    "Tickets_findOne[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7038,16 +5560,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Tickets_getQr: {
+    "Tickets_getQr[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7064,16 +5579,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_checkIn: {
+    "CheckIns_checkIn[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7095,23 +5603,9 @@ export interface operations {
                     "application/json": components["schemas"]["CheckInResponseDto"];
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_findForEvent: {
+    "CheckIns_findForEvent[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7130,23 +5624,9 @@ export interface operations {
                     "application/json": Record<string, never>[];
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_gateSetup: {
+    "CheckIns_gateSetup[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7163,23 +5643,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_setGateRules: {
+    "CheckIns_setGateRules[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7200,23 +5666,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_setTicketTypeGates: {
+    "CheckIns_setTicketTypeGates[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7237,23 +5689,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_gateStats: {
+    "CheckIns_gateStats[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7270,23 +5708,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_sync: {
+    "CheckIns_sync[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7307,23 +5731,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    CheckIns_gatePhones: {
+    "CheckIns_gatePhones[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7340,23 +5750,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Venues_findAll: {
+    "Venues_findAll[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7373,7 +5769,7 @@ export interface operations {
             };
         };
     };
-    Venues_create: {
+    "Venues_create[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7392,23 +5788,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Venues_findOne: {
+    "Venues_findOne[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7427,7 +5809,7 @@ export interface operations {
             };
         };
     };
-    Venues_createSection: {
+    "Venues_createSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7448,23 +5830,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Venues_createAccessZone: {
+    "Venues_createAccessZone[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7485,23 +5853,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Venues_createGate: {
+    "Venues_createGate[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7524,23 +5878,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Venues_updateGate: {
+    "Venues_updateGate[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7563,23 +5903,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Venues_setSeatsBlocked: {
+    "Venues_setSeatsBlocked[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7600,23 +5926,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_list: {
+    "AdminVenues_list[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7631,23 +5943,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_create: {
+    "AdminVenues_create[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7666,23 +5964,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_setSharing: {
+    "AdminVenues_setSharing[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7703,23 +5987,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_addSection: {
+    "AdminVenues_addSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7740,23 +6010,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_updateSection: {
+    "AdminVenues_updateSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7777,23 +6033,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_deleteSection: {
+    "AdminVenues_deleteSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7810,23 +6052,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_renameSection: {
+    "AdminVenues_renameSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7847,23 +6075,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_detail: {
+    "AdminVenues_detail[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7880,23 +6094,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_update: {
+    "AdminVenues_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7917,23 +6117,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_addGate: {
+    "AdminVenues_addGate[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7954,23 +6140,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_check: {
+    "AdminVenues_check[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -7994,23 +6166,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminVenues_apply: {
+    "AdminVenues_apply[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8034,23 +6192,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_list: {
+    "OrganizerVenues_list[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8065,23 +6209,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_create: {
+    "OrganizerVenues_create[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8100,23 +6230,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_detail: {
+    "OrganizerVenues_detail[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8133,23 +6249,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_update: {
+    "OrganizerVenues_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8170,23 +6272,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_addGate: {
+    "OrganizerVenues_addGate[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8207,23 +6295,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_check: {
+    "OrganizerVenues_check[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8247,23 +6321,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_apply: {
+    "OrganizerVenues_apply[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8287,23 +6347,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_addSection: {
+    "OrganizerVenues_addSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8324,23 +6370,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_updateSection: {
+    "OrganizerVenues_updateSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8361,23 +6393,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_deleteSection: {
+    "OrganizerVenues_deleteSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8394,23 +6412,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    OrganizerVenues_renameSection: {
+    "OrganizerVenues_renameSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8431,23 +6435,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Seating_seatMap: {
+    "Seating_seatMap[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8466,7 +6456,7 @@ export interface operations {
             };
         };
     };
-    Seating_sectionSeats: {
+    "Seating_sectionSeats[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8486,7 +6476,7 @@ export interface operations {
             };
         };
     };
-    Seating_view: {
+    "Seating_view[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8503,23 +6493,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Seating_ownerSectionSeats: {
+    "Seating_ownerSectionSeats[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8537,23 +6513,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Seating_updateSection: {
+    "Seating_updateSection[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8575,23 +6537,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Templates_save: {
+    "Templates_save[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8612,23 +6560,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Templates_list: {
+    "Templates_list[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8643,23 +6577,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Templates_remove: {
+    "Templates_remove[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8676,23 +6596,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Templates_rename: {
+    "Templates_rename[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8713,23 +6619,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Templates_use: {
+    "Templates_use[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8750,23 +6642,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Me_get: {
+    "Me_get[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8781,23 +6659,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Me_update: {
+    "Me_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8816,23 +6680,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Me_setPassword: {
+    "Me_setPassword[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8851,23 +6701,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Me_orders: {
+    "Me_orders[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8882,23 +6718,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Dashboard_overview: {
+    "Dashboard_overview[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8913,23 +6735,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Dashboard_eventDashboard: {
+    "Dashboard_eventDashboard[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -8946,23 +6754,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Dashboard_orders: {
+    "Dashboard_orders[0]": {
         parameters: {
             query: {
                 status?: components["schemas"]["OrderStatus"];
@@ -8984,23 +6778,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Dashboard_tickets: {
+    "Dashboard_tickets[0]": {
         parameters: {
             query: {
                 status?: components["schemas"]["TicketStatus"];
@@ -9022,23 +6802,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventStaff_roster: {
+    "EventStaff_roster[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9053,23 +6819,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventStaff_list: {
+    "EventStaff_list[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9088,23 +6840,9 @@ export interface operations {
                     "application/json": Record<string, never>[];
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventStaff_assign: {
+    "EventStaff_assign[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9125,23 +6863,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventStaff_update: {
+    "EventStaff_update[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9165,23 +6889,9 @@ export interface operations {
                     "application/json": Record<string, never>;
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    EventStaff_remove: {
+    "EventStaff_remove[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9199,23 +6909,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Scanner_events: {
+    "Scanner_events[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9232,23 +6928,9 @@ export interface operations {
                     "application/json": components["schemas"]["ScannerEventDto"][];
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    Scanner_progress: {
+    "Scanner_progress[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9267,23 +6949,9 @@ export interface operations {
                     "application/json": components["schemas"]["ScanProgressDto"];
                 };
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AppConfig_get: {
+    "AppConfig_get[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9302,7 +6970,7 @@ export interface operations {
             };
         };
     };
-    Storefront_discover: {
+    "Storefront_discover[0]": {
         parameters: {
             query?: {
                 /** @description Date buttons on Discover: all (default), weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`) */
@@ -9329,7 +6997,7 @@ export interface operations {
             };
         };
     };
-    AdminTrending_view: {
+    "AdminTrending_view[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9344,23 +7012,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_search: {
+    "AdminTrending_search[0]": {
         parameters: {
             query?: {
                 /** @description Part of the event's or host's name */
@@ -9378,23 +7032,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_addPick: {
+    "AdminTrending_addPick[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9413,23 +7053,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_removePick: {
+    "AdminTrending_removePick[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9446,23 +7072,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_updatePick: {
+    "AdminTrending_updatePick[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9483,23 +7095,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_reorder: {
+    "AdminTrending_reorder[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9518,23 +7116,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_hide: {
+    "AdminTrending_hide[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9553,23 +7137,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_unhide: {
+    "AdminTrending_unhide[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9586,23 +7156,9 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
-    AdminTrending_settings: {
+    "AdminTrending_settings[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -9622,20 +7178,6 @@ export interface operations {
                 content: {
                     "application/json": Record<string, never>;
                 };
-            };
-            /** @description Missing or expired access token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Signed in, but this role (or account) may not do this */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

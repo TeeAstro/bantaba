@@ -49,8 +49,8 @@ Route guards and roles on every controller; ownership checks for events, ticket 
 
 ## Still to do before launch
 
-- **Framework upgrades.** `npm audit` lists advisories in NestJS 10 (multer, body-parser, swagger's js-yaml and lodash) and Next.js 14.2 (fixed in Next 15/16). Fixes need major upgrades (NestJS 12, Next 15+), done with deployment so they're tested together. sharp (0.35.5) and nodemailer (10) are already updated.
-- **Rate limits across several servers.** Limits are kept per server process. With more than one server, move them to Redis (`REDIS_URL` is in `.env.example`).
+- ~~**Framework upgrades.**~~ Done in Phase 22: NestJS 12 (Express 5), Next.js 16, React 19, TypeScript 6. `npm audit` finds nothing in either app.
+- ~~**Rate limits across several servers.**~~ Done in Phase 22: with `REDIS_URL` the limits are kept in Redis, shared by every server (`common/rate-limit.ts`). If Redis can't be reached, calls are allowed and it's logged.
 - **Refresh tokens in cookies.** The web app keeps sign-in tokens in the browser's storage; the content security policy makes stealing them through injected scripts much harder. An httpOnly cookie for the refresh token is the next step.
 - **Wave direct.** `wave.provider.ts` doesn't match Wave's current webhook signing (it fails safe: no payment completes). Payments go through Modem Pay; fix this only if Wave is connected directly.
 - **QR codes.** The stored QR image contains the ticket code, so a database backup can make working QRs. Protect backups like the database itself.
@@ -64,5 +64,7 @@ A production server (`NODE_ENV=production`) refuses to start unless:
 - `SMTP_HOST` is set (and `MAIL_TRANSPORT` isn't `log`);
 - `MODEMPAY_SECRET_KEY` and `MODEMPAY_WEBHOOK_SECRET` are set (not test values);
 - `ALLOW_MOCK_PAYMENTS` and `RATE_LIMITS=off` are not set.
+
+Modem Pay test keys are refused unless `MODEMPAY_TEST_MODE=true` (for the site before launch; it logs a warning). Remove it with the live keys.
 
 Set `TRUST_PROXY` to the number of proxies in front of the server (usually 1 behind a load balancer).

@@ -3,22 +3,20 @@
   "paths": {
     "/api/v1/admin/notifications": {
       "get": {
-        "operationId": "Notifications_list",
-        "summary": "",
-        "description": "Outbox rows, newest first.\n\n**Roles:** ADMIN",
+        "operationId": "Notifications_list[0]",
         "parameters": [
           {
             "name": "status",
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string",
               "enum": [
                 "PENDING",
                 "SENT",
                 "FAILED",
                 "CANCELLED"
-              ],
-              "type": "string"
+              ]
             }
           },
           {
@@ -35,6 +33,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "format": "uuid",
               "type": "string"
             }
           },
@@ -61,56 +60,32 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Outbox rows, newest first.",
         "tags": [
           "Notifications"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/notifications/summary": {
       "get": {
-        "operationId": "Notifications_summary",
-        "summary": "",
-        "description": "Counts by status, for a quick health check.\n\n**Roles:** ADMIN",
+        "operationId": "Notifications_summary[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Counts by status, for a quick health check.",
         "tags": [
           "Notifications"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/notifications/{id}/retry": {
       "post": {
-        "operationId": "Notifications_retry",
-        "summary": "",
-        "description": "Queue a FAILED or CANCELLED message again (e.g. after fixing the mail settings).\n\n**Roles:** ADMIN",
+        "operationId": "Notifications_retry[0]",
         "parameters": [
           {
             "name": "id",
@@ -124,87 +99,54 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Queue a FAILED or CANCELLED message again (e.g. after fixing the mail settings).",
         "tags": [
           "Notifications"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/notifications/run": {
       "post": {
-        "operationId": "Notifications_run",
-        "summary": "",
-        "description": "Send everything that's due now instead of waiting for the next poll.\n\n**Roles:** ADMIN",
+        "operationId": "Notifications_run[0]",
         "parameters": [],
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Send everything that's due now instead of waiting for the next poll.",
         "tags": [
           "Notifications"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/notifications/scan-reminders": {
       "post": {
-        "operationId": "Notifications_scanReminders",
-        "summary": "",
-        "description": "Queue due event reminders now instead of waiting for the next scan.\n\n**Roles:** ADMIN",
+        "operationId": "Notifications_scanReminders[0]",
         "parameters": [],
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Queue due event reminders now instead of waiting for the next scan.",
         "tags": [
           "Notifications"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/refunds/eligibility": {
       "get": {
-        "operationId": "Refunds_eligibility",
+        "operationId": "Refunds_eligibility[0]",
         "parameters": [
           {
             "name": "orderId",
             "required": true,
             "in": "query",
             "schema": {
+              "format": "uuid",
               "type": "string"
             }
           }
@@ -212,30 +154,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** CUSTOMER"
+        ]
       }
     },
     "/api/v1/refunds": {
       "post": {
-        "operationId": "Refunds_request",
-        "summary": "",
-        "description": "Ask for a refund. The organizer decides; you're emailed either way.\n\n**Roles:** CUSTOMER",
+        "operationId": "Refunds_request[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -250,29 +178,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Ask for a refund. The organizer decides; you're emailed either way.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/refunds/mine": {
       "get": {
-        "operationId": "Refunds_mine",
-        "summary": "",
-        "description": "Your refunds and requests.\n\n**Roles:** CUSTOMER",
+        "operationId": "Refunds_mine[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -280,36 +196,21 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
+                  "type": "object"
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Your refunds and requests.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/refunds/{id}/withdraw": {
       "post": {
-        "operationId": "Refunds_withdraw",
-        "summary": "",
-        "description": "Take back a request that hasn't been decided yet.\n\n**Roles:** CUSTOMER",
+        "operationId": "Refunds_withdraw[0]",
         "parameters": [
           {
             "name": "id",
@@ -323,27 +224,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Take back a request that hasn't been decided yet.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/events/{id}/refunds": {
       "get": {
-        "operationId": "Refunds_listForEvent",
+        "operationId": "Refunds_listForEvent[0]",
         "parameters": [
           {
             "name": "id",
@@ -358,14 +249,14 @@
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string",
               "enum": [
                 "REQUESTED",
                 "APPROVED",
                 "REJECTED",
                 "PROCESSED",
                 "WITHDRAWN"
-              ],
-              "type": "string"
+              ]
             }
           },
           {
@@ -373,11 +264,11 @@
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string",
               "enum": [
                 "PROVIDER",
                 "MANUAL"
-              ],
-              "type": "string"
+              ]
             }
           },
           {
@@ -403,28 +294,14 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       },
       "post": {
-        "operationId": "Refunds_refundTickets",
-        "summary": "",
-        "description": "Refund tickets directly (no request needed). Tickets stop working immediately.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "Refunds_refundTickets[0]",
         "parameters": [
           {
             "name": "id",
@@ -448,27 +325,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Refund tickets directly (no request needed). Tickets stop working immediately.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/refunds/{id}/approve": {
       "post": {
-        "operationId": "Refunds_approve",
+        "operationId": "Refunds_approve[0]",
         "parameters": [
           {
             "name": "id",
@@ -492,28 +359,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/refunds/{id}/reject": {
       "post": {
-        "operationId": "Refunds_reject",
+        "operationId": "Refunds_reject[0]",
         "parameters": [
           {
             "name": "id",
@@ -537,42 +392,30 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/admin/refunds": {
       "get": {
-        "operationId": "Refunds_adminList",
+        "operationId": "Refunds_adminList[0]",
         "parameters": [
           {
             "name": "status",
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string",
               "enum": [
                 "REQUESTED",
                 "APPROVED",
                 "REJECTED",
                 "PROCESSED",
                 "WITHDRAWN"
-              ],
-              "type": "string"
+              ]
             }
           },
           {
@@ -580,11 +423,11 @@
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string",
               "enum": [
                 "PROVIDER",
                 "MANUAL"
-              ],
-              "type": "string"
+              ]
             }
           },
           {
@@ -610,30 +453,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/admin/refunds/{id}/mark-paid": {
       "post": {
-        "operationId": "Refunds_markPaid",
-        "summary": "",
-        "description": "A manual refund has been paid back: record the reference and tell the customer.\n\n**Roles:** ADMIN",
+        "operationId": "Refunds_markPaid[0]",
         "parameters": [
           {
             "name": "id",
@@ -657,29 +486,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "A manual refund has been paid back: record the reference and tell the customer.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/refunds/{id}/retry": {
       "post": {
-        "operationId": "Refunds_retry",
-        "summary": "",
-        "description": "Try a failed provider refund again.\n\n**Roles:** ADMIN",
+        "operationId": "Refunds_retry[0]",
         "parameters": [
           {
             "name": "id",
@@ -693,56 +510,32 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Try a failed provider refund again.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/refunds/run": {
       "post": {
-        "operationId": "Refunds_run",
-        "summary": "",
-        "description": "Send due provider refunds now.\n\n**Roles:** ADMIN",
+        "operationId": "Refunds_run[0]",
         "parameters": [],
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Send due provider refunds now.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/payments/{id}/refund": {
       "post": {
-        "operationId": "Refunds_refundPayment",
-        "summary": "",
-        "description": "Refund one payment in full: all its tickets and the booking fee (Phase 6 endpoint, now real).\n\n**Roles:** ADMIN",
+        "operationId": "Refunds_refundPayment[0]",
         "parameters": [
           {
             "name": "id",
@@ -766,29 +559,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Refund one payment in full: all its tickets and the booking fee (Phase 6 endpoint, now real).",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/events/{id}/refund-all": {
       "post": {
-        "operationId": "Refunds_refundAll",
-        "summary": "",
-        "description": "Refund everyone for a cancelled event whose organizer chose to handle refunds.\n\n**Roles:** ADMIN",
+        "operationId": "Refunds_refundAll[0]",
         "parameters": [
           {
             "name": "id",
@@ -802,27 +583,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Refund everyone for a cancelled event whose organizer chose to handle refunds.",
         "tags": [
           "Refunds"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/payments/webhook/wave": {
       "post": {
-        "operationId": "Payments_waveWebhook",
+        "operationId": "Payments_waveWebhook[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -836,7 +607,7 @@
     },
     "/api/v1/payments/webhook/card": {
       "post": {
-        "operationId": "Payments_cardWebhook",
+        "operationId": "Payments_cardWebhook[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -857,7 +628,7 @@
     },
     "/api/v1/payments/{id}/confirm-bank-transfer": {
       "post": {
-        "operationId": "Payments_confirmBankTransfer",
+        "operationId": "Payments_confirmBankTransfer[0]",
         "parameters": [
           {
             "name": "id",
@@ -878,30 +649,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Payments"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/tickets/{id}/transfer": {
       "post": {
-        "operationId": "Transfers_offer",
-        "summary": "",
-        "description": "Offer one of your tickets to someone by email.\n\n**Roles:** CUSTOMER",
+        "operationId": "Transfers_offer[0]",
         "parameters": [
           {
             "name": "id",
@@ -925,56 +682,32 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Offer one of your tickets to someone by email.",
         "tags": [
           "Transfers"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/transfers/mine": {
       "get": {
-        "operationId": "Transfers_mine",
-        "summary": "",
-        "description": "Transfers you've sent and received.\n\n**Roles:** CUSTOMER",
+        "operationId": "Transfers_mine[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Transfers you've sent and received.",
         "tags": [
           "Transfers"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/transfers/{id}/cancel": {
       "post": {
-        "operationId": "Transfers_cancel",
-        "summary": "",
-        "description": "Take back an offer that hasn't been accepted yet.\n\n**Roles:** CUSTOMER",
+        "operationId": "Transfers_cancel[0]",
         "parameters": [
           {
             "name": "id",
@@ -988,29 +721,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Take back an offer that hasn't been accepted yet.",
         "tags": [
           "Transfers"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/transfers/{id}/resend": {
       "post": {
-        "operationId": "Transfers_resend",
-        "summary": "",
-        "description": "Email a fresh link (the previous one stops working).\n\n**Roles:** CUSTOMER",
+        "operationId": "Transfers_resend[0]",
         "parameters": [
           {
             "name": "id",
@@ -1024,29 +745,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Email a fresh link (the previous one stops working).",
         "tags": [
           "Transfers"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/transfers/preview": {
       "post": {
-        "operationId": "Transfers_preview",
-        "summary": "",
-        "description": "What's being offered (no sign-in needed; the token is the proof). POST so the token stays out of URLs and logs.",
+        "operationId": "Transfers_preview[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1063,6 +772,7 @@
             "description": ""
           }
         },
+        "summary": "What's being offered (no sign-in needed; the token is the proof). POST so the token stays out of URLs and logs.",
         "tags": [
           "Transfers"
         ]
@@ -1070,9 +780,7 @@
     },
     "/api/v1/transfers/accept": {
       "post": {
-        "operationId": "Transfers_accept",
-        "summary": "",
-        "description": "Accept: signed in with the address the ticket was sent to. The ticket gets a new QR code.",
+        "operationId": "Transfers_accept[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1087,26 +795,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
           }
         },
+        "summary": "Accept: signed in with the address the ticket was sent to. The ticket gets a new QR code.",
         "tags": [
           "Transfers"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/transfers/decline": {
       "post": {
-        "operationId": "Transfers_decline",
-        "summary": "",
-        "description": "Decline (no sign-in needed).",
+        "operationId": "Transfers_decline[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1123,6 +822,7 @@
             "description": ""
           }
         },
+        "summary": "Decline (no sign-in needed).",
         "tags": [
           "Transfers"
         ]
@@ -1130,9 +830,7 @@
     },
     "/api/v1/admin/organizers": {
       "get": {
-        "operationId": "OrganizersAdmin_list",
-        "summary": "",
-        "description": "Organizers with their approval, trust level and effective permissions.\n\n**Roles:** ADMIN",
+        "operationId": "OrganizersAdmin_list[0]",
         "parameters": [
           {
             "name": "verificationStatus",
@@ -1166,38 +864,28 @@
             "in": "query",
             "description": "payout_account: payout details waiting to be checked; lookalike: name resembles a verified organizer's",
             "schema": {
+              "type": "string",
               "enum": [
                 "payout_account",
                 "lookalike"
-              ],
-              "type": "string"
+              ]
             }
           }
         ],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Organizers with their approval, trust level and effective permissions.",
         "tags": [
-          "Organizers Admin"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizersAdmin"
         ]
       }
     },
     "/api/v1/admin/organizers/{id}": {
       "get": {
-        "operationId": "OrganizersAdmin_get",
+        "operationId": "OrganizersAdmin_get[0]",
         "parameters": [
           {
             "name": "id",
@@ -1211,28 +899,14 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizers Admin"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+          "OrganizersAdmin"
+        ]
       },
       "patch": {
-        "operationId": "OrganizersAdmin_update",
-        "summary": "",
-        "description": "Approve/suspend, set the trust level, override single permissions or limits.\n\n**Roles:** ADMIN",
+        "operationId": "OrganizersAdmin_update[0]",
         "parameters": [
           {
             "name": "id",
@@ -1256,56 +930,32 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Approve/suspend, set the trust level, override single permissions or limits.",
         "tags": [
-          "Organizers Admin"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizersAdmin"
         ]
       }
     },
     "/api/v1/admin/events/review": {
       "get": {
-        "operationId": "OrganizersAdmin_reviewQueue",
-        "summary": "",
-        "description": "Events waiting for review, oldest first.\n\n**Roles:** ADMIN",
+        "operationId": "OrganizersAdmin_reviewQueue[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Events waiting for review, oldest first.",
         "tags": [
-          "Organizers Admin"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizersAdmin"
         ]
       }
     },
     "/api/v1/admin/events/{id}/approve": {
       "post": {
-        "operationId": "OrganizersAdmin_approve",
-        "summary": "",
-        "description": "Approve: the event goes on sale and the organizer is emailed.\n\n**Roles:** ADMIN",
+        "operationId": "OrganizersAdmin_approve[0]",
         "parameters": [
           {
             "name": "id",
@@ -1319,29 +969,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Approve: the event goes on sale and the organizer is emailed.",
         "tags": [
-          "Organizers Admin"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizersAdmin"
         ]
       }
     },
     "/api/v1/admin/events/{id}/reject": {
       "post": {
-        "operationId": "OrganizersAdmin_reject",
-        "summary": "",
-        "description": "Send back to draft with a note telling the organizer what to change.\n\n**Roles:** ADMIN",
+        "operationId": "OrganizersAdmin_reject[0]",
         "parameters": [
           {
             "name": "id",
@@ -1365,29 +1003,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Send back to draft with a note telling the organizer what to change.",
         "tags": [
-          "Organizers Admin"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizersAdmin"
         ]
       }
     },
     "/api/v1/organizers/{slug}": {
       "get": {
-        "operationId": "OrganizerProfile_publicProfile",
-        "summary": "",
-        "description": "An organizer's public profile: picture, banner, about, contact, social links, upcoming and recent events. By URL name (slug) or id.",
+        "operationId": "OrganizerProfile_publicProfile[0]",
         "parameters": [
           {
             "name": "slug",
@@ -1403,47 +1029,28 @@
             "description": ""
           }
         },
+        "summary": "An organizer's public profile: picture, banner, about, contact, social links, upcoming and recent events. By URL name (slug) or id.",
         "tags": [
-          "Organizer Profile"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
+          "OrganizerProfile"
         ]
       }
     },
     "/api/v1/organizer/profile": {
       "get": {
-        "operationId": "OrganizerProfile_getMine",
-        "summary": "",
-        "description": "Your profile, as you'd edit it.\n\n**Roles:** ORGANIZER",
+        "operationId": "OrganizerProfile_getMine[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Your profile, as you'd edit it.",
         "tags": [
-          "Organizer Profile"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerProfile"
         ]
       },
       "put": {
-        "operationId": "OrganizerProfile_update",
-        "summary": "",
-        "description": "Update your about, location, website, contact details and social links.\n\n**Roles:** ORGANIZER",
+        "operationId": "OrganizerProfile_update[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1458,29 +1065,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Update your about, location, website, contact details and social links.",
         "tags": [
-          "Organizer Profile"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerProfile"
         ]
       }
     },
     "/api/v1/organizer/profile/images/{kind}": {
       "post": {
-        "operationId": "OrganizerProfile_uploadImage",
-        "summary": "",
-        "description": "Upload your profile picture (logo: 1:1, stored 800×800) or banner\n(3:1, stored 1920×640). JPEG, PNG or WebP up to 10 MB; crop or fit as\nfor event images.\n\n**Roles:** ORGANIZER",
+        "operationId": "OrganizerProfile_uploadImage[0]",
         "parameters": [
           {
             "name": "kind",
@@ -1553,25 +1148,15 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Upload your profile picture (logo: 1:1, stored 800×800) or banner\n(3:1, stored 1920×640). JPEG, PNG or WebP up to 10 MB; crop or fit as\nfor event images.",
         "tags": [
-          "Organizer Profile"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerProfile"
         ]
       },
       "delete": {
-        "operationId": "OrganizerProfile_removeImage",
+        "operationId": "OrganizerProfile_removeImage[0]",
         "parameters": [
           {
             "name": "kind",
@@ -1589,30 +1174,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Profile"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerProfile"
+        ]
       }
     },
     "/api/v1/admin/organizers/{id}/profile": {
       "patch": {
-        "operationId": "OrganizerProfile_adminUpdate",
-        "summary": "",
-        "description": "Admin moderation: edit or clear an organizer's profile text.\n\n**Roles:** ADMIN",
+        "operationId": "OrganizerProfile_adminUpdate[0]",
         "parameters": [
           {
             "name": "id",
@@ -1636,29 +1207,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Admin moderation: edit or clear an organizer's profile text.",
         "tags": [
-          "Organizer Profile"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerProfile"
         ]
       }
     },
     "/api/v1/admin/organizers/{id}/images/{kind}": {
       "delete": {
-        "operationId": "OrganizerProfile_adminRemoveImage",
-        "summary": "",
-        "description": "Admin moderation: remove an organizer's profile picture or banner.\n\n**Roles:** ADMIN",
+        "operationId": "OrganizerProfile_adminRemoveImage[0]",
         "parameters": [
           {
             "name": "id",
@@ -1684,27 +1243,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Admin moderation: remove an organizer's profile picture or banner.",
         "tags": [
-          "Organizer Profile"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerProfile"
         ]
       }
     },
     "/api/v1/events": {
       "post": {
-        "operationId": "Events_create",
+        "operationId": "Events_create[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1719,26 +1268,14 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Events"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+        ]
       },
       "get": {
-        "operationId": "Events_findPublished",
+        "operationId": "Events_findPublished[0]",
         "parameters": [
           {
             "name": "search",
@@ -1806,33 +1343,21 @@
     },
     "/api/v1/events/mine": {
       "get": {
-        "operationId": "Events_findMine",
+        "operationId": "Events_findMine[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Events"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+        ]
       }
     },
     "/api/v1/events/{id}": {
       "get": {
-        "operationId": "Events_findOne",
+        "operationId": "Events_findOne[0]",
         "parameters": [
           {
             "name": "id",
@@ -1857,16 +1382,10 @@
         },
         "tags": [
           "Events"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       },
       "put": {
-        "operationId": "Events_update",
+        "operationId": "Events_update[0]",
         "parameters": [
           {
             "name": "id",
@@ -1897,26 +1416,14 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Events"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       },
       "delete": {
-        "operationId": "Events_remove",
+        "operationId": "Events_remove[0]",
         "parameters": [
           {
             "name": "id",
@@ -1930,28 +1437,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Events"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/events/{id}/publish": {
       "post": {
-        "operationId": "Events_publish",
+        "operationId": "Events_publish[0]",
         "parameters": [
           {
             "name": "id",
@@ -1965,28 +1460,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Events"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/events/{id}/cancel": {
       "post": {
-        "operationId": "Events_cancel",
+        "operationId": "Events_cancel[0]",
         "parameters": [
           {
             "name": "id",
@@ -2010,30 +1493,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Events"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/events/{id}/images/{kind}": {
       "post": {
-        "operationId": "EventImages_upload",
-        "summary": "",
-        "description": "Upload the event's banner (3:1, stored as 1920×640) or poster (2:3,\nstored as 1000×1500). JPEG, PNG or WebP up to 10 MB. Optional crop as\nfractions of the image; without one the largest centred area is used.\nmode=fit keeps the whole image instead, on a blurred or plain-colour\nbackground.\nReturns the updated event.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "EventImages_upload[0]",
         "parameters": [
           {
             "name": "id",
@@ -2121,27 +1590,15 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Upload the event's banner (3:1, stored as 1920×640) or poster (2:3,\nstored as 1000×1500). JPEG, PNG or WebP up to 10 MB. Optional crop as\nfractions of the image; without one the largest centred area is used.\nmode=fit keeps the whole image instead, on a blurred or plain-colour\nbackground.\nReturns the updated event.",
         "tags": [
-          "Event Images"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "EventImages"
         ]
       },
       "delete": {
-        "operationId": "EventImages_remove",
-        "summary": "",
-        "description": "Remove the event's banner or poster. Returns the updated event.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "EventImages_remove[0]",
         "parameters": [
           {
             "name": "id",
@@ -2174,31 +1631,28 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Remove the event's banner or poster. Returns the updated event.",
         "tags": [
-          "Event Images"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "EventImages"
         ]
       }
     },
     "/api/v1/categories": {
       "get": {
-        "operationId": "Categories_findAll",
+        "operationId": "Categories_findAll[0]",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2208,9 +1662,7 @@
     },
     "/api/v1/events/{id}/changes": {
       "delete": {
-        "operationId": "EventChanges_withdraw",
-        "summary": "",
-        "description": "Organizer: take back changes still waiting for review (the event keeps its approved details).\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "EventChanges_withdraw[0]",
         "parameters": [
           {
             "name": "id",
@@ -2224,56 +1676,32 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Organizer: take back changes still waiting for review (the event keeps its approved details).",
         "tags": [
-          "Event Changes"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "EventChanges"
         ]
       }
     },
     "/api/v1/admin/events/changes": {
       "get": {
-        "operationId": "EventChanges_list",
-        "summary": "",
-        "description": "Admin: changes to approved events waiting for review, oldest first, each field as from → to.\n\n**Roles:** ADMIN",
+        "operationId": "EventChanges_list[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Admin: changes to approved events waiting for review, oldest first, each field as from → to.",
         "tags": [
-          "Event Changes"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "EventChanges"
         ]
       }
     },
     "/api/v1/admin/events/{id}/changes/approve": {
       "post": {
-        "operationId": "EventChanges_approve",
-        "summary": "",
-        "description": "Admin: apply the changes. Ticket holders are emailed about a new date or venue.\n\n**Roles:** ADMIN",
+        "operationId": "EventChanges_approve[0]",
         "parameters": [
           {
             "name": "id",
@@ -2297,29 +1725,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Admin: apply the changes. Ticket holders are emailed about a new date or venue.",
         "tags": [
-          "Event Changes"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "EventChanges"
         ]
       }
     },
     "/api/v1/admin/events/{id}/changes/reject": {
       "post": {
-        "operationId": "EventChanges_reject",
-        "summary": "",
-        "description": "Admin: turn the changes down with a reason; the event keeps its approved details.\n\n**Roles:** ADMIN",
+        "operationId": "EventChanges_reject[0]",
         "parameters": [
           {
             "name": "id",
@@ -2343,80 +1759,44 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Admin: turn the changes down with a reason; the event keeps its approved details.",
         "tags": [
-          "Event Changes"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "EventChanges"
         ]
       }
     },
     "/api/v1/payouts/summary": {
       "get": {
-        "operationId": "Payouts_summary",
+        "operationId": "Payouts_summary[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+        ]
       }
     },
     "/api/v1/payouts": {
       "get": {
-        "operationId": "Payouts_mine",
-        "summary": "",
-        "description": "Your payouts, newest first.\n\n**Roles:** ORGANIZER",
+        "operationId": "Payouts_mine[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Your payouts, newest first.",
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       },
       "post": {
-        "operationId": "Payouts_request",
-        "summary": "",
-        "description": "Ask for a payout. An admin approves it and sends the money.\n\n**Roles:** ORGANIZER",
+        "operationId": "Payouts_request[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2431,29 +1811,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Ask for a payout. An admin approves it and sends the money.",
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/payouts/account": {
       "put": {
-        "operationId": "Payouts_setAccount",
-        "summary": "",
-        "description": "Set where your money is sent (needs your password). An admin checks the details before the first payout to them.\n\n**Roles:** ORGANIZER",
+        "operationId": "Payouts_setAccount[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2475,29 +1843,17 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Set where your money is sent (needs your password). An admin checks the details before the first payout to them.",
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/payouts/{id}/cancel": {
       "post": {
-        "operationId": "Payouts_cancel",
-        "summary": "",
-        "description": "Withdraw a request that hasn't been approved yet.\n\n**Roles:** ORGANIZER",
+        "operationId": "Payouts_cancel[0]",
         "parameters": [
           {
             "name": "id",
@@ -2511,71 +1867,47 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Withdraw a request that hasn't been approved yet.",
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/payouts": {
       "get": {
-        "operationId": "Payouts_adminList",
+        "operationId": "Payouts_adminList[0]",
         "parameters": [
           {
             "name": "status",
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string",
               "enum": [
                 "REQUESTED",
                 "APPROVED",
                 "PAID",
                 "REJECTED",
                 "CANCELLED"
-              ],
-              "type": "string"
+              ]
             }
           }
         ],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/admin/organizers/{id}/payouts": {
       "get": {
-        "operationId": "Payouts_adminOrganizer",
-        "summary": "",
-        "description": "One organizer's balance, payout account and payouts.\n\n**Roles:** ADMIN",
+        "operationId": "Payouts_adminOrganizer[0]",
         "parameters": [
           {
             "name": "id",
@@ -2589,29 +1921,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "One organizer's balance, payout account and payouts.",
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/organizers/{id}/payout-account/verify": {
       "post": {
-        "operationId": "Payouts_verifyAccount",
-        "summary": "",
-        "description": "Confirm an organizer's payout details are genuine (e.g. by calling them).\n\n**Roles:** ADMIN",
+        "operationId": "Payouts_verifyAccount[0]",
         "parameters": [
           {
             "name": "id",
@@ -2642,27 +1962,17 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Confirm an organizer's payout details are genuine (e.g. by calling them).",
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/payouts/{id}/approve": {
       "post": {
-        "operationId": "Payouts_approve",
+        "operationId": "Payouts_approve[0]",
         "parameters": [
           {
             "name": "id",
@@ -2676,28 +1986,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/admin/payouts/{id}/reject": {
       "post": {
-        "operationId": "Payouts_reject",
+        "operationId": "Payouts_reject[0]",
         "parameters": [
           {
             "name": "id",
@@ -2721,30 +2019,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/admin/payouts/{id}/mark-paid": {
       "post": {
-        "operationId": "Payouts_markPaid",
-        "summary": "",
-        "description": "Record that the money was sent, with its reference. Approves it too if it wasn't yet.\n\n**Roles:** ADMIN",
+        "operationId": "Payouts_markPaid[0]",
         "parameters": [
           {
             "name": "id",
@@ -2768,27 +2052,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Record that the money was sent, with its reference. Approves it too if it wasn't yet.",
         "tags": [
           "Payouts"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/health": {
       "get": {
-        "operationId": "Health_check",
+        "operationId": "Health_check[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -2809,7 +2083,7 @@
     },
     "/api/v1/auth/register": {
       "post": {
-        "operationId": "Auth_register",
+        "operationId": "Auth_register[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2840,7 +2114,7 @@
     },
     "/api/v1/auth/register-organizer": {
       "post": {
-        "operationId": "Auth_registerOrganizer",
+        "operationId": "Auth_registerOrganizer[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2864,7 +2138,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "operationId": "Auth_login",
+        "operationId": "Auth_login[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2895,7 +2169,7 @@
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "operationId": "Auth_refresh",
+        "operationId": "Auth_refresh[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2926,7 +2200,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "operationId": "Auth_logout",
+        "operationId": "Auth_logout[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2957,9 +2231,7 @@
     },
     "/api/v1/auth/email-code": {
       "post": {
-        "operationId": "Auth_requestEmailCode",
-        "summary": "",
-        "description": "Buyers (Phase 16): email me a 6-digit sign-in code. Host accounts get a note to use their password instead.",
+        "operationId": "Auth_requestEmailCode[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -2976,6 +2248,7 @@
             "description": ""
           }
         },
+        "summary": "Buyers (Phase 16): email me a 6-digit sign-in code. Host accounts get a note to use their password instead.",
         "tags": [
           "Auth"
         ]
@@ -2983,9 +2256,7 @@
     },
     "/api/v1/auth/email-code/verify": {
       "post": {
-        "operationId": "Auth_verifyEmailCode",
-        "summary": "",
-        "description": "Sign in with the code; makes a buyer account if there isn't one (`created: true`).",
+        "operationId": "Auth_verifyEmailCode[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3009,6 +2280,7 @@
             }
           }
         },
+        "summary": "Sign in with the code; makes a buyer account if there isn't one (`created: true`).",
         "tags": [
           "Auth"
         ]
@@ -3016,7 +2288,7 @@
     },
     "/api/v1/auth/forgot-password": {
       "post": {
-        "operationId": "Auth_forgotPassword",
+        "operationId": "Auth_forgotPassword[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3040,7 +2312,7 @@
     },
     "/api/v1/auth/reset-password": {
       "post": {
-        "operationId": "Auth_resetPassword",
+        "operationId": "Auth_resetPassword[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3064,7 +2336,7 @@
     },
     "/api/v1/auth/me": {
       "get": {
-        "operationId": "Auth_me",
+        "operationId": "Auth_me[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -3076,52 +2348,30 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
           }
         },
         "tags": [
           "Auth"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/ping": {
       "get": {
-        "operationId": "Admin_ping",
+        "operationId": "Admin_ping[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Admin"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/admin/stats": {
       "get": {
-        "operationId": "AdminDashboard_stats",
-        "summary": "",
-        "description": "Platform figures for the dashboard home: money, sales over time, activity, events, organizers.\n\n**Roles:** ADMIN",
+        "operationId": "AdminDashboard_stats[0]",
         "parameters": [
           {
             "name": "period",
@@ -3129,69 +2379,45 @@
             "in": "query",
             "description": "today (since midnight, by hour), 7d and 30d (by day), year (since 1 January, by month). Default 30d.",
             "schema": {
+              "type": "string",
               "enum": [
                 "today",
                 "7d",
                 "30d",
                 "year"
-              ],
-              "type": "string"
+              ]
             }
           }
         ],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Platform figures for the dashboard home: money, sales over time, activity, events, organizers.",
         "tags": [
-          "Admin Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminDashboard"
         ]
       }
     },
     "/api/v1/admin/attention": {
       "get": {
-        "operationId": "AdminDashboard_attention",
-        "summary": "",
-        "description": "Counts of everything waiting for an admin (the \"Needs attention\" home).\n\n**Roles:** ADMIN",
+        "operationId": "AdminDashboard_attention[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Counts of everything waiting for an admin (the \"Needs attention\" home).",
         "tags": [
-          "Admin Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminDashboard"
         ]
       }
     },
     "/api/v1/admin/card-flags": {
       "get": {
-        "operationId": "AdminDashboard_cardFlags",
-        "summary": "",
-        "description": "Card payments that succeeded after their order closed: the customer was charged but has no tickets.\n\n**Roles:** ADMIN",
+        "operationId": "AdminDashboard_cardFlags[0]",
         "parameters": [
           {
             "name": "state",
@@ -3199,41 +2425,29 @@
             "in": "query",
             "description": "open (default): still to refund; resolved: refunded by hand; all",
             "schema": {
+              "type": "string",
               "enum": [
                 "open",
                 "resolved",
                 "all"
-              ],
-              "type": "string"
+              ]
             }
           }
         ],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Card payments that succeeded after their order closed: the customer was charged but has no tickets.",
         "tags": [
-          "Admin Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminDashboard"
         ]
       }
     },
     "/api/v1/admin/card-flags/{paymentId}/resolve": {
       "post": {
-        "operationId": "AdminDashboard_resolveCardFlag",
-        "summary": "",
-        "description": "Record that a flagged card payment was refunded by hand in the Modem Pay dashboard.\n\n**Roles:** ADMIN",
+        "operationId": "AdminDashboard_resolveCardFlag[0]",
         "parameters": [
           {
             "name": "paymentId",
@@ -3257,29 +2471,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Record that a flagged card payment was refunded by hand in the Modem Pay dashboard.",
         "tags": [
-          "Admin Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminDashboard"
         ]
       }
     },
     "/api/v1/admin/audit-log": {
       "get": {
-        "operationId": "AdminDashboard_auditLog",
-        "summary": "",
-        "description": "Audit log, newest first, filterable by action, entity and actor.\n\n**Roles:** ADMIN",
+        "operationId": "AdminDashboard_auditLog[0]",
         "parameters": [
           {
             "name": "action",
@@ -3315,6 +2517,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "format": "uuid",
               "type": "string"
             }
           },
@@ -3341,54 +2544,32 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Audit log, newest first, filterable by action, entity and actor.",
         "tags": [
-          "Admin Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminDashboard"
         ]
       }
     },
     "/api/v1/admin/audit-log/facets": {
       "get": {
-        "operationId": "AdminDashboard_auditLogFacets",
-        "summary": "",
-        "description": "Actions and entity types that appear in the audit log, with counts.\n\n**Roles:** ADMIN",
+        "operationId": "AdminDashboard_auditLogFacets[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Actions and entity types that appear in the audit log, with counts.",
         "tags": [
-          "Admin Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminDashboard"
         ]
       }
     },
     "/api/v1/ticket-types": {
       "post": {
-        "operationId": "TicketTypes_create",
+        "operationId": "TicketTypes_create[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3403,28 +2584,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Ticket Types"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "TicketTypes"
+        ]
       }
     },
     "/api/v1/events/{eventId}/ticket-types": {
       "get": {
-        "operationId": "TicketTypes_findForEvent",
+        "operationId": "TicketTypes_findForEvent[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -3441,19 +2610,13 @@
           }
         },
         "tags": [
-          "Ticket Types"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
+          "TicketTypes"
         ]
       }
     },
     "/api/v1/ticket-types/{id}": {
       "put": {
-        "operationId": "TicketTypes_update",
+        "operationId": "TicketTypes_update[0]",
         "parameters": [
           {
             "name": "id",
@@ -3477,30 +2640,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Ticket Types"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "TicketTypes"
+        ]
       }
     },
     "/api/v1/orders/checkout": {
       "post": {
-        "operationId": "Orders_checkout",
-        "summary": "",
-        "description": "Signed-in buyer. Without `provider`, only holds the tickets (pay with POST /orders/:id/pay).\n\n**Roles:** CUSTOMER",
+        "operationId": "Orders_checkout[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3522,29 +2671,17 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Signed-in buyer. Without `provider`, only holds the tickets (pay with POST /orders/:id/pay).",
         "tags": [
           "Orders"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/orders/guest-checkout": {
       "post": {
-        "operationId": "Orders_guestCheckout",
-        "summary": "",
-        "description": "Buying without signing in. Returns `orderToken`, the guest's private key to this order (send it as X-Order-Token).",
+        "operationId": "Orders_guestCheckout[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3568,6 +2705,7 @@
             }
           }
         },
+        "summary": "Buying without signing in. Returns `orderToken`, the guest's private key to this order (send it as X-Order-Token).",
         "tags": [
           "Orders"
         ]
@@ -3575,7 +2713,7 @@
     },
     "/api/v1/orders/mine": {
       "get": {
-        "operationId": "Orders_findMine",
+        "operationId": "Orders_findMine[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -3590,26 +2728,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
           }
         },
         "tags": [
           "Orders"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/orders/{id}": {
       "get": {
-        "operationId": "Orders_findOne",
-        "summary": "",
-        "description": "The buyer, an admin, or a guest with X-Order-Token.",
+        "operationId": "Orders_findOne[0]",
         "parameters": [
           {
             "name": "id",
@@ -3649,22 +2777,15 @@
             }
           }
         },
+        "summary": "The buyer, an admin, or a guest with X-Order-Token.",
         "tags": [
           "Orders"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/orders/{id}/pay": {
       "post": {
-        "operationId": "Orders_pay",
-        "summary": "",
-        "description": "Pay a held order: Wave, card or bank transfer. Starting a payment keeps the tickets held while it's finished.",
+        "operationId": "Orders_pay[0]",
         "parameters": [
           {
             "name": "id",
@@ -3714,22 +2835,15 @@
             }
           }
         },
+        "summary": "Pay a held order: Wave, card or bank transfer. Starting a payment keeps the tickets held while it's finished.",
         "tags": [
           "Orders"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/events/{id}/booking-fee": {
       "get": {
-        "operationId": "Fees_forEvent",
-        "summary": "",
-        "description": "Public: this event's booking fee, whether the host includes it, and any deal (no notes).",
+        "operationId": "Fees_forEvent[0]",
         "parameters": [
           {
             "name": "id",
@@ -3745,22 +2859,15 @@
             "description": ""
           }
         },
+        "summary": "Public: this event's booking fee, whether the host includes it, and any deal (no notes).",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/events/{id}/fee-included": {
       "put": {
-        "operationId": "Fees_setIncluded",
-        "summary": "",
-        "description": "The host chooses: buyers pay the fee on top, or it's inside the ticket prices.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "Fees_setIncluded[0]",
         "parameters": [
           {
             "name": "id",
@@ -3784,54 +2891,30 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "The host chooses: buyers pay the fee on top, or it's inside the ticket prices.",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/fees": {
       "get": {
-        "operationId": "Fees_view",
-        "summary": "",
-        "description": "Bantaba's fee, when it last changed, the refund rule, and deals for hosts and events.\n\n**Roles:** ADMIN",
+        "operationId": "Fees_view[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Bantaba's fee, when it last changed, the refund rule, and deals for hosts and events.",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       },
       "put": {
-        "operationId": "Fees_setGlobal",
-        "summary": "",
-        "description": "Change Bantaba's fee. New orders only; orders already placed keep theirs.\n\n**Roles:** ADMIN",
+        "operationId": "Fees_setGlobal[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3846,29 +2929,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Change Bantaba's fee. New orders only; orders already placed keep theirs.",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/fees/hosts/{organizerId}": {
       "put": {
-        "operationId": "Fees_setHost",
-        "summary": "",
-        "description": "Give a host their own fee (\"none\" = no fee).\n\n**Roles:** ADMIN",
+        "operationId": "Fees_setHost[0]",
         "parameters": [
           {
             "name": "organizerId",
@@ -3892,27 +2963,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Give a host their own fee (\"none\" = no fee).",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       },
       "delete": {
-        "operationId": "Fees_removeHost",
-        "summary": "",
-        "description": "Back to Bantaba's fee.\n\n**Roles:** ADMIN",
+        "operationId": "Fees_removeHost[0]",
         "parameters": [
           {
             "name": "organizerId",
@@ -3926,29 +2985,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Back to Bantaba's fee.",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/fees/refunds": {
       "put": {
-        "operationId": "Fees_setRefundRule",
-        "summary": "",
-        "description": "Keep the fee when a buyer asks for a refund, or give it back.\n\n**Roles:** ADMIN",
+        "operationId": "Fees_setRefundRule[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -3963,29 +3010,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Keep the fee when a buyer asks for a refund, or give it back.",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/admin/fees/events/{eventId}": {
       "put": {
-        "operationId": "Fees_setEvent",
-        "summary": "",
-        "description": "A deal for one event (\"none\" = no fee), optionally ending on a date.\n\n**Roles:** ADMIN",
+        "operationId": "Fees_setEvent[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4009,25 +3044,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "A deal for one event (\"none\" = no fee), optionally ending on a date.",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       },
       "delete": {
-        "operationId": "Fees_removeEvent",
+        "operationId": "Fees_removeEvent[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4041,70 +3066,46 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/admin/fees/earnings": {
       "get": {
-        "operationId": "Fees_earnings",
-        "summary": "",
-        "description": "Booking fees earned in the period, per slot, by host.\n\n**Roles:** ADMIN",
+        "operationId": "Fees_earnings[0]",
         "parameters": [
           {
             "name": "period",
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string",
               "enum": [
                 "today",
                 "7d",
                 "30d",
                 "year"
-              ],
-              "type": "string"
+              ]
             }
           }
         ],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Booking fees earned in the period, per slot, by host.",
         "tags": [
           "Fees"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/tickets/mine": {
       "get": {
-        "operationId": "Tickets_findMine",
+        "operationId": "Tickets_findMine[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -4112,31 +3113,20 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
+                  "type": "object"
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
           }
         },
         "tags": [
           "Tickets"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/tickets/{id}": {
       "get": {
-        "operationId": "Tickets_findOne",
+        "operationId": "Tickets_findOne[0]",
         "parameters": [
           {
             "name": "id",
@@ -4157,24 +3147,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
           }
         },
         "tags": [
           "Tickets"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/tickets/{id}/qr": {
       "get": {
-        "operationId": "Tickets_getQr",
+        "operationId": "Tickets_getQr[0]",
         "parameters": [
           {
             "name": "id",
@@ -4188,24 +3170,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
           }
         },
         "tags": [
           "Tickets"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/check-ins": {
       "post": {
-        "operationId": "CheckIns_checkIn",
+        "operationId": "CheckIns_checkIn[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -4227,28 +3201,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** STAFF, ORGANIZER, ADMIN"
+          "CheckIns"
+        ]
       }
     },
     "/api/v1/events/{eventId}/check-ins": {
       "get": {
-        "operationId": "CheckIns_findForEvent",
+        "operationId": "CheckIns_findForEvent[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4272,28 +3234,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "CheckIns"
+        ]
       }
     },
     "/api/v1/events/{eventId}/gates": {
       "get": {
-        "operationId": "CheckIns_gateSetup",
+        "operationId": "CheckIns_gateSetup[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4307,28 +3257,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "CheckIns"
+        ]
       }
     },
     "/api/v1/events/{eventId}/gate-rules": {
       "put": {
-        "operationId": "CheckIns_setGateRules",
+        "operationId": "CheckIns_setGateRules[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4352,30 +3290,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "CheckIns"
+        ]
       }
     },
     "/api/v1/ticket-types/{id}/gates": {
       "put": {
-        "operationId": "CheckIns_setTicketTypeGates",
-        "summary": "",
-        "description": "The gates a standing ticket type enters through (seated ones use their section's gate).\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "CheckIns_setTicketTypeGates[0]",
         "parameters": [
           {
             "name": "id",
@@ -4399,29 +3323,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "The gates a standing ticket type enters through (seated ones use their section's gate).",
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "CheckIns"
         ]
       }
     },
     "/api/v1/events/{eventId}/gate-stats": {
       "get": {
-        "operationId": "CheckIns_gateStats",
-        "summary": "",
-        "description": "Live numbers per gate: in, per minute (last 10 minutes), sent to their gate, let in at another.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "CheckIns_gateStats[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4435,27 +3347,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Live numbers per gate: in, per minute (last 10 minutes), sent to their gate, let in at another.",
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "CheckIns"
         ]
       }
     },
     "/api/v1/scanner/events/{eventId}/sync": {
       "post": {
-        "operationId": "CheckIns_sync",
+        "operationId": "CheckIns_sync[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4479,30 +3381,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** STAFF, ORGANIZER, ADMIN"
+          "CheckIns"
+        ]
       }
     },
     "/api/v1/events/{eventId}/gate-phones": {
       "get": {
-        "operationId": "CheckIns_gatePhones",
-        "summary": "",
-        "description": "The phones scanning this event, and tickets let in twice without signal.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "CheckIns_gatePhones[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -4516,47 +3404,30 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "The phones scanning this event, and tickets let in twice without signal.",
         "tags": [
-          "Check Ins"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "CheckIns"
         ]
       }
     },
     "/api/v1/venues": {
       "get": {
-        "operationId": "Venues_findAll",
-        "summary": "",
-        "description": "Venues to hold an event at: for an organizer, their own and Bantaba's\nthey can use; for admins, all; for anyone else, Bantaba's open ones.",
+        "operationId": "Venues_findAll[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
           }
         },
+        "summary": "Venues to hold an event at: for an organizer, their own and Bantaba's\nthey can use; for admins, all; for anyone else, Bantaba's open ones.",
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       },
       "post": {
-        "operationId": "Venues_create",
+        "operationId": "Venues_create[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -4571,28 +3442,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/venues/{id}": {
       "get": {
-        "operationId": "Venues_findOne",
+        "operationId": "Venues_findOne[0]",
         "parameters": [
           {
             "name": "id",
@@ -4610,18 +3469,12 @@
         },
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/venues/{id}/sections": {
       "post": {
-        "operationId": "Venues_createSection",
+        "operationId": "Venues_createSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -4645,28 +3498,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/venues/{id}/access-zones": {
       "post": {
-        "operationId": "Venues_createAccessZone",
+        "operationId": "Venues_createAccessZone[0]",
         "parameters": [
           {
             "name": "id",
@@ -4690,28 +3531,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/venues/{id}/gates": {
       "post": {
-        "operationId": "Venues_createGate",
+        "operationId": "Venues_createGate[0]",
         "parameters": [
           {
             "name": "id",
@@ -4742,28 +3571,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/gates/{id}": {
       "put": {
-        "operationId": "Venues_updateGate",
+        "operationId": "Venues_updateGate[0]",
         "parameters": [
           {
             "name": "id",
@@ -4794,28 +3611,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/sections/{id}/seats/blocked": {
       "post": {
-        "operationId": "Venues_setSeatsBlocked",
+        "operationId": "Venues_setSeatsBlocked[0]",
         "parameters": [
           {
             "name": "id",
@@ -4839,55 +3644,29 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+        ]
       }
     },
     "/api/v1/admin/venues": {
       "get": {
-        "operationId": "AdminVenues_list",
-        "summary": "",
-        "description": "Every venue: sections, seats, drawing yes/no, coming events, who made it (owner null = Bantaba) and who can use it.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_list[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Every venue: sections, seats, drawing yes/no, coming events, who made it (owner null = Bantaba) and who can use it.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       },
       "post": {
-        "operationId": "AdminVenues_create",
-        "summary": "",
-        "description": "A new Bantaba venue.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_create[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -4902,29 +3681,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "A new Bantaba venue.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/admin/venues/{id}/sharing": {
       "put": {
-        "operationId": "AdminVenues_setSharing",
-        "summary": "",
-        "description": "Who can use a Bantaba venue: { sharing: \"everyone\" } or { sharing: \"chosen\", organizerIds }.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_setSharing[0]",
         "parameters": [
           {
             "name": "id",
@@ -4948,29 +3715,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Who can use a Bantaba venue: { sharing: \"everyone\" } or { sharing: \"chosen\", organizerIds }.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/admin/venues/{id}/sections": {
       "post": {
-        "operationId": "AdminVenues_addSection",
-        "summary": "",
-        "description": "Add a section by name (venues without a drawing). Returns the venue.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_addSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -4994,29 +3749,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Add a section by name (venues without a drawing). Returns the venue.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/admin/venue-sections/{id}": {
       "patch": {
-        "operationId": "AdminVenues_renameSection",
-        "summary": "",
-        "description": "Rename a section that isn't in the drawing. Returns the venue.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_renameSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -5040,27 +3783,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Rename a section that isn't in the drawing. Returns the venue.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       },
       "delete": {
-        "operationId": "AdminVenues_deleteSection",
-        "summary": "",
-        "description": "Remove a section that isn't in the drawing. Returns the venue.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_deleteSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -5074,27 +3805,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Remove a section that isn't in the drawing. Returns the venue.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       },
       "put": {
-        "operationId": "AdminVenues_updateSection",
-        "summary": "",
-        "description": "Set a section's rows, seats per row, taken-out places and gate.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_updateSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -5118,29 +3837,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Set a section's rows, seats per row, taken-out places and gate.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/admin/venues/{id}": {
       "get": {
-        "operationId": "AdminVenues_detail",
-        "summary": "",
-        "description": "A venue with its drawing, gates and each section's seat grid.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_detail[0]",
         "parameters": [
           {
             "name": "id",
@@ -5154,27 +3861,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "A venue with its drawing, gates and each section's seat grid.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       },
       "patch": {
-        "operationId": "AdminVenues_update",
-        "summary": "",
-        "description": "Rename a venue, or change what its seats face (\"Stage\", \"Pitch\"…).\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_update[0]",
         "parameters": [
           {
             "name": "id",
@@ -5198,29 +3893,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Rename a venue, or change what its seats face (\"Stage\", \"Pitch\"…).",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/admin/venues/{id}/gates": {
       "post": {
-        "operationId": "AdminVenues_addGate",
-        "summary": "",
-        "description": "Add a gate. Returns { id, name }.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_addGate[0]",
         "parameters": [
           {
             "name": "id",
@@ -5244,29 +3927,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Add a gate. Returns { id, name }.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/admin/venues/{id}/drawing/check": {
       "post": {
-        "operationId": "AdminVenues_check",
-        "summary": "",
-        "description": "Read an SVG drawing without saving it: its sections, which match the\nvenue's and which are new, sections it would remove (and whether they\ncan go), and the cleaned SVG for a preview.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_check[0]",
         "parameters": [
           {
             "name": "id",
@@ -5299,29 +3970,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Read an SVG drawing without saving it: its sections, which match the\nvenue's and which are new, sections it would remove (and whether they\ncan go), and the cleaned SVG for a preview.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/admin/venues/{id}/drawing": {
       "put": {
-        "operationId": "AdminVenues_apply",
-        "summary": "",
-        "description": "Save an SVG drawing as the venue's map. Returns the venue.\n\n**Roles:** ADMIN",
+        "operationId": "AdminVenues_apply[0]",
         "parameters": [
           {
             "name": "id",
@@ -5354,54 +4013,30 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Save an SVG drawing as the venue's map. Returns the venue.",
         "tags": [
-          "Admin Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminVenues"
         ]
       }
     },
     "/api/v1/organizer/venues": {
       "get": {
-        "operationId": "OrganizerVenues_list",
-        "summary": "",
-        "description": "Their own venues and Bantaba's they can use; kind: yours | bantaba | shared.\n\n**Roles:** ORGANIZER",
+        "operationId": "OrganizerVenues_list[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Their own venues and Bantaba's they can use; kind: yours | bantaba | shared.",
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerVenues"
         ]
       },
       "post": {
-        "operationId": "OrganizerVenues_create",
-        "summary": "",
-        "description": "A new venue of their own, private to them.\n\n**Roles:** ORGANIZER",
+        "operationId": "OrganizerVenues_create[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -5416,29 +4051,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "A new venue of their own, private to them.",
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerVenues"
         ]
       }
     },
     "/api/v1/organizer/venues/{id}": {
       "get": {
-        "operationId": "OrganizerVenues_detail",
-        "summary": "",
-        "description": "A venue they can use, with `editable` true for their own.\n\n**Roles:** ORGANIZER",
+        "operationId": "OrganizerVenues_detail[0]",
         "parameters": [
           {
             "name": "id",
@@ -5452,25 +4075,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "A venue they can use, with `editable` true for their own.",
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "OrganizerVenues"
         ]
       },
       "patch": {
-        "operationId": "OrganizerVenues_update",
+        "operationId": "OrganizerVenues_update[0]",
         "parameters": [
           {
             "name": "id",
@@ -5494,28 +4107,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       }
     },
     "/api/v1/organizer/venues/{id}/gates": {
       "post": {
-        "operationId": "OrganizerVenues_addGate",
+        "operationId": "OrganizerVenues_addGate[0]",
         "parameters": [
           {
             "name": "id",
@@ -5539,28 +4140,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       }
     },
     "/api/v1/organizer/venues/{id}/drawing/check": {
       "post": {
-        "operationId": "OrganizerVenues_check",
+        "operationId": "OrganizerVenues_check[0]",
         "parameters": [
           {
             "name": "id",
@@ -5593,28 +4182,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       }
     },
     "/api/v1/organizer/venues/{id}/drawing": {
       "put": {
-        "operationId": "OrganizerVenues_apply",
+        "operationId": "OrganizerVenues_apply[0]",
         "parameters": [
           {
             "name": "id",
@@ -5647,28 +4224,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       }
     },
     "/api/v1/organizer/venues/{id}/sections": {
       "post": {
-        "operationId": "OrganizerVenues_addSection",
+        "operationId": "OrganizerVenues_addSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -5692,28 +4257,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       }
     },
     "/api/v1/organizer/venue-sections/{id}": {
       "put": {
-        "operationId": "OrganizerVenues_updateSection",
+        "operationId": "OrganizerVenues_updateSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -5737,26 +4290,14 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       },
       "patch": {
-        "operationId": "OrganizerVenues_renameSection",
+        "operationId": "OrganizerVenues_renameSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -5780,26 +4321,14 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       },
       "delete": {
-        "operationId": "OrganizerVenues_deleteSection",
+        "operationId": "OrganizerVenues_deleteSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -5813,30 +4342,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Organizer Venues"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "OrganizerVenues"
+        ]
       }
     },
     "/api/v1/events/{id}/seat-map": {
       "get": {
-        "operationId": "Seating_seatMap",
-        "summary": "",
-        "description": "For buyers: the venue drawing, seated ticket types and every section with its price and free seats.",
+        "operationId": "Seating_seatMap[0]",
         "parameters": [
           {
             "name": "id",
@@ -5852,22 +4367,15 @@
             "description": ""
           }
         },
+        "summary": "For buyers: the venue drawing, seated ticket types and every section with its price and free seats.",
         "tags": [
           "Seating"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/events/{id}/seat-map/sections/{sectionId}": {
       "get": {
-        "operationId": "Seating_sectionSeats",
-        "summary": "",
-        "description": "For buyers: one section's seats, row by row (closed seats show as BLOCKED).",
+        "operationId": "Seating_sectionSeats[0]",
         "parameters": [
           {
             "name": "id",
@@ -5891,22 +4399,15 @@
             "description": ""
           }
         },
+        "summary": "For buyers: one section's seats, row by row (closed seats show as BLOCKED).",
         "tags": [
           "Seating"
-        ],
-        "security": [
-          {},
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/events/{id}/seating": {
       "get": {
-        "operationId": "Seating_view",
-        "summary": "",
-        "description": "For the organizer: every section, what it's sold as and its seat counts, plus the ticket types.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "Seating_view[0]",
         "parameters": [
           {
             "name": "id",
@@ -5920,29 +4421,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "For the organizer: every section, what it's sold as and its seat counts, plus the ticket types.",
         "tags": [
           "Seating"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/events/{id}/seating/sections/{sectionId}": {
       "get": {
-        "operationId": "Seating_ownerSectionSeats",
-        "summary": "",
-        "description": "For the organizer: one section's seats, with seats closed for this event as CLOSED.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "Seating_ownerSectionSeats[0]",
         "parameters": [
           {
             "name": "id",
@@ -5964,27 +4453,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "For the organizer: one section's seats, with seats closed for this event as CLOSED.",
         "tags": [
           "Seating"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       },
       "put": {
-        "operationId": "Seating_updateSection",
-        "summary": "",
-        "description": "Set what a section is sold as (null = not on sale) and its closed seats. Returns the event's seating.\n\n**Roles:** ORGANIZER, ADMIN",
+        "operationId": "Seating_updateSection[0]",
         "parameters": [
           {
             "name": "id",
@@ -6016,29 +4493,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Set what a section is sold as (null = not on sale) and its closed seats. Returns the event's seating.",
         "tags": [
           "Seating"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/events/{id}/template": {
       "post": {
-        "operationId": "Templates_save",
-        "summary": "",
-        "description": "Save one of your events as a template: details, ticket types and seating, never dates or sales.\n\n**Roles:** ORGANIZER",
+        "operationId": "Templates_save[0]",
         "parameters": [
           {
             "name": "id",
@@ -6062,54 +4527,32 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Save one of your events as a template: details, ticket types and seating, never dates or sales.",
         "tags": [
           "Templates"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/templates": {
       "get": {
-        "operationId": "Templates_list",
-        "summary": "",
-        "description": "Your templates, most recently used first.\n\n**Roles:** ORGANIZER",
+        "operationId": "Templates_list[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Your templates, most recently used first.",
         "tags": [
           "Templates"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/templates/{id}": {
       "patch": {
-        "operationId": "Templates_rename",
+        "operationId": "Templates_rename[0]",
         "parameters": [
           {
             "name": "id",
@@ -6133,26 +4576,14 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Templates"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+        ]
       },
       "delete": {
-        "operationId": "Templates_remove",
+        "operationId": "Templates_remove[0]",
         "parameters": [
           {
             "name": "id",
@@ -6166,30 +4597,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Templates"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+        ]
       }
     },
     "/api/v1/templates/{id}/events": {
       "post": {
-        "operationId": "Templates_use",
-        "summary": "",
-        "description": "A new draft event from a template. Returns { eventId, slug, skipped: { sections, closedSeats } }.\n\n**Roles:** ORGANIZER",
+        "operationId": "Templates_use[0]",
         "parameters": [
           {
             "name": "id",
@@ -6213,54 +4630,30 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "A new draft event from a template. Returns { eventId, slug, skipped: { sections, closedSeats } }.",
         "tags": [
           "Templates"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/me": {
       "get": {
-        "operationId": "Me_get",
-        "summary": "",
-        "description": "Name, phone, email and whether a password is set.\n\n**Roles:** CUSTOMER",
+        "operationId": "Me_get[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Name, phone, email and whether a password is set.",
         "tags": [
           "Me"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       },
       "patch": {
-        "operationId": "Me_update",
-        "summary": "",
-        "description": "Change the name and phone. The email can't be changed here.\n\n**Roles:** CUSTOMER",
+        "operationId": "Me_update[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -6275,29 +4668,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Change the name and phone. The email can't be changed here.",
         "tags": [
           "Me"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/me/password": {
       "put": {
-        "operationId": "Me_setPassword",
-        "summary": "",
-        "description": "Set a password (or change it, with the current one). Email codes keep working.\n\n**Roles:** CUSTOMER",
+        "operationId": "Me_setPassword[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -6312,79 +4693,45 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Set a password (or change it, with the current one). Email codes keep working.",
         "tags": [
           "Me"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
         ]
       }
     },
     "/api/v1/me/orders": {
       "get": {
-        "operationId": "Me_orders",
+        "operationId": "Me_orders[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Me"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** CUSTOMER"
+        ]
       }
     },
     "/api/v1/organizer/overview": {
       "get": {
-        "operationId": "Dashboard_overview",
+        "operationId": "Dashboard_overview[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+        ]
       }
     },
     "/api/v1/events/{id}/dashboard": {
       "get": {
-        "operationId": "Dashboard_eventDashboard",
+        "operationId": "Dashboard_eventDashboard[0]",
         "parameters": [
           {
             "name": "id",
@@ -6398,28 +4745,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/events/{id}/orders": {
       "get": {
-        "operationId": "Dashboard_orders",
+        "operationId": "Dashboard_orders[0]",
         "parameters": [
           {
             "name": "id",
@@ -6471,28 +4806,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/events/{id}/tickets": {
       "get": {
-        "operationId": "Dashboard_tickets",
+        "operationId": "Dashboard_tickets[0]",
         "parameters": [
           {
             "name": "id",
@@ -6544,54 +4867,30 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Dashboard"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+        ]
       }
     },
     "/api/v1/organizer/staff": {
       "get": {
-        "operationId": "EventStaff_roster",
+        "operationId": "EventStaff_roster[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Event Staff"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER"
+          "EventStaff"
+        ]
       }
     },
     "/api/v1/events/{id}/staff": {
       "get": {
-        "operationId": "EventStaff_list",
+        "operationId": "EventStaff_list[0]",
         "parameters": [
           {
             "name": "id",
@@ -6615,26 +4914,14 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Event Staff"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "EventStaff"
+        ]
       },
       "post": {
-        "operationId": "EventStaff_assign",
+        "operationId": "EventStaff_assign[0]",
         "parameters": [
           {
             "name": "id",
@@ -6658,28 +4945,16 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Event Staff"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "EventStaff"
+        ]
       }
     },
     "/api/v1/events/{id}/staff/{assignmentId}": {
       "put": {
-        "operationId": "EventStaff_update",
+        "operationId": "EventStaff_update[0]",
         "parameters": [
           {
             "name": "id",
@@ -6718,26 +4993,14 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Event Staff"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "EventStaff"
+        ]
       },
       "delete": {
-        "operationId": "EventStaff_remove",
+        "operationId": "EventStaff_remove[0]",
         "parameters": [
           {
             "name": "id",
@@ -6759,28 +5022,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Event Staff"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ORGANIZER, ADMIN"
+          "EventStaff"
+        ]
       }
     },
     "/api/v1/scanner/events": {
       "get": {
-        "operationId": "Scanner_events",
+        "operationId": "Scanner_events[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -6795,28 +5046,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Scanner"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** STAFF, ORGANIZER"
+        ]
       }
     },
     "/api/v1/scanner/events/{id}/progress": {
       "get": {
-        "operationId": "Scanner_progress",
+        "operationId": "Scanner_progress[0]",
         "parameters": [
           {
             "name": "id",
@@ -6837,28 +5076,16 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
           "Scanner"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** STAFF, ORGANIZER"
+        ]
       }
     },
     "/api/v1/app-config": {
       "get": {
-        "operationId": "AppConfig_get",
+        "operationId": "AppConfig_get[0]",
         "parameters": [],
         "responses": {
           "200": {
@@ -6873,15 +5100,13 @@
           }
         },
         "tags": [
-          "App Config"
+          "AppConfig"
         ]
       }
     },
     "/api/v1/storefront/discover": {
       "get": {
-        "operationId": "Storefront_discover",
-        "summary": "",
-        "description": "Discover: Trending, then events grouped by host (at most two each), with price labels.",
+        "operationId": "Storefront_discover[0]",
         "parameters": [
           {
             "name": "when",
@@ -6889,13 +5114,13 @@
             "in": "query",
             "description": "Date buttons on Discover: all (default), weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`)",
             "schema": {
+              "type": "string",
               "enum": [
                 "all",
                 "weekend",
                 "week",
                 "date"
-              ],
-              "type": "string"
+              ]
             }
           },
           {
@@ -6904,7 +5129,7 @@
             "in": "query",
             "description": "With when=date: YYYY-MM-DD",
             "schema": {
-              "pattern": "/^\\d{4}-\\d{2}-\\d{2}$/",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
               "type": "string"
             }
           },
@@ -6944,6 +5169,7 @@
             "description": ""
           }
         },
+        "summary": "Discover: Trending, then events grouped by host (at most two each), with price labels.",
         "tags": [
           "Storefront"
         ]
@@ -6951,36 +5177,22 @@
     },
     "/api/v1/admin/trending": {
       "get": {
-        "operationId": "AdminTrending_view",
-        "summary": "",
-        "description": "The row as buyers see it, the picks, what's next in line and hidden events.\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_view[0]",
         "parameters": [],
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "The row as buyers see it, the picks, what's next in line and hidden events.",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       }
     },
     "/api/v1/admin/trending/search": {
       "get": {
-        "operationId": "AdminTrending_search",
-        "summary": "",
-        "description": "Events on sale that could be picked (canPick: the host has a blue tick).\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_search[0]",
         "parameters": [
           {
             "name": "q",
@@ -6996,29 +5208,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Events on sale that could be picked (canPick: the host has a blue tick).",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       }
     },
     "/api/v1/admin/trending/picks": {
       "post": {
-        "operationId": "AdminTrending_addPick",
-        "summary": "",
-        "description": "Pick an event (up to 3, blue-tick hosts only).\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_addPick[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -7033,29 +5233,17 @@
         "responses": {
           "201": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Pick an event (up to 3, blue-tick hosts only).",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       }
     },
     "/api/v1/admin/trending/picks/{id}": {
       "patch": {
-        "operationId": "AdminTrending_updatePick",
-        "summary": "",
-        "description": "Change how long a pick is shown.\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_updatePick[0]",
         "parameters": [
           {
             "name": "id",
@@ -7079,25 +5267,15 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Change how long a pick is shown.",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       },
       "delete": {
-        "operationId": "AdminTrending_removePick",
+        "operationId": "AdminTrending_removePick[0]",
         "parameters": [
           {
             "name": "id",
@@ -7111,30 +5289,16 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "description": "**Roles:** ADMIN"
+          "AdminTrending"
+        ]
       }
     },
     "/api/v1/admin/trending/picks/order": {
       "put": {
-        "operationId": "AdminTrending_reorder",
-        "summary": "",
-        "description": "Put the picks in a new order.\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_reorder[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -7149,29 +5313,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Put the picks in a new order.",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       }
     },
     "/api/v1/admin/trending/hidden": {
       "post": {
-        "operationId": "AdminTrending_hide",
-        "summary": "",
-        "description": "Take an event out of the best sellers.\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_hide[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -7186,29 +5338,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Take an event out of the best sellers.",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       }
     },
     "/api/v1/admin/trending/hidden/{eventId}": {
       "delete": {
-        "operationId": "AdminTrending_unhide",
-        "summary": "",
-        "description": "Let a hidden event back in.\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_unhide[0]",
         "parameters": [
           {
             "name": "eventId",
@@ -7222,29 +5362,17 @@
         "responses": {
           "200": {
             "description": ""
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Let a hidden event back in.",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       }
     },
     "/api/v1/admin/trending/settings": {
       "patch": {
-        "operationId": "AdminTrending_settings",
-        "summary": "",
-        "description": "Cards in the row (4, 6 or 8) and one event per host.\n\n**Roles:** ADMIN",
+        "operationId": "AdminTrending_settings[0]",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -7266,21 +5394,11 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Missing or expired access token"
-          },
-          "403": {
-            "description": "Signed in, but this role (or account) may not do this"
           }
         },
+        "summary": "Cards in the row (4, 6 or 8) and one event per host.",
         "tags": [
-          "Admin Trending"
-        ],
-        "security": [
-          {
-            "bearer": []
-          }
+          "AdminTrending"
         ]
       }
     }
@@ -7306,13 +5424,16 @@
         "type": "object",
         "properties": {
           "orderId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "ticketIds": {
             "description": "Tickets to refund; omit for all of your valid tickets in the order",
+            "maxItems": 100,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           },
           "reason": {
@@ -7328,9 +5449,12 @@
         "type": "object",
         "properties": {
           "ticketIds": {
+            "minItems": 1,
+            "maxItems": 500,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           },
           "reason": {
@@ -7375,7 +5499,8 @@
           "email": {
             "type": "string",
             "description": "Who gets the ticket. They accept by signing in (or signing up) with this address.",
-            "maxLength": 254
+            "maxLength": 254,
+            "format": "email"
           }
         },
         "required": [
@@ -7398,7 +5523,6 @@
       },
       "OrganizerVerificationStatus": {
         "type": "string",
-        "description": "APPROVED lets them publish; SUSPENDED stops all their ticket sales at once.",
         "enum": [
           "PENDING",
           "APPROVED",
@@ -7417,10 +5541,19 @@
         "type": "object",
         "properties": {
           "verificationStatus": {
-            "$ref": "#/components/schemas/OrganizerVerificationStatus"
+            "description": "APPROVED lets them publish; SUSPENDED stops all their ticket sales at once.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrganizerVerificationStatus"
+              }
+            ]
           },
           "trustLevel": {
-            "$ref": "#/components/schemas/OrganizerTrustLevel"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrganizerTrustLevel"
+              }
+            ]
           },
           "requireEventReview": {
             "type": "boolean",
@@ -7554,13 +5687,14 @@
             "type": "string",
             "nullable": true,
             "description": "Public contact email (can differ from your sign-in email)",
-            "maxLength": 200
+            "maxLength": 200,
+            "format": "email"
           },
           "contactPhone": {
             "type": "string",
             "nullable": true,
             "description": "Public contact phone",
-            "pattern": "/^\\+?[0-9 ()-]{7,20}$/"
+            "pattern": "^\\+?[0-9 ()-]{7,20}$"
           },
           "socialLinks": {
             "$ref": "#/components/schemas/SocialLinksDto"
@@ -7569,12 +5703,12 @@
       },
       "RefundPolicy": {
         "type": "string",
-        "description": "When ticket holders may ask for a refund. Default NONE.",
         "enum": [
           "NONE",
           "UNTIL_DAYS_BEFORE",
           "ANYTIME"
-        ]
+        ],
+        "description": "When ticket holders may ask for a refund. Default NONE."
       },
       "CreateEventDto": {
         "type": "object",
@@ -7589,17 +5723,24 @@
             }
           },
           "refundPolicy": {
-            "$ref": "#/components/schemas/RefundPolicy"
+            "description": "When ticket holders may ask for a refund. Default NONE.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefundPolicy"
+              }
+            ]
           },
           "name": {
             "type": "string",
             "maxLength": 200
           },
           "categoryId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "venueId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "description": {
             "type": "string",
@@ -7621,7 +5762,8 @@
             "maxLength": 5000
           },
           "contactEmail": {
-            "type": "string"
+            "type": "string",
+            "format": "email"
           },
           "contactPhone": {
             "type": "string",
@@ -7659,17 +5801,24 @@
             }
           },
           "refundPolicy": {
-            "$ref": "#/components/schemas/RefundPolicy"
+            "description": "When ticket holders may ask for a refund. Default NONE.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RefundPolicy"
+              }
+            ]
           },
           "name": {
             "type": "string",
             "maxLength": 200
           },
           "categoryId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "venueId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "description": {
             "type": "string",
@@ -7691,7 +5840,8 @@
             "maxLength": 5000
           },
           "contactEmail": {
-            "type": "string"
+            "type": "string",
+            "format": "email"
           },
           "contactPhone": {
             "type": "string",
@@ -7711,17 +5861,22 @@
       },
       "CancellationRefundMode": {
         "type": "string",
-        "description": "AUTOMATIC (default): every ticket holder is refunded in full, booking fee included. ORGANIZER: you handle it; ticket holders may request a refund at any time.",
         "enum": [
           "AUTOMATIC",
           "ORGANIZER"
-        ]
+        ],
+        "description": "AUTOMATIC (default): every ticket holder is refunded in full, booking fee included. ORGANIZER: you handle it; ticket holders may request a refund at any time."
       },
       "CancelEventDto": {
         "type": "object",
         "properties": {
           "refundMode": {
-            "$ref": "#/components/schemas/CancellationRefundMode"
+            "description": "AUTOMATIC (default): every ticket holder is refunded in full, booking fee included. ORGANIZER: you handle it; ticket holders may request a refund at any time.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CancellationRefundMode"
+              }
+            ]
           }
         }
       },
@@ -7730,7 +5885,8 @@
         "properties": {
           "requestId": {
             "type": "string",
-            "description": "The change request's id, from GET /admin/events/changes"
+            "description": "The change request's id, from GET /admin/events/changes",
+            "format": "uuid"
           },
           "updatedAt": {
             "type": "string",
@@ -7747,7 +5903,8 @@
         "properties": {
           "requestId": {
             "type": "string",
-            "description": "The change request's id, from GET /admin/events/changes"
+            "description": "The change request's id, from GET /admin/events/changes",
+            "format": "uuid"
           },
           "updatedAt": {
             "type": "string",
@@ -7866,11 +6023,11 @@
         "type": "object",
         "properties": {
           "database": {
-            "type": "string",
             "enum": [
               "connected",
               "error"
-            ]
+            ],
+            "type": "string"
           },
           "status": {
             "type": "string",
@@ -7891,7 +6048,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 254
+            "maxLength": 254,
+            "format": "email"
           },
           "password": {
             "type": "string",
@@ -7921,7 +6079,11 @@
         "type": "object",
         "properties": {
           "role": {
-            "$ref": "#/components/schemas/UserRole"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
           },
           "id": {
             "type": "string"
@@ -7967,7 +6129,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 254
+            "maxLength": 254,
+            "format": "email"
           },
           "password": {
             "type": "string",
@@ -7989,7 +6152,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 254
+            "maxLength": 254,
+            "format": "email"
           },
           "password": {
             "type": "string",
@@ -8048,7 +6212,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 200
+            "maxLength": 200,
+            "format": "email"
           }
         },
         "required": [
@@ -8060,12 +6225,13 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 200
+            "maxLength": 200,
+            "format": "email"
           },
           "code": {
             "type": "string",
             "description": "The 6 digits from the email",
-            "pattern": "/^\\s*\\d{6}\\s*$/"
+            "pattern": "^\\s*\\d{6}\\s*$"
           }
         },
         "required": [
@@ -8078,7 +6244,8 @@
         "properties": {
           "email": {
             "type": "string",
-            "maxLength": 254
+            "maxLength": 254,
+            "format": "email"
           }
         },
         "required": [
@@ -8107,7 +6274,11 @@
         "type": "object",
         "properties": {
           "role": {
-            "$ref": "#/components/schemas/UserRole"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ]
           },
           "id": {
             "type": "string"
@@ -8161,10 +6332,15 @@
         "type": "object",
         "properties": {
           "category": {
-            "$ref": "#/components/schemas/TicketTypeCategory"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketTypeCategory"
+              }
+            ]
           },
           "eventId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "name": {
             "type": "string"
@@ -8178,7 +6354,8 @@
             "minimum": 1
           },
           "accessZoneId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "salesStart": {
             "type": "string"
@@ -8201,7 +6378,11 @@
         "type": "object",
         "properties": {
           "category": {
-            "$ref": "#/components/schemas/TicketTypeCategory"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketTypeCategory"
+              }
+            ]
           },
           "name": {
             "type": "string"
@@ -8215,7 +6396,8 @@
             "minimum": 1
           },
           "accessZoneId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "salesStart": {
             "type": "string"
@@ -8242,16 +6424,20 @@
         "type": "object",
         "properties": {
           "ticketTypeId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "quantity": {
             "type": "number",
             "minimum": 1
           },
           "seatIds": {
+            "minItems": 1,
+            "maxItems": 50,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         },
@@ -8264,12 +6450,18 @@
         "type": "object",
         "properties": {
           "provider": {
-            "$ref": "#/components/schemas/PaymentProviderType"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentProviderType"
+              }
+            ]
           },
           "eventId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "items": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CheckoutItemDto"
@@ -8285,12 +6477,18 @@
         "type": "object",
         "properties": {
           "provider": {
-            "$ref": "#/components/schemas/PaymentProviderType"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentProviderType"
+              }
+            ]
           },
           "eventId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "items": {
+            "minItems": 1,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CheckoutItemDto"
@@ -8303,12 +6501,13 @@
           },
           "email": {
             "type": "string",
-            "maxLength": 200
+            "maxLength": 200,
+            "format": "email"
           },
           "phone": {
             "type": "string",
             "description": "e.g. +220 301 2345",
-            "pattern": "/^\\+?[0-9 ()-]{7,20}$/"
+            "pattern": "^\\+?[0-9 ()-]{7,20}$"
           }
         },
         "required": [
@@ -8322,7 +6521,11 @@
         "type": "object",
         "properties": {
           "provider": {
-            "$ref": "#/components/schemas/PaymentProviderType"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentProviderType"
+              }
+            ]
           }
         },
         "required": [
@@ -8381,13 +6584,13 @@
         "type": "object",
         "properties": {
           "kind": {
-            "type": "string",
             "enum": [
               "order",
               "ticket",
               "pct",
               "none"
-            ]
+            ],
+            "type": "string"
           },
           "amount": {
             "type": "number",
@@ -8440,10 +6643,12 @@
             "minLength": 32
           },
           "gateId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "eventId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "override": {
             "type": "boolean"
@@ -8484,7 +6689,6 @@
       },
       "TicketStatus": {
         "type": "string",
-        "description": "Status before this scan (a VALID scan has just set it to USED).",
         "enum": [
           "ACTIVE",
           "USED",
@@ -8492,7 +6696,8 @@
           "REFUNDED",
           "EXPIRED",
           "TRANSFERRED"
-        ]
+        ],
+        "description": "Status before this scan (a VALID scan has just set it to USED)."
       },
       "SeatLabelDto": {
         "type": "object",
@@ -8517,7 +6722,12 @@
         "type": "object",
         "properties": {
           "status": {
-            "$ref": "#/components/schemas/TicketStatus"
+            "description": "Status before this scan (a VALID scan has just set it to USED).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TicketStatus"
+              }
+            ]
           },
           "id": {
             "type": "string"
@@ -8536,6 +6746,7 @@
           "seat": {
             "nullable": true,
             "description": "Null for general admission.",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/SeatLabelDto"
@@ -8560,11 +6771,16 @@
         "type": "object",
         "properties": {
           "result": {
-            "$ref": "#/components/schemas/CheckInResult"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CheckInResult"
+              }
+            ]
           },
           "gate": {
             "nullable": true,
             "description": "Gate the scan was recorded at (the staff member's assigned gate if they didn't name one).",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/NamedRefDto"
@@ -8574,6 +6790,7 @@
           "ticket": {
             "nullable": true,
             "description": "Null when the code isn't a ticket at all (INVALID).",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ScannedTicketDto"
@@ -8633,9 +6850,11 @@
         "properties": {
           "gateIds": {
             "description": "The gates this standing ticket type enters through; empty = any gate.",
+            "maxItems": 50,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         },
@@ -8648,16 +6867,18 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "The phone's id for this scan: sending it twice is harmless."
+            "description": "The phone's id for this scan: sending it twice is harmless.",
+            "format": "uuid"
           },
           "h": {
             "type": "string",
             "description": "sha256 (hex) of the QR code: the same hash the ticket list uses.",
-            "pattern": "/^[0-9a-f]{64}$/"
+            "pattern": "^[0-9a-f]{64}$"
           },
           "gateId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "format": "uuid"
           },
           "at": {
             "type": "string",
@@ -8705,7 +6926,8 @@
           },
           "gateId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "format": "uuid"
           },
           "platform": {
             "type": "string",
@@ -8722,6 +6944,7 @@
             "minimum": 0
           },
           "scans": {
+            "maxItems": 400,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OfflineScanDto"
@@ -8761,7 +6984,7 @@
         "properties": {
           "label": {
             "type": "string",
-            "pattern": "/^[A-Za-z0-9]{1,4}$/"
+            "pattern": "^[A-Za-z0-9]{1,4}$"
           },
           "seats": {
             "type": "number",
@@ -8785,6 +7008,8 @@
             "type": "boolean"
           },
           "rows": {
+            "minItems": 1,
+            "maxItems": 100,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SectionRowDto"
@@ -8821,7 +7046,8 @@
             "maxLength": 100
           },
           "accessZoneId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
@@ -8837,7 +7063,8 @@
           },
           "accessZoneId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "format": "uuid"
           }
         }
       },
@@ -8846,9 +7073,12 @@
         "properties": {
           "seatIds": {
             "description": "The seats to block or unblock. Leave out for every seat in the section (a reserved section).",
+            "minItems": 1,
+            "maxItems": 500,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           },
           "isBlocked": {
@@ -8871,9 +7101,11 @@
             ]
           },
           "organizerIds": {
+            "maxItems": 500,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         },
@@ -8941,13 +7173,13 @@
             "maximum": 60
           },
           "numbering": {
-            "type": "string",
             "description": "\"letters\" (the default): each row from 1, A1–A30, B1–B20. \"running\": the numbers run on through the section, A1–A30, B31–B50. \"seats\": one number per seat, no row letters, 1–144.",
             "enum": [
               "letters",
               "running",
               "seats"
-            ]
+            ],
+            "type": "string"
           },
           "perRow": {
             "type": "number",
@@ -8957,20 +7189,21 @@
           "firstRow": {
             "type": "string",
             "description": "The first row's letter, when rows don't start at A (\"D\" for rows D–G). Ignored with \"seats\".",
-            "pattern": "/^[A-Z]$/"
+            "pattern": "^[A-Z]$"
           },
           "removed": {
             "description": "Places with no seat, as \"row-place\" counted from 1: [\"1-12\", \"2-12\"] for an aisle.",
             "type": "array",
             "items": {
               "type": "string",
-              "pattern": "/^[1-9]\\d?-[1-9]\\d{0,2}$/"
+              "pattern": "^[1-9]\\d?-[1-9]\\d{0,2}$"
             }
           },
           "gateId": {
             "type": "string",
             "nullable": true,
-            "description": "The gate its ticket holders go in by. null = none; leave out to keep it."
+            "description": "The gate its ticket holders go in by. null = none; leave out to keep it.",
+            "format": "uuid"
           }
         },
         "required": [
@@ -8985,13 +7218,15 @@
           "ticketTypeId": {
             "type": "string",
             "nullable": true,
-            "description": "The ticket type the section is sold as; null = not on sale."
+            "description": "The ticket type the section is sold as; null = not on sale.",
+            "format": "uuid"
           },
           "closedSeatIds": {
             "description": "Every seat in the section that is closed for this event (cameras, sound desk). Leave out to keep them.",
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         },
@@ -9069,7 +7304,7 @@
           "phone": {
             "type": "string",
             "description": "Empty to remove it.",
-            "pattern": "/^$|^\\+?[0-9 ()-]{7,20}$/"
+            "pattern": "^$|^\\+?[0-9 ()-]{7,20}$"
           }
         },
         "required": [
@@ -9125,14 +7360,20 @@
         "type": "object",
         "properties": {
           "role": {
-            "$ref": "#/components/schemas/StaffRole"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffRole"
+              }
+            ]
           },
           "email": {
             "type": "string",
-            "maxLength": 254
+            "maxLength": 254,
+            "format": "email"
           },
           "assignedGateId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "fullName": {
             "type": "string",
@@ -9153,11 +7394,16 @@
         "type": "object",
         "properties": {
           "role": {
-            "$ref": "#/components/schemas/StaffRole"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StaffRole"
+              }
+            ]
           },
           "assignedGateId": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "format": "uuid"
           }
         }
       },
@@ -9195,6 +7441,7 @@
           "accessZone": {
             "nullable": true,
             "description": "Zone this gate admits into; null = open gate.",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/ZoneNameDto"
@@ -9242,7 +7489,11 @@
         "type": "object",
         "properties": {
           "status": {
-            "$ref": "#/components/schemas/EventStatus"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              }
+            ]
           },
           "id": {
             "type": "string"
@@ -9268,6 +7519,7 @@
           "assignedGate": {
             "nullable": true,
             "description": "If set, every scan by this person happens at this gate.",
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/NamedRefDto"
@@ -9307,7 +7559,11 @@
         "type": "object",
         "properties": {
           "result": {
-            "$ref": "#/components/schemas/CheckInResult"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CheckInResult"
+              }
+            ]
           },
           "id": {
             "type": "string"
@@ -9343,6 +7599,7 @@
           },
           "seat": {
             "nullable": true,
+            "type": "object",
             "allOf": [
               {
                 "$ref": "#/components/schemas/SeatLabelDto"
@@ -9439,7 +7696,8 @@
         "type": "object",
         "properties": {
           "eventId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           },
           "until": {
             "type": "string",
@@ -9469,9 +7727,11 @@
         "properties": {
           "ids": {
             "description": "Every current pick's id, first to last",
+            "maxItems": 10,
             "type": "array",
             "items": {
-              "type": "string"
+              "type": "string",
+              "format": "uuid"
             }
           }
         },
@@ -9483,7 +7743,8 @@
         "type": "object",
         "properties": {
           "eventId": {
-            "type": "string"
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [

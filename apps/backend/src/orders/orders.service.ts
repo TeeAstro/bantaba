@@ -31,9 +31,9 @@ const MAX_TICKETS_PER_ORDER = Number(process.env.MAX_TICKETS_PER_ORDER ?? 10);
 
 // Guest checkout and paying an order are public; keep bots from holding
 // every ticket (per IP).
-const guestLimiter = new RateLimiter(10, 10 * 60_000);
+const guestLimiter = new RateLimiter('guest', 10, 10 * 60_000);
 // Security review (Phase 21b): signed-in buyers too, per account.
-const checkoutLimiter = new RateLimiter(20, 10 * 60_000);
+const checkoutLimiter = new RateLimiter('checkout', 20, 10 * 60_000);
 // Unpaid orders with a payment started (a bank transfer holds for a day)
 // one account may have open for one event: stops one account holding
 // every ticket.
@@ -54,7 +54,7 @@ export class OrdersService {
   ) {}
 
   async checkout(user: AuthenticatedUser, dto: CheckoutDto) {
-    checkoutLimiter.check(`checkout:${user.id}`);
+    await checkoutLimiter.check(`checkout:${user.id}`);
     return this.placeOrder({ id: user.id, email: user.email }, dto, null);
   }
 
@@ -65,7 +65,7 @@ export class OrdersService {
   // of a session, so they can pay it and see its tickets, never anything
   // else in that account.
   async guestCheckout(dto: GuestCheckoutDto, ip: string) {
-    guestLimiter.check(`guest:${ip}`);
+    await guestLimiter.check(`guest:${ip}`);
     const email = dto.email.trim().toLowerCase();
     let customer = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
     if (customer && customer.role !== UserRole.CUSTOMER) {
@@ -357,7 +357,7 @@ export class OrdersService {
   // Phase 16: pay an order that's being held. The buyer who placed it
   // (signed in), or a guest with the order's private key.
   async pay(viewer: AuthenticatedUser | null, orderId: string, guestToken: string | undefined, provider: PaymentProviderType, ip: string) {
-    if (!viewer) guestLimiter.check(`pay:${ip}`);
+    if (!viewer) await guestLimiter.check(`pay:${ip}`);
     const order = await this.prisma.ticketOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { email: true } }, payments: true } });
     if (!order || !this.canSee(order, viewer, guestToken)) throw new NotFoundException('Order not found');
     if (order.status !== 'PENDING') throw new ConflictException(order.status === 'PAID' ? 'This order is already paid' : 'This order is closed. Choose your tickets again.');

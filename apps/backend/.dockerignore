@@ -1,0 +1,10 @@
+node_modules
+dist
+uploads
+mail-previews
+.env
+.env.*
+!.env.example
+*-test.js
+openapi.json
+*.tsbuildinfo

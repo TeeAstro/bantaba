@@ -8,7 +8,7 @@ import { SetPasswordDto, UpdateMeDto } from './dto/me.dto';
 
 // The buyer's own Profile page (Phase 18d, docs/storefront.md, "Profile").
 // Current-password checks: 10 tries per 15 minutes per account.
-const passwordLimiter = new RateLimiter(10, 15 * 60_000, 'Too many tries. Wait 15 minutes and try again.');
+const passwordLimiter = new RateLimiter('password', 10, 15 * 60_000, 'Too many tries. Wait 15 minutes and try again.');
 
 @Injectable()
 export class MeService {
@@ -31,7 +31,7 @@ export class MeService {
   }
 
   async setPassword(userId: string, dto: SetPasswordDto) {
-    passwordLimiter.check(userId);
+    await passwordLimiter.check(userId);
     const u = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { passwordHash: true, passwordSetAt: true } });
     if (u.passwordSetAt) {
       const ok = !!dto.currentPassword && (await argon2.verify(u.passwordHash, dto.currentPassword).catch(() => false));

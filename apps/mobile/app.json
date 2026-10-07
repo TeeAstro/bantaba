@@ -1,14 +1,14 @@
 {
   "expo": {
     "name": "Bantaba Host",
-    "slug": "event-ticketing-staff",
+    "slug": "bantaba-host",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.eventticketing.staff"
+      "bundleIdentifier": "gm.bantaba.host"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +18,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.eventticketing.staff"
+      "package": "gm.bantaba.host"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,7 +37,7 @@
         }
       ]
     ],
-    "scheme": "etp-staff",
+    "scheme": "bantaba-host",
     "experiments": {
       "typedRoutes": true
     }

@@ -38,17 +38,30 @@ services:
       - '1025:1025'
       - '8025:8025'
 
+  # The whole platform in containers, built like the live site (docs/deploy.md):
+  #   docker compose up -d --build
+  # then http://localhost:3000. Day-to-day development runs the apps with
+  # npm instead (README, Getting started); these two services are optional.
   backend:
     build:
       context: ./apps/backend
     restart: unless-stopped
     ports:
       - '4000:4000'
+    # Apply database changes and add the categories, then start.
+    command: sh -c "npx prisma migrate deploy && node scripts/setup.js && node dist/main.js"
     environment:
+      NODE_ENV: development
       PORT: 4000
       FRONTEND_URL: http://localhost:3000
       DATABASE_URL: postgresql://ticketing:ticketing_dev_password@postgres:5432/ticketing_dev?schema=public
       REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: dev-only-access-secret-change-me
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      ALLOW_MOCK_PAYMENTS: 'true'
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,13 +71,14 @@ services:
   web:
     build:
       context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
     restart: unless-stopped
     ports:
       - '3000:3000'
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000
     depends_on:
       - backend
 
 volumes:
   postgres_data:
+  uploads:

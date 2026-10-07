@@ -1,9 +1,9 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventStatus, OrderStatus, Prisma } from '@prisma/client';
-// sharp 0.35 ships ES-module types; at run time require() returns the function.
+// require() returns sharp's function (the app is CommonJS).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const sharp = require('sharp') as typeof import('sharp').default;
+const sharp = require('sharp') as typeof import('sharp');
 import { PrismaService } from '../prisma/prisma.service';
 import { MailAttachment, MailTransport } from './mail.transport';
 import { NotificationsService, NotificationType } from './notifications.service';

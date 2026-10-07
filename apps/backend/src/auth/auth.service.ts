@@ -6,7 +6,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { normalizeName, uniqueOrganizerSlug } from '../organizers/public-organizer';
 import { UserRole } from '@prisma/client';
@@ -20,22 +20,23 @@ import { RegisterOrganizerDto } from './dto/register-organizer.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './jwt-payload.interface';
 
-const ACCESS_TOKEN_EXPIRY = process.env.JWT_ACCESS_EXPIRES_IN ?? '15m';
+// e.g. '15m'; typed as the jwt library's duration string.
+const ACCESS_TOKEN_EXPIRY = (process.env.JWT_ACCESS_EXPIRES_IN ?? '15m') as JwtSignOptions['expiresIn'];
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 // Phase 16: email sign-in codes for buyers (docs/storefront.md)
 const CODE_TTL_MINUTES = 10;
 const CODE_MAX_TRIES = 5;
-const codeIpLimiter = new RateLimiter(20, 60 * 60_000, 'Too many codes asked for. Wait a while and try again.');
+const codeIpLimiter = new RateLimiter('email-code-ip', 20, 60 * 60_000, 'Too many codes asked for. Wait a while and try again.');
 
 // Security review (Phase 21b): password guessing. Per email from one
 // address, and per address overall; sign-ups and resets per address.
 const TRY_LATER = 'Too many tries. Wait 15 minutes and try again.';
-const loginLimiter = new RateLimiter(10, 15 * 60_000, TRY_LATER);
-const loginIpLimiter = new RateLimiter(60, 15 * 60_000, TRY_LATER);
-const registerLimiter = new RateLimiter(10, 60 * 60_000, 'Too many new accounts from here. Try again later.');
-const resetLimiter = new RateLimiter(20, 60 * 60_000, TRY_LATER);
+const loginLimiter = new RateLimiter('login', 10, 15 * 60_000, TRY_LATER);
+const loginIpLimiter = new RateLimiter('login-ip', 60, 15 * 60_000, TRY_LATER);
+const registerLimiter = new RateLimiter('register', 10, 60 * 60_000, 'Too many new accounts from here. Try again later.');
+const resetLimiter = new RateLimiter('reset', 20, 60 * 60_000, TRY_LATER);
 // Compared against when the email has no account, so a wrong email takes
 // as long as a wrong password (no telling which emails exist by timing).
 let dummyHash: Promise<string> | null = null;
@@ -81,7 +82,7 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto, ip = '') {
-    registerLimiter.check(`reg:${ip}`);
+    await registerLimiter.check(`reg:${ip}`);
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -106,7 +107,7 @@ export class AuthService {
   }
 
   async registerOrganizer(dto: RegisterOrganizerDto, ip = '') {
-    registerLimiter.check(`reg:${ip}`);
+    await registerLimiter.check(`reg:${ip}`);
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -154,8 +155,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ip = '') {
-    loginIpLimiter.check(`ip:${ip}`);
-    loginLimiter.check(`${ip}:${dto.email}`);
+    await loginIpLimiter.check(`ip:${ip}`);
+    await loginLimiter.check(`${ip}:${dto.email}`);
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -265,7 +266,7 @@ export class AuthService {
   // note to sign in with the password instead (same response, so this
   // can't be used to find out which emails are Host accounts).
   async requestEmailCode(rawEmail: string, ip: string) {
-    codeIpLimiter.check(`code:${ip}`);
+    await codeIpLimiter.check(`code:${ip}`);
     const email = rawEmail.trim().toLowerCase();
     const response = { sent: true, minutes: CODE_TTL_MINUTES };
 
@@ -405,7 +406,7 @@ export class AuthService {
   }
 
   async resetPassword(rawToken: string, newPassword: string, ip = '') {
-    resetLimiter.check(`reset:${ip}`);
+    await resetLimiter.check(`reset:${ip}`);
     const tokenHash = hashToken(rawToken);
     const resetToken = await this.prisma.passwordResetToken.findUnique({
       where: { tokenHash },

@@ -1,0 +1,123 @@
+# Bantaba on Render (docs/deploy.md). In the Render dashboard:
+# New → Blueprint → pick this repository. Render creates everything below
+# and asks for each value marked `sync: false`.
+#
+# Sizes are Render's defaults (0.5 CPU / 512 MB for each service, the
+# smallest paid database); change them in the dashboard as sales grow.
+# The limits store is on the free plan: it only keeps short-lived counts.
+# Region: Frankfurt, the closest Render region to The Gambia.
+
+services:
+  # The API: https://api.bantaba.gm
+  - type: web
+    name: bantaba-api
+    runtime: docker
+    region: frankfurt
+    rootDir: apps/backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    # Database changes, before the new version starts taking traffic.
+    preDeployCommand: npx prisma migrate deploy
+    autoDeployTrigger: commit
+    # domains:
+    #   - api.bantaba.gm
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bantaba-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: bantaba-limits
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      # The website's address: https://bantaba.gm (or the onrender.com
+      # address until the domain is ready).
+      - key: FRONTEND_URL
+        sync: false
+      # How many proxies sit in front: measure it once (docs/deploy.md).
+      - key: TRUST_PROXY
+        value: '3'
+      # Email (tickets, sign-in codes, password resets)
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: '587'
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        value: Bantaba <tickets@bantaba.gm>
+      - key: APP_NAME
+        value: Bantaba
+      # Event images: an S3-compatible bucket (Cloudflare R2)
+      - key: STORAGE_DRIVER
+        value: s3
+      - key: S3_BUCKET
+        value: bantaba-media
+      - key: S3_REGION
+        value: auto
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: MEDIA_PUBLIC_URL
+        sync: false
+      # Card payments. Before launch: test keys with MODEMPAY_TEST_MODE=true.
+      - key: MODEMPAY_SECRET_KEY
+        sync: false
+      - key: MODEMPAY_WEBHOOK_SECRET
+        sync: false
+      - key: MODEMPAY_TEST_MODE
+        value: 'true'
+      # Bank transfer instructions shown to buyers
+      - key: BANK_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NUMBER
+        sync: false
+
+  # The website: https://bantaba.gm
+  - type: web
+    name: bantaba-web
+    runtime: docker
+    region: frankfurt
+    rootDir: apps/web
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    # domains:
+    #   - bantaba.gm
+    #   - www.bantaba.gm
+    envVars:
+      # The API's address, built into the pages: https://api.bantaba.gm
+      # (or the API's onrender.com address until the domain is ready).
+      # Changing it needs a new deploy of the website.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+
+  # Sign-in and checkout limits shared by every API server
+  - type: keyvalue
+    name: bantaba-limits
+    region: frankfurt
+    plan: free
+    maxmemoryPolicy: volatile-lru
+    ipAllowList: [] # only Bantaba's own services can reach it
+
+databases:
+  - name: bantaba-db
+    region: frankfurt
+    databaseName: bantaba
+    user: bantaba
+    postgresMajorVersion: '16'
+    ipAllowList: [] # only Bantaba's own services can reach it

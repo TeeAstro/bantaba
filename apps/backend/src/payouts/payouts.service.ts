@@ -58,7 +58,7 @@ export const autoApproves = (o: Pick<Organizer, 'payoutAutoApprove' | 'payoutAut
 // Organizer payouts (docs/payouts.md). Customers pay the platform; an
 // organizer asks for their money and an admin approves every payout.
 // Security review (Phase 21b): the password check on payout details, 10 tries per 15 minutes.
-const accountLimiter = new RateLimiter(10, 15 * 60_000, 'Too many tries. Wait 15 minutes and try again.');
+const accountLimiter = new RateLimiter('payout-account', 10, 15 * 60_000, 'Too many tries. Wait 15 minutes and try again.');
 
 @Injectable()
 export class PayoutsService {
@@ -176,7 +176,7 @@ export class PayoutsService {
 
   async setAccount(user: Actor, dto: PayoutAccountDto) {
     const u = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-    accountLimiter.check(user.id);
+    await accountLimiter.check(user.id);
     if (!(await argon2.verify(u.passwordHash, dto.password))) throw new BadRequestException('That password isn’t right.');
     const o = await this.organizerFor(user);
 

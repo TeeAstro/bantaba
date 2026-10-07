@@ -32,6 +32,8 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // The Docker image (Dockerfile) runs a small standalone server.
+  ...(process.env.BUILD_STANDALONE ? { output: 'standalone' } : {}),
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
@@ -41,6 +43,8 @@ const nextConfig = {
   // instead of trying to reach "localhost:4000" — which on a phone is the
   // phone itself. Only used when NEXT_PUBLIC_API_URL is set to empty.
   async rewrites() {
+    // Not used on the live site (the pages call NEXT_PUBLIC_API_URL).
+    if (!dev && !process.env.BACKEND_URL) return [];
     return [
       { source: '/api/:path*', destination: `${process.env.BACKEND_URL ?? 'http://localhost:4000'}/api/:path*` },
     ];
