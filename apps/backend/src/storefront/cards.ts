@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { OrganizerVerificationStatus, Prisma } from '@prisma/client';
+import { EntryMode, OrganizerVerificationStatus, Prisma, SeriesFrequency } from '@prisma/client';
+import { seriesBadge, seriesLabel } from '../series/series-rule';
 import { PrismaService } from '../prisma/prisma.service';
 import { LIVE_STATUSES } from '../events/event-rules';
 import { PUBLIC_ORGANIZER_SELECT, publicOrganizer } from '../organizers/public-organizer';
@@ -18,6 +19,10 @@ export const CARD_SELECT = {
   venue: { select: { name: true, city: true } },
   organizer: { select: { ...PUBLIC_ORGANIZER_SELECT, location: true } },
   ticketTypes: { select: { price: true, currency: true, quantityTotal: true, quantitySold: true, isActive: true, salesStart: true, salesEnd: true } },
+  // Phase 24 (docs/series.md)
+  entryMode: true,
+  seriesId: true,
+  series: { select: { frequency: true, anchorStart: true } },
 } satisfies Prisma.EventSelect;
 
 export type CardEvent = Prisma.EventGetPayload<{ select: typeof CARD_SELECT }>;
@@ -36,8 +41,29 @@ export function host(e: CardEvent) {
   return { ...publicOrganizer(e.organizer), location: e.organizer.location };
 }
 
+/** Phase 24: how an event repeats, for its card ("Every Saturday", badge EVERY / SAT). */
+export function cardSeries(e: { startDate: Date; series: { frequency: SeriesFrequency; anchorStart: Date | null } | null }) {
+  if (!e.series) return null;
+  const anchor = e.series.anchorStart ?? e.startDate;
+  return { label: seriesLabel(e.series.frequency, anchor), badge: seriesBadge(e.series.frequency, anchor) };
+}
+
+/** Phase 24: a repeating event shows once, as its next session. Expects events by date. */
+export function onePerSeries<T extends { seriesId: string | null }>(events: T[]): T[] {
+  const seen = new Set<string>();
+  return events.filter((e) => {
+    if (!e.seriesId) return true;
+    if (seen.has(e.seriesId)) return false;
+    seen.add(e.seriesId);
+    return true;
+  });
+}
+
+const OPEN_PRICE = { label: 'Free entry', kind: 'open' as const, min: 0, currency: 'GMD', left: 0, capacity: 0 };
+
 export function eventCard(e: CardEvent, soldLast7Days: number, now = new Date()) {
-  const price = priceLabel(e.ticketTypes, now);
+  const open = e.entryMode === EntryMode.OPEN;
+  const price = open ? OPEN_PRICE : priceLabel(e.ticketTypes, now);
   return {
     id: e.id,
     slug: e.slug,
@@ -48,8 +74,10 @@ export function eventCard(e: CardEvent, soldLast7Days: number, now = new Date())
     bannerUrl: e.bannerUrl,
     venue: e.venue,
     price: { label: price.label, kind: price.kind, min: price.min, currency: price.currency },
-    flag: salesFlag(price, soldLast7Days),
+    flag: open ? null : salesFlag(price, soldLast7Days),
     host: host(e),
+    series: cardSeries(e),
+    open,
   };
 }
 

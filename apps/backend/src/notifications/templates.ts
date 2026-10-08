@@ -278,6 +278,30 @@ export function eventReminder(d: { name: string | null; event: EventInfo; ticket
   return { subject, html: layout({ preheader: `${eventWhen(d.event)} · ${d.event.venueName}`, title: subject, body }), text };
 }
 
+// Phase 24: open-entry events, for people who said "I'm going".
+export function goingReminder(d: { name: string | null; event: EventInfo }): Rendered {
+  const subject = `Tomorrow: ${d.event.name}`;
+  const body =
+    p(h(greet(d.name))) +
+    p(`A reminder that <b>${h(d.event.name)}</b> starts ${h(when(d.event.startDate))}. Free entry, no ticket needed: just come along.`) +
+    eventCard(d.event) +
+    (d.event.rules ? muted(`<b>Rules:</b> ${h(d.event.rules)}`) : '') +
+    muted('You said you’re going. Can’t make it? Tap “You’re going” on the event page to change it.');
+  const text = [greet(d.name), '', `A reminder that ${d.event.name} starts ${when(d.event.startDate)}. Free entry, no ticket needed: just come along.`, '', eventText(d.event), d.event.rules ? `Rules: ${d.event.rules}` : ''].join('\n');
+  return { subject, html: layout({ preheader: `${eventWhen(d.event)} · ${d.event.venueName}`, title: subject, body }), text };
+}
+
+export function goingCancelled(d: { name: string | null; event: EventInfo }): Rendered {
+  const subject = `Cancelled: ${d.event.name}`;
+  const body =
+    p(h(greet(d.name))) +
+    p(`We're sorry: <b>${h(d.event.name)}</b> has been cancelled by the host, so please don't go.`) +
+    eventCard(d.event) +
+    (d.event.contactEmail ? muted(`Host contact: ${h(d.event.contactEmail)}`) : '');
+  const text = [greet(d.name), '', `We're sorry: ${d.event.name} has been cancelled by the host, so please don't go.`, '', eventText(d.event), d.event.contactEmail ? `Host contact: ${d.event.contactEmail}` : ''].join('\n');
+  return { subject, html: layout({ preheader: 'This event will not take place', title: subject, body, tone: 'red' }), text };
+}
+
 export function staffAssigned(d: { name: string | null; event: EventInfo; roleLabel: string; gateName: string | null; organizerName: string; accountCreated: boolean; scannerUrl: string; forgotUrl: string }): Rendered {
   const subject = `You're on the team for ${d.event.name}`;
   const body =
@@ -605,4 +629,31 @@ export function payoutAccountChanged(d: { name: string | null; forAdmin: boolean
     button(d.url, 'Open Withdraw');
   const text = [greet(d.name), '', `Withdrawals for ${d.organizer} will now go to: ${where} (${d.accountName}).`, 'The platform team checks new withdrawal details before the first withdrawal.', '', 'If you didn’t make this change, contact the platform team straight away and change your password.', '', d.url].join('\n');
   return { subject, html: layout({ preheader: where, title: subject, body, tone: 'marigold' }), text };
+}
+
+// ---------- Support (Phase 25, docs/support.md) ----------
+
+const quote = (text: string) => `<div style="background:${COLORS.paper};border-radius:6px;padding:12px 14px;margin:0 0 14px;font-size:15px;line-height:1.55;white-space:pre-line">${h(text)}</div>`;
+
+export function supportReply(d: { name: string | null; ref: string; subject: string; reply: string; url: string }): Rendered {
+  const subject = `Re: ${d.subject} [${d.ref}]`;
+  const body =
+    p(h(greet(d.name))) +
+    p(`Bantaba support has answered your message <b>${h(d.ref)}</b>:`) +
+    quote(d.reply) +
+    button(d.url, 'Reply or see the conversation') +
+    muted('Please reply on the page, not to this email.');
+  const text = [greet(d.name), '', `Bantaba support has answered your message ${d.ref}:`, '', d.reply, '', `Reply or see the conversation: ${d.url}`].join('\n');
+  return { subject, html: layout({ preheader: d.reply.slice(0, 90), title: `Your message ${d.ref}`, body }), text };
+}
+
+export function supportNew(d: { name: string | null; ref: string; subject: string; from: string; fromRole: string; message: string; context: string | null; url: string; followUp: boolean }): Rendered {
+  const subject = `${d.followUp ? 'Support reply' : 'Support'} ${d.ref}: ${d.subject}`;
+  const body =
+    p(h(greet(d.name))) +
+    p(`<b>${h(d.from)}</b> (${h(d.fromRole)}) ${d.followUp ? 'added to' : 'wrote'} <b>${h(d.ref)}</b>${d.context ? `, about ${h(d.context)}` : ''}:`) +
+    quote(d.message) +
+    button(d.url, 'Answer it');
+  const text = [greet(d.name), '', `${d.from} (${d.fromRole}) ${d.followUp ? 'added to' : 'wrote'} ${d.ref}${d.context ? `, about ${d.context}` : ''}:`, '', d.message, '', `Answer: ${d.url}`].join('\n');
+  return { subject, html: layout({ preheader: d.message.slice(0, 90), title: subject, body, tone: 'marigold' }), text };
 }

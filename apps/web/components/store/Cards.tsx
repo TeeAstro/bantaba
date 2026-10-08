@@ -4,6 +4,22 @@ import Link from 'next/link';
 import { StoreEventCard, TrendingCard, eventColour, initials, when } from '@/lib/store';
 import { Tick } from './Chrome';
 
+// Phase 24: the corner badge: the date, or how it repeats ("EVERY / SAT").
+function DateBadge({ e }: { e: StoreEventCard }) {
+  const d = when(e.startDate);
+  if (e.series) return <span className="s-date s-date-rep" aria-hidden="true"><span>{e.series.badge.top}</span><strong>{e.series.badge.day}</strong></span>;
+  return <span className="s-date" aria-hidden="true"><span>{d.month}</span><strong>{d.day}</strong></span>;
+}
+
+// "Every Saturday · next Sat 17 Oct", or the date.
+export function cardWhen(e: StoreEventCard) {
+  const d = when(e.startDate);
+  return e.series ? `${e.series.label} · next ${d.short}` : d.short;
+}
+
+const priceClass = (e: StoreEventCard, out: boolean) => `s-price${out ? ' s-price-out' : ''}${e.price.kind === 'free' || e.price.kind === 'open' ? ' s-price-free' : ''}`;
+const priceText = (e: StoreEventCard) => (e.price.kind === 'open' ? 'Free entry, no ticket' : e.price.label);
+
 // Event cards for Discover and host pages (Phase 16).
 
 export function EventCard({ e, showHost = false }: { e: StoreEventCard; showHost?: boolean }) {
@@ -18,14 +34,14 @@ export function EventCard({ e, showHost = false }: { e: StoreEventCard; showHost
         ) : (
           <span className="s-noimg" aria-hidden="true">{e.name.slice(0, 1)}</span>
         )}
-        <span className="s-date" aria-hidden="true"><span>{d.month}</span><strong>{d.day}</strong></span>
+        <DateBadge e={e} />
         {e.flag && !out && <span className="s-flag">{e.flag}</span>}
       </div>
       <div className="s-card-body">
         <strong>{e.name}</strong>
-        <span className="s-meta">{d.short} · {e.venue.name}</span>
+        <span className="s-meta">{e.series ? cardWhen(e) : `${d.short} · ${e.venue.name}`}</span>
         {showHost && <span className="s-meta">{e.host.businessName}</span>}
-        {e.price.label && <span className={`s-price${out ? ' s-price-out' : ''}`}>{e.price.label}</span>}
+        {priceText(e) && <span className={priceClass(e, out)}>{priceText(e)}</span>}
       </div>
     </Link>
   );
@@ -47,8 +63,8 @@ export function TrendCard({ t }: { t: TrendingCard }) {
       </div>
       <div className="s-tcard-body">
         <strong>{t.name}</strong>
-        <span className="s-meta">{d.short} · {t.venue.name}</span>
-        {t.price.label && <span className="s-price">{t.price.label}</span>}
+        <span className="s-meta">{t.series ? cardWhen(t) : `${d.short} · ${t.venue.name}`}</span>
+        {priceText(t) && <span className="s-price">{priceText(t)}</span>}
       </div>
     </Link>
   );
@@ -79,7 +95,6 @@ export function HostName({ name, verified, href }: { name: string; verified: boo
 // ---------- Phase 18b: pages with only a few events (docs/storefront.md, "Few events") ----------
 
 function Media({ e, big = false }: { e: StoreEventCard; big?: boolean }) {
-  const d = when(e.startDate);
   const picture = big ? e.bannerUrl ?? e.posterUrl : e.posterUrl ?? e.bannerUrl;
   return (
     <div className="s-fmedia" style={{ background: eventColour(e.id) }}>
@@ -89,7 +104,7 @@ function Media({ e, big = false }: { e: StoreEventCard; big?: boolean }) {
       ) : (
         <span className="s-noimg" aria-hidden="true">{e.name.slice(0, 1)}</span>
       )}
-      <span className="s-date" aria-hidden="true"><span>{d.month}</span><strong>{d.day}</strong></span>
+      <DateBadge e={e} />
     </div>
   );
 }
@@ -122,13 +137,13 @@ export function FeaturedCard({ e, showHost = true, left }: { e: StoreEventCard; 
         <span className="s-feat-kicker">Next up</span>
         {showHost && <HostLine e={e} />}
         <Link href={`/e/${e.slug}`} className="s-feat-title">{e.name}</Link>
-        <span className="s-meta">{d.short} · {d.time} · {e.venue.name}</span>
+        <span className="s-meta">{e.series ? cardWhen(e) : d.short} · {d.time} · {e.venue.name}</span>
         <div className="s-feat-foot">
           <span className="s-feat-price">
-            {e.price.label && <strong className={out ? 's-price-out' : ''}>{e.price.label}</strong>}
-            {left !== undefined && left > 0 && left <= 50 && !out && <span className="s-few">Few left: {left} tickets</span>}
+            {priceText(e) && <strong className={priceClass(e, out).replace('s-price', '').trim()}>{priceText(e)}</strong>}
+            {left !== undefined && left > 0 && left <= 50 && !out && !e.open && <span className="s-few">Few left: {left} tickets</span>}
           </span>
-          {!out && e.price.kind !== 'soon' && e.price.kind !== 'none' && <Link href={`/e/${e.slug}`} className="s-btn">Get tickets</Link>}
+          {!out && !e.open && e.price.kind !== 'soon' && e.price.kind !== 'none' && <Link href={`/e/${e.slug}`} className="s-btn">{e.series ? 'Choose a date' : e.price.kind === 'free' ? 'Get free ticket' : 'Get tickets'}</Link>}
         </div>
       </div>
     </article>
@@ -144,9 +159,9 @@ export function RowCard({ e, showHost = true }: { e: StoreEventCard; showHost?: 
       <Media e={e} />
       <div className="s-rcard-body">
         <strong>{e.name}</strong>
-        <span className="s-meta">{d.short} · {d.time}</span>
+        <span className="s-meta">{e.series ? cardWhen(e) : d.short} · {d.time}</span>
         {showHost ? <HostLine e={e} /> : <span className="s-meta">{e.venue.name}</span>}
-        {e.price.label && <span className={`s-price${out ? ' s-price-out' : ''}`}>{e.price.label}</span>}
+        {priceText(e) && <span className={priceClass(e, out)}>{priceText(e)}</span>}
       </div>
     </Link>
   );

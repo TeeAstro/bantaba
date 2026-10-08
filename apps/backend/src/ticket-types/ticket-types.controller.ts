@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { TicketTypesService } from './ticket-types.service';
 import { CreateTicketTypeDto } from './dto/create-ticket-type.dto';
@@ -43,5 +43,13 @@ export class TicketTypesController {
     @Body() dto: UpdateTicketTypeDto,
   ) {
     return this.ticketTypesService.update(user, id, dto);
+  }
+
+  /** Phase 26: remove a ticket type nobody has bought or is holding (the event form's rows). */
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
+  @Delete('ticket-types/:id')
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.ticketTypesService.remove(user, id);
   }
 }

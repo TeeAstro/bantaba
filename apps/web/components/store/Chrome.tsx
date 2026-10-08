@@ -118,6 +118,7 @@ export function StoreFooter() {
         <span className="s-foot-pay"><Icon name="shield" />Pay with Wave, Afrimoney, QMoney, card or bank transfer</span>
         <div className="s-foot-links">
           <Link href="/tickets">My tickets</Link>
+          <Link href="/help">Help</Link>
           <Link href="/login">Sell tickets with Bantaba</Link>
         </div>
       </div>

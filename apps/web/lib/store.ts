@@ -2,7 +2,7 @@
 // buyer-facing API, the cart kept while choosing tickets, and guests'
 // private keys to their orders.
 
-export type PriceKind = 'price' | 'from' | 'free' | 'soldOut' | 'ended' | 'soon' | 'none';
+export type PriceKind = 'price' | 'from' | 'free' | 'soldOut' | 'ended' | 'soon' | 'none' | 'open';
 
 export interface StoreHost {
   id: string;
@@ -25,6 +25,9 @@ export interface StoreEventCard {
   price: { label: string | null; kind: PriceKind; min: number | null; currency: string };
   flag: string | null;
   host: StoreHost;
+  // Phase 24 (docs/series.md): a repeating event, shown as its next session
+  series?: { label: string; badge: { top: string; day: string } } | null;
+  open?: boolean; // open entry: no tickets
 }
 
 export interface TrendingCard extends StoreEventCard {
@@ -33,7 +36,7 @@ export interface TrendingCard extends StoreEventCard {
 }
 
 export interface Discover {
-  when: 'all' | 'weekend' | 'week' | 'date';
+  when: 'all' | 'today' | 'weekend' | 'week' | 'date';
   from: string;
   trending: TrendingCard[];
   hosts: (StoreHost & { total: number; events: StoreEventCard[] })[];
@@ -42,6 +45,10 @@ export interface Discover {
   // Nothing on the chosen dates: the next events, and days in the next two weeks with events ("2026-10-24")
   next: StoreEventCard[];
   eventDays: string[];
+  // Phase 27: everything on, by date (24 a page), and categories with something on
+  events: StoreEventCard[];
+  eventPages: number;
+  categories: { slug: string; name: string; count: number }[];
   totalHosts: number;
   totalEvents: number;
   page: number;
@@ -65,8 +72,12 @@ export interface StoreEvent {
   refundDaysBefore: number | null;
   transfersEnabled: boolean;
   category: { name: string; slug: string };
-  venue: { id: string; name: string; address: string; city: string };
+  venue: { id: string; name: string; address: string; city: string; directions?: string | null; latitude?: number | null; longitude?: number | null };
   organizer: { id: string; slug: string; businessName: string; logoUrl: string | null; verified: boolean };
+  // Phase 24 (docs/series.md)
+  entryMode?: 'TICKETS' | 'OPEN';
+  series?: { label: string; sessions: { id: string; slug: string; startDate: string; endDate: string; left: number | null; kind: string }[] } | null;
+  going?: { count: number; me: boolean } | null;
 }
 
 export interface StoreTicketType {
@@ -168,8 +179,11 @@ export const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join('') || '?';
 
-export const mapsUrl = (v: { name: string; city: string }) =>
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${v.name}, ${v.city}, The Gambia`)}`;
+// Phase 26: straight to the venue's pin when the host set one.
+export const mapsUrl = (v: { name: string; city: string; latitude?: number | null; longitude?: number | null }) =>
+  v.latitude != null && v.longitude != null
+    ? `https://www.google.com/maps/search/?api=1&query=${v.latitude},${v.longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${v.name}, ${v.city}, The Gambia`)}`;
 
 // ---------- the cart ----------
 

@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CARD_SELECT, CardEvent, SalesCounts, eventCard, host, onSale, visibleWhere } from './cards';
+import { CARD_SELECT, CardEvent, SalesCounts, eventCard, host, onSale, onePerSeries, visibleWhere } from './cards';
 
 type Actor = { id: string; role: UserRole };
 
@@ -61,6 +61,9 @@ export class TrendingService {
     const ranked = sellers
       .filter((e) => onSale(e, now) && (sold.get(e.id) ?? 0) > 0)
       .sort((a, b) => (sold.get(b.id) ?? 0) - (sold.get(a.id) ?? 0) || a.startDate.getTime() - b.startDate.getTime());
+    // A repeating event takes one place in the row (Phase 24).
+    const shownSeries = new Set(picks.map((p) => p.event.seriesId).filter(Boolean));
+    const rankedOnce = onePerSeries(ranked).filter((e) => !e.seriesId || !shownSeries.has(e.seriesId));
 
     type Slot = { e: CardEvent; kind: 'pick' | 'auto'; until?: Date; pickId?: string };
     const row: Slot[] = [];
@@ -70,7 +73,7 @@ export class TrendingService {
       hosts.add(p.event.organizerId);
     }
     const next: { e: CardEvent; reason: string | null }[] = [];
-    for (const e of ranked) {
+    for (const e of rankedOnce) {
       const sameHost = settings.onePerHost && hosts.has(e.organizerId);
       if (row.length < settings.count && !sameHost) {
         row.push({ e, kind: 'auto' });

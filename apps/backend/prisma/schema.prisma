@@ -290,6 +290,8 @@ model User {
   updatedAt         DateTime   @updatedAt
 
   organizer           Organizer?
+  going               EventGoing[]
+  supportThreads      SupportThread[]
   wallet              Wallet?
   orders              TicketOrder[]
   tickets             Ticket[]
@@ -365,8 +367,9 @@ model Organizer {
   updatedAt DateTime @updatedAt
 
   events        Event[]
+  series        EventSeries[]
   staff         EventStaff[]
-  staffAccounts User[]       @relation("OrganizerStaffAccounts")
+  staffAccounts User[]        @relation("OrganizerStaffAccounts")
   payouts       Payout[]
 
   // Phase 18: venues they made, Bantaba venues shared with them, templates
@@ -390,6 +393,11 @@ model Venue {
   country    String     @default("The Gambia")
   // What the seats face, shown above every seat grid: "Stage", "Pitch"…
   frontLabel String     @default("Stage")
+  // Phase 26: how to find it, shown to buyers with the address, and its
+  // spot on the map (the buyer's Directions button goes there).
+  directions String?
+  latitude   Float?
+  longitude  Float?
   // Phase 18 (docs/seating.md, "Who manages venues"): the organizer who
   // made it, only they (and admins) can use and change it. Null = Bantaba's,
   // made by admins: "everyone" = any organizer can sell on it, "chosen" =
@@ -575,9 +583,11 @@ model AccessZone {
 // ---------- Events ----------
 
 model EventCategory {
-  id   String @id @default(uuid())
-  name String @unique
-  slug String @unique
+  id       String @id @default(uuid())
+  name     String @unique
+  slug     String @unique
+  // Phase 26: order on the host's form and in the store (Other last).
+  position Int    @default(100)
 
   events Event[]
 
@@ -633,6 +643,18 @@ model Event {
   feeRule        FeeRule?
   scannerDevices ScannerDevice[]
 
+  // Phase 24: repeating events (docs/series.md). Each date is its own
+  // event ("session") with its own tickets and check-in; seriesIndex is
+  // its place in the series (0 = the first, the one the host made).
+  seriesId     String?
+  series       EventSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  seriesIndex  Int?
+  // TICKETS: people need a ticket (free or paid). OPEN: no tickets at
+  // all, "Free entry, no ticket needed", with an "I'm going" button.
+  entryMode    EntryMode    @default(TICKETS)
+  goingEnabled Boolean      @default(true)
+  going        EventGoing[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -650,11 +672,67 @@ model Event {
   trendingPick   TrendingPick?
   trendingHidden TrendingHidden?
 
+  @@unique([seriesId, seriesIndex])
   @@index([organizerId])
   @@index([categoryId])
   @@index([venueId])
   @@index([status])
   @@map("events")
+}
+
+enum EntryMode {
+  TICKETS
+  OPEN
+}
+
+enum SeriesFrequency {
+  WEEKLY
+  BIWEEKLY // every 2 weeks
+  MONTHLY // the same weekday of the month: "first Saturday" (or the last, from the 29th)
+}
+
+enum SeriesEnd {
+  DATE // the last session is on or before endsOn
+  COUNT // `count` sessions in all
+  OPEN // keep going: the next 8 sessions are always on sale
+}
+
+// Phase 24: an event that repeats (docs/series.md). Sessions are made by
+// copying the latest one, once the first is live (published, or approved
+// by an admin: a series is reviewed once).
+model EventSeries {
+  id          String          @id @default(uuid())
+  organizerId String
+  organizer   Organizer       @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  frequency   SeriesFrequency
+  endMode     SeriesEnd
+  endsOn      DateTime?
+  count       Int?
+  // The first session's start when the series went live: every date is
+  // worked out from it.
+  anchorStart DateTime?
+  // The host stopped it repeating: no new sessions are added.
+  stoppedAt   DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  events Event[]
+
+  @@index([organizerId])
+  @@map("event_series")
+}
+
+// Phase 24: "I'm going" on an open-entry event.
+model EventGoing {
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([eventId, userId])
+  @@index([userId])
+  @@map("event_going")
 }
 
 enum EventChangeStatus {
@@ -1331,4 +1409,53 @@ model EmailLoginCode {
 
   @@index([email, createdAt])
   @@map("email_login_codes")
+}
+
+// Phase 25: support messages (docs/support.md). One thread per question,
+// from a signed-in buyer or host; admins answer in Admin → Support and the
+// answer is emailed.
+enum SupportStatus {
+  OPEN // waiting for Bantaba
+  WAITING // Bantaba answered; waiting for them
+  CLOSED
+}
+
+model SupportThread {
+  id        String        @id @default(uuid())
+  // Shown to people as B-1042.
+  number    Int           @unique @default(autoincrement())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // "buyer" or "host": who wrote, so the inbox can say so.
+  fromRole  String
+  // order, event, account, payouts, scanner, other
+  topic     String
+  subject   String
+  orderId   String?
+  eventId   String?
+  status    SupportStatus @default(OPEN)
+  // When they last read Bantaba's answer (for "new reply" marks).
+  readAt    DateTime?
+  lastAt    DateTime      @default(now())
+  closedAt  DateTime?
+  createdAt DateTime      @default(now())
+
+  messages SupportMessage[]
+
+  @@index([status, lastAt])
+  @@index([userId])
+  @@map("support_threads")
+}
+
+model SupportMessage {
+  id        String        @id @default(uuid())
+  threadId  String
+  thread    SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId  String?
+  fromStaff Boolean       @default(false)
+  body      String        @db.Text
+  createdAt DateTime      @default(now())
+
+  @@index([threadId, createdAt])
+  @@map("support_messages")
 }

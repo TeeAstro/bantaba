@@ -2,9 +2,13 @@ import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
 
 export class DiscoverQueryDto {
-  /** Date buttons on Discover: all (default), weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`) */
-  @IsOptional() @IsIn(['all', 'weekend', 'week', 'date'])
-  when?: 'all' | 'weekend' | 'week' | 'date';
+  /** Date buttons on Discover: all (default), today, weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`) */
+  @IsOptional() @IsIn(['all', 'today', 'weekend', 'week', 'date'])
+  when?: 'all' | 'today' | 'weekend' | 'week' | 'date';
+
+  /** Phase 27: one category, by its slug (e.g. concerts) */
+  @IsOptional() @IsString() @MaxLength(60) @Matches(/^[a-z0-9-]+$/)
+  category?: string;
 
   /** With when=date: YYYY-MM-DD */
   @IsOptional() @Matches(/^\d{4}-\d{2}-\d{2}$/)

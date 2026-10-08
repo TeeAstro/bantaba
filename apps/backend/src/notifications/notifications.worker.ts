@@ -283,6 +283,7 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
         const ev = await this.eventInfo(n.eventId!);
         if (!ev) return { skip: 'event no longer exists' };
         if (ev.e.status !== EventStatus.CANCELLED) return { skip: 'event is no longer cancelled' };
+        if (payload.going) return { send: T.goingCancelled({ name, event: ev.info }) };
         // Phase 13: say what happens to their money.
         let refund: T.CancelRefund = { mode: 'ORGANIZER' };
         if (ev.e.cancellationRefundMode === 'AUTOMATIC') {
@@ -297,6 +298,11 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
         if (ev.e.status !== EventStatus.PUBLISHED && ev.e.status !== EventStatus.SOLD_OUT) return { skip: `event is ${ev.e.status.toLowerCase()}` };
         if (ev.e.startDate.toISOString() !== payload.startDate) return { skip: 'event was rescheduled (a new reminder is queued for the new time)' };
         if (ev.e.startDate.getTime() < Date.now()) return { skip: 'event has already started' };
+        if (payload.going) {
+          const still = await this.prisma.eventGoing.findUnique({ where: { eventId_userId: { eventId: ev.e.id, userId: n.userId } } });
+          if (!still) return { skip: 'no longer going' };
+          return { send: T.goingReminder({ name, event: ev.info }) };
+        }
         const tickets = await this.activeTickets({ ownerId: n.userId, ticketType: { eventId: ev.e.id } });
         if (tickets.length === 0) return { skip: 'no valid tickets any more' };
         const { infos, attachments } = await this.ticketImages(tickets);
@@ -330,6 +336,9 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
       case NotificationType.TRANSFER_DECLINED:
       case NotificationType.TICKET_RECEIVED:
         return this.renderTransfer(n.type, String(payload.transferId), name);
+      case NotificationType.SUPPORT_NEW:
+      case NotificationType.SUPPORT_REPLY:
+        return this.renderSupport(n.type, String(payload.threadId), String(payload.messageId), name);
       case NotificationType.EVENT_REVIEW_REQUESTED: {
         const ev = await this.eventInfo(n.eventId!);
         if (!ev) return { skip: 'event no longer exists' };
@@ -421,6 +430,34 @@ export class NotificationsWorker implements OnApplicationBootstrap, OnApplicatio
   }
 
   // ---------- Phase 13 ----------
+
+  // Phase 25 (docs/support.md)
+  private async renderSupport(type: string, threadId: string, messageId: string, name: string | null): Promise<Outcome> {
+    const t = await this.prisma.supportThread.findUnique({
+      where: { id: threadId },
+      include: { user: { select: { fullName: true, email: true, organizer: { select: { businessName: true } } } } },
+    });
+    const m = await this.prisma.supportMessage.findUnique({ where: { id: messageId } });
+    if (!t || !m) return { skip: 'message no longer exists' };
+    const ref = `B-${t.number}`;
+    const site = this.notifications.frontendUrl;
+    if (type === NotificationType.SUPPORT_REPLY) {
+      const url = t.fromRole === 'host' ? `${site}/organizer/help/${t.id}` : `${site}/help/messages/${t.id}`;
+      return { send: T.supportReply({ name, ref, subject: t.subject, reply: m.body, url }) };
+    }
+    if (t.status === 'CLOSED') return { skip: 'closed before it was sent' };
+    const first = (await this.prisma.supportMessage.findFirst({ where: { threadId }, orderBy: { createdAt: 'asc' }, select: { id: true } }))?.id;
+    const event = t.eventId ? await this.prisma.event.findUnique({ where: { id: t.eventId }, select: { name: true } }) : null;
+    const context = t.orderId ? `order #${t.orderId.slice(0, 6).toUpperCase()}${event ? ` (${event.name})` : ''}` : event?.name ?? null;
+    return {
+      send: T.supportNew({
+        name, ref, subject: t.subject,
+        from: t.user.organizer?.businessName ?? t.user.fullName ?? t.user.email,
+        fromRole: t.fromRole === 'host' ? 'host' : 'buyer',
+        message: m.body, context, url: `${site}/admin/support?thread=${t.id}`, followUp: first !== m.id,
+      }),
+    };
+  }
 
   private async renderRefund(type: string, refundId: string, name: string | null): Promise<Outcome> {
     const r = await this.prisma.refund.findUnique({

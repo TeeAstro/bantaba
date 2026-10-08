@@ -8,7 +8,9 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // Browser extensions (Grammarly, dark mode, translators…) add attributes
+    // to <html> and <body> before React loads; ignore just those.
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Brand fonts (docs/brand.md): Inter for everything, Bricolage Grotesque for the logo only. The system font shows until they load, and if they can't. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Inter:wght@400;500;600;700;800&display=swap"
         />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <NavTracker />
         {children}
       </body>

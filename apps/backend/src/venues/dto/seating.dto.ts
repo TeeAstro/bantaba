@@ -1,4 +1,6 @@
 import {
+  IsLatitude,
+  IsLongitude,
   ArrayMaxSize,
   IsArray,
   IsIn,
@@ -39,6 +41,27 @@ export class UpdateVenueDto {
   @MinLength(2)
   @MaxLength(20)
   frontLabel?: string;
+
+  /** Phase 26: how to find it; null clears it. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  directions?: string | null;
+
+  /** Its spot on the map; null (both) clears it. */
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number | null;
+
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number | null;
+
+  /** A Google Maps link to the place; its coordinates are stored. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  mapsLink?: string;
 }
 
 /** A section's seats: rows of places, minus the places taken out, numbered one of two ways. */

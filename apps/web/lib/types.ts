@@ -72,6 +72,49 @@ export interface EventSummary {
   venue: { id: string; name: string };
   category: { name: string };
   changesInReview?: boolean; // docs/event-change-review.md
+  // Phase 24 (docs/series.md)
+  seriesId?: string | null;
+  seriesIndex?: number | null;
+  entryMode?: 'TICKETS' | 'OPEN';
+  series?: { frequency: string; endMode: string; stoppedAt: string | null; label: string } | null;
+  // Phase 27: sales and setup, for the events list
+  posterUrl?: string | null;
+  sold?: number;
+  capacity?: number;
+  ticketTypes?: number;
+  going?: number;
+}
+
+// Phase 24: how an event repeats.
+export interface SeriesInfo {
+  id: string;
+  frequency: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
+  endMode: 'DATE' | 'COUNT' | 'OPEN';
+  endsOn: string | null;
+  count: number | null;
+  stoppedAt: string | null;
+  label: string;
+  badge: { top: string; day: string };
+}
+export interface HostSession {
+  id: string;
+  slug: string;
+  index: number;
+  startDate: string;
+  endDate: string;
+  status: string;
+  sold: number;
+  capacity: number;
+  going: number | null;
+  checkedIn: number;
+}
+export interface PublicSession {
+  id: string;
+  slug: string;
+  startDate: string;
+  endDate: string;
+  left: number | null;
+  kind: string;
 }
 
 export interface TicketTypeStat {
@@ -272,6 +315,14 @@ export interface EventRecord {
   // Owner/admin view only (docs/event-change-review.md)
   changeRequest?: EventChangeRequest | null;
   editsNeedReview?: boolean;
+  reviewNote?: string | null; // sent back by the platform team (owner only)
+  // Phase 24 (docs/series.md)
+  seriesId: string | null;
+  seriesIndex: number | null;
+  entryMode: 'TICKETS' | 'OPEN';
+  goingEnabled: boolean;
+  series: (SeriesInfo & { sessions?: PublicSession[] }) | null;
+  going: { count: number; me: boolean } | null;
 }
 
 // Changes to an approved event waiting for (or after) an admin's review.

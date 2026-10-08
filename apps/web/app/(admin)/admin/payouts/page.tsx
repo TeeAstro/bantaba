@@ -9,6 +9,7 @@ import { AdminPayout, useAttention, waitingFor } from '@/lib/admin';
 import { dateTime, money } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
 import { ActionModal } from '@/components/admin/ActionModal';
+import { ListPager, ListSearch, useListTools } from '@/components/admin/ListTools';
 
 const TABS = [
   { status: 'REQUESTED', label: 'Requests' },
@@ -31,6 +32,7 @@ function PayoutsList() {
   const { attention, refresh } = useAttention();
   const [act, setAct] = useState<Act | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const lt = useListTools(data, (p) => `${p.organizer.businessName} ${where(p)} ${p.note ?? ''} ${p.reference ?? ''}`);
 
   const after = (msg: string) => {
     setNotice(msg);
@@ -41,11 +43,9 @@ function PayoutsList() {
 
   return (
     <div className="stack-l">
-      <div className="page-head">
-        <div>
-          <h1>Payouts</h1>
-          <p className="muted">Approve organizers’ requests, then send the money and record the reference.</p>
-        </div>
+      <div className="hl-head">
+        <h1>Payouts</h1>
+        <ListSearch value={lt.term} onChange={lt.setTerm} placeholder="Organizer, number or reference" />
       </div>
 
       <nav className="tabs" aria-label="Payout status">
@@ -63,8 +63,8 @@ function PayoutsList() {
 
       {data && (
         <section className="panel">
-          {data.length === 0 ? (
-            <div className="empty"><p>{status === 'REQUESTED' ? 'No payout requests waiting.' : status === 'APPROVED' ? 'Nothing waiting to be sent.' : 'No payouts here.'}</p></div>
+          {lt.total === 0 ? (
+            <div className="empty"><p>{lt.term ? 'Nothing matches.' : status === 'REQUESTED' ? 'No payout requests waiting.' : status === 'APPROVED' ? 'Nothing waiting to be sent.' : 'No payouts here.'}</p></div>
           ) : (
             <div className="table-wrap">
               <table>
@@ -72,10 +72,10 @@ function PayoutsList() {
                   <tr><th>Organizer</th><th className="num">Amount</th><th>Send to</th><th>Status</th><th>{status === 'PAID' ? 'Paid' : 'Requested'}</th><th /></tr>
                 </thead>
                 <tbody>
-                  {data.map((p) => (
+                  {lt.shown.map((p) => (
                     <tr key={p.id}>
                       <td>
-                        <Link href={`/admin/organizers/${p.organizer.id}`}>{p.organizer.businessName}</Link>
+                        <Link href={`/admin/organizers/${p.organizer.id}`}><b>{p.organizer.businessName}</b></Link>
                         <span className="cell-sub">{p.organizer.trustLevel === 'NEW' ? 'New organizer' : 'Trusted'}{p.organizer.verificationStatus !== 'APPROVED' ? ` · ${p.organizer.verificationStatus.toLowerCase()}` : ''}</span>
                       </td>
                       <td className="num"><strong>{money(p.amount, p.currency)}</strong></td>
@@ -113,6 +113,7 @@ function PayoutsList() {
               </table>
             </div>
           )}
+          <ListPager page={lt.page} pageSize={lt.pageSize} total={lt.total} onPage={lt.setPage} />
         </section>
       )}
 

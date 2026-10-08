@@ -136,6 +136,7 @@ export default function ProfilePage() {
   }
 
   const imageSaved = (p: MyOrganizerProfile) => setProfile(p);
+  const dirty = JSON.stringify(form) !== JSON.stringify(toForm(profile));
 
   return (
     <div className="stack-l">
@@ -200,10 +201,16 @@ export default function ProfilePage() {
             ))}
           </div>
           <p className="small faint">Enter your username, or a link on that platform’s own site. Links to other sites are refused, so a profile can’t send people somewhere unexpected.</p>
+        </div>
+        {/* Phase 27: Save stays in reach while you scroll (docs/host-rework.md). */}
+        <div className="ee-bar pf-bar">
           {saveError && <div className="notice notice-error" role="alert">{saveError}</div>}
-          {saved && <div className="notice notice-info" role="status">Saved. <Link href={`/o/${profile.slug}`} target="_blank">See your page</Link></div>}
-          <div>
-            <button className="btn" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
+          <div className="ee-bar-row">
+            <span className="ee-saved small muted">
+              {dirty ? 'Unsaved changes' : saved ? <>Saved. <Link href={`/o/${profile.slug}`} target="_blank">See your page</Link></> : 'All changes saved'}
+            </span>
+            {dirty && <button type="button" className="btn btn-quiet" disabled={saving} onClick={() => setForm(toForm(profile))}>Undo</button>}
+            <button className="btn" disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save profile'}</button>
           </div>
         </div>
       </form>

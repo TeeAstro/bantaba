@@ -79,6 +79,13 @@ services:
         sync: false
       - key: MODEMPAY_TEST_MODE
         value: 'true'
+      # Help pages: how people reach Bantaba (docs/support.md)
+      - key: SUPPORT_WHATSAPP
+        sync: false
+      - key: SUPPORT_EMAIL
+        value: support@bantaba.gm
+      - key: SUPPORT_HOURS
+        value: Mon–Sat, 9:00–18:00
       # Bank transfer instructions shown to buyers
       - key: BANK_NAME
         sync: false

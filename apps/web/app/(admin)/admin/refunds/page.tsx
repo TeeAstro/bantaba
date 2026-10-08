@@ -8,6 +8,7 @@ import { useApi } from '@/lib/hooks';
 import { AdminRefund, Paged, useAttention, waitingFor } from '@/lib/admin';
 import { dateTime, label, money } from '@/lib/format';
 import { ErrorNotice, Loading, Pager, StatusBadge } from '@/components/ui';
+import { ListPager, ListSearch, PAGE, useListTools } from '@/components/admin/ListTools';
 import { ActionModal } from '@/components/admin/ActionModal';
 
 const VIEWS = {
@@ -37,15 +38,14 @@ function RefundsList() {
     reload();
     refresh();
   };
+  const lt = useListTools(items, (r) => `${r.customer?.fullName ?? ''} ${r.customer?.email ?? ''} ${r.order.event?.name ?? ''} ${r.order.id} ${r.reference ?? ''}`, view === 'all' ? 50 : PAGE);
   const counts: Partial<Record<View, number>> = { manual: attention?.counts.manualRefundsToPay, failed: attention?.counts.failedProviderRefunds };
 
   return (
     <div className="stack-l">
-      <div className="page-head">
-        <div>
-          <h1>Refunds</h1>
-          <p className="muted">Money owed back to customers. Organizers approve refunds; admins make sure the money arrives.</p>
-        </div>
+      <div className="hl-head">
+        <h1>Refunds</h1>
+        <ListSearch value={lt.term} onChange={lt.setTerm} placeholder="Buyer, email, order or event" />
         <button className="btn btn-quiet" disabled={running} onClick={async () => {
           setRunning(true);
           try {
@@ -77,8 +77,8 @@ function RefundsList() {
 
       {items && (
         <section className="panel">
-          {items.length === 0 ? (
-            <div className="empty"><p>{view === 'manual' ? 'No refunds waiting to be paid.' : view === 'failed' ? 'No failed refunds.' : 'No refunds yet.'}</p></div>
+          {lt.total === 0 ? (
+            <div className="empty"><p>{lt.term ? 'Nothing matches.' : view === 'manual' ? 'No refunds waiting to be paid.' : view === 'failed' ? 'No failed refunds.' : 'No refunds yet.'}</p></div>
           ) : (
             <div className="table-wrap">
               <table>
@@ -86,9 +86,9 @@ function RefundsList() {
                   <tr><th>Customer</th><th>Event</th><th className="num">Amount</th><th>Paid with</th><th>Status</th><th>Approved</th><th /></tr>
                 </thead>
                 <tbody>
-                  {items.map((r) => (
+                  {lt.shown.map((r) => (
                     <tr key={r.id}>
-                      <td>{r.customer?.fullName ?? r.customer?.email ?? '—'}<span className="cell-sub">{r.customer?.email}</span></td>
+                      <td><b>{r.customer?.fullName ?? r.customer?.email ?? '—'}</b><span className="cell-sub">{r.customer?.fullName ? r.customer.email : ''} #{r.order.id.slice(0, 4).toUpperCase()}</span></td>
                       <td>{r.order.event?.name ?? '—'}<span className="cell-sub">{r.tickets.length} {r.tickets.length === 1 ? 'ticket' : 'tickets'}{r.feeAmount ? ' + booking fee' : ''}</span></td>
                       <td className="num"><strong>{money(r.amount, r.currency)}</strong></td>
                       <td>{label(r.provider)}<span className="cell-sub">{r.method === 'MANUAL' ? 'by hand' : 'through the provider'}</span></td>
@@ -117,6 +117,7 @@ function RefundsList() {
               </table>
             </div>
           )}
+          {view !== 'all' && <ListPager page={lt.page} pageSize={lt.pageSize} total={lt.total} onPage={lt.setPage} />}
           {view === 'all' && data && <div className="panel-pad"><Pager page={data.page} pageSize={data.pageSize} total={data.total} onPage={setPage} /></div>}
         </section>
       )}

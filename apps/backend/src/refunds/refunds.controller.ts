@@ -45,6 +45,13 @@ export class RefundsController {
     return this.refunds.withdraw(user, id);
   }
 
+  /** Give a free ticket back so someone else can come (Phase 24). */
+  @Roles(UserRole.CUSTOMER)
+  @Post('tickets/:id/give-back')
+  giveBack(@CurrentUser() user: Actor, @Param('id', ParseUUIDPipe) id: string) {
+    return this.refunds.giveBack(user, id);
+  }
+
   // ----- organizers (and admins) -----
 
   /** Refunds and requests for an event. */

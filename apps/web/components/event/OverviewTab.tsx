@@ -20,8 +20,8 @@ function checklist(d: EventDashboard): Check[] {
   const r = d.readiness;
   return [
     types > 0
-      ? { key: 'types', state: 'done', title: 'Ticket types and prices', sub: `${types} ${types === 1 ? 'type' : 'types'} · ${e.status === 'DRAFT' ? 'not on sale yet' : 'on sale'}`, action: 'Edit', href: `${base}?tab=tickets` }
-      : { key: 'types', state: 'todo', title: 'Add ticket types', sub: 'Nothing can be sold until there is at least one', action: 'Add', href: `${base}?tab=tickets` },
+      ? { key: 'types', state: 'done', title: 'Ticket types and prices', sub: `${types} ${types === 1 ? 'type' : 'types'} · ${e.status === 'DRAFT' ? 'not on sale yet' : 'on sale'}`, action: 'Edit', href: `${base}/edit#entry` }
+      : { key: 'types', state: 'todo', title: 'Add ticket types', sub: 'Nothing can be sold until there is at least one', action: 'Add', href: `${base}/edit#entry` },
     e.posterUrl
       ? { key: 'poster', state: 'done', title: 'Poster', sub: 'Shown on your public page and on tickets', action: 'Change', href: `${base}/edit` }
       : { key: 'poster', state: 'info', title: 'Add a poster', sub: 'Events with a poster sell better', action: 'Add', href: `${base}/edit` },
@@ -158,7 +158,7 @@ export function OverviewTab({ d }: { d: EventDashboard }) {
       <section className="panel">
         <div className="panel-head">
           <h2>Tickets</h2>
-          <Link className="small" href={`${base}?tab=tickets`}>{d.ticketTypes.length ? 'Manage ticket types' : '+ Add ticket type'}</Link>
+          <Link className="small" href={d.ticketTypes.length ? `${base}?tab=tickets` : `${base}/edit#entry`}>{d.ticketTypes.length ? 'Ticket sales' : '+ Add tickets'}</Link>
         </div>
         {d.ticketTypes.length === 0 ? (
           <div className="empty"><p>No ticket types yet.</p></div>

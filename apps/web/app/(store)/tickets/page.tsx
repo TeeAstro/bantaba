@@ -34,6 +34,7 @@ const gateShort = (names: string[]) => {
   const n = names.map((x) => x.replace(/^gate\s+/i, ''));
   return n.length <= 1 ? n[0] ?? '' : `${n.slice(0, -1).join(', ')} & ${n[n.length - 1]}`;
 };
+interface GoingEvent { id: string; slug: string; name: string; startDate: string; endDate: string; status: string; venue: { name: string; city: string } }
 interface Offer { id: string; ticketId: string; toEmail: string; status: string }
 // Phase 20b: what they'd get back, and whether the booking fee comes too.
 type Eligible = { ticketId?: string; allowed: boolean; reason?: string; ticketAmount?: number; bookingFee?: number; includesBookingFee?: boolean; amount?: number };
@@ -63,7 +64,7 @@ function TicketStack({ g, holder, offers, reload }: { g: Group; holder: string; 
     .sort((a, b) => (a.seat && b.seat ? `${a.seat.row}`.localeCompare(`${b.seat.row}`) || Number(a.seat.number) - Number(b.seat.number) : a.purchasedAt.localeCompare(b.purchasedAt) || a.id.localeCompare(b.id)));
   const [front, setFront] = useState(0);
   const [all, setAll] = useState(false);
-  const [panel, setPanel] = useState<'send' | 'refund' | null>(null);
+  const [panel, setPanel] = useState<'send' | 'refund' | 'giveback' | null>(null);
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
@@ -111,7 +112,7 @@ function TicketStack({ g, holder, offers, reload }: { g: Group; holder: string; 
     setPanel(null);
     setNote(null);
   };
-  const open = async (p: 'send' | 'refund') => {
+  const open = async (p: 'send' | 'refund' | 'giveback') => {
     setNote(null);
     setPanel(panel === p ? null : p);
     if (p === 'refund' && t.orderId) {
@@ -248,6 +249,14 @@ function TicketStack({ g, holder, offers, reload }: { g: Group; holder: string; 
                     <button className="s-btn s-btn-small s-btn-plum" disabled={busy}>{busy ? 'Sending…' : 'Send ticket'}</button>
                   </form>
                 )}
+                {isFront && panel === 'giveback' && (
+                  <div className="s-panel">
+                    <p className="s-note">Can’t come? Give your place back so someone else can come. This ticket stops working.</p>
+                    <button type="button" className="s-btn s-btn-small s-btn-plum" disabled={busy} onClick={() => run(() => api(`/tickets/${t.id}/give-back`, { method: 'POST' }), 'Place given back. Thank you!')}>
+                      {busy ? 'Giving back…' : 'Give back my place'}
+                    </button>
+                  </div>
+                )}
                 {isFront && panel === 'refund' && (
                   <div className="s-panel">
                     {!eligible ? (
@@ -279,7 +288,11 @@ function TicketStack({ g, holder, offers, reload }: { g: Group; holder: string; 
                     <Icon name="send" size={20} />Send to a friend
                   </button>
                   <a className="s-action" tabIndex={isFront && !all ? 0 : -1} href={mapsUrl(e.venue)} target="_blank" rel="noopener noreferrer"><Icon name="pin" size={20} />Directions</a>
-                  <button type="button" className="s-action" tabIndex={isFront && !all ? 0 : -1} disabled={xUsed || !x.orderId} onClick={() => open('refund')}><Icon name="refunds" size={20} />Ask for a refund</button>
+                  {x.ticketType.price === 0 ? (
+                    <button type="button" className="s-action" tabIndex={isFront && !all ? 0 : -1} disabled={xUsed || !x.orderId} onClick={() => open('giveback')}><Icon name="refunds" size={20} />Can’t come?</button>
+                  ) : (
+                    <button type="button" className="s-action" tabIndex={isFront && !all ? 0 : -1} disabled={xUsed || !x.orderId} onClick={() => open('refund')}><Icon name="refunds" size={20} />Ask for a refund</button>
+                  )}
                 </div>
               </div>
             </article>
@@ -298,6 +311,8 @@ export default function MyTicketsPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
   const [openId, setOpenId] = useState<string | null>(null);
+  // Phase 24: open-entry events they said they're going to.
+  const [going, setGoing] = useState<GoingEvent[]>([]);
   const buyer = user?.role === 'CUSTOMER';
 
   const load = useCallback(() => {
@@ -307,6 +322,7 @@ export default function MyTicketsPage() {
         setOffers(o);
       })
       .catch((err: ApiError) => setError(err.message));
+    api<GoingEvent[]>('/me/going').then(setGoing).catch(() => setGoing([]));
   }, []);
   useEffect(() => {
     if (buyer) load();
@@ -349,6 +365,7 @@ export default function MyTicketsPage() {
   }
 
   const holder = user.fullName ?? user.email;
+  const selected = upcoming.find((g) => g.event.id === openId) ?? upcoming[0] ?? null;
   const pastNote = (g: Group) => {
     const s = g.tickets.map((t) => t.status);
     const n = g.tickets.length;
@@ -376,27 +393,52 @@ export default function MyTicketsPage() {
         {!tickets ? (
           <p className="s-empty">Loading…</p>
         ) : tab === 'upcoming' ? (
-          upcoming.length === 0 ? (
+          upcoming.length === 0 && going.length === 0 ? (
             <div className="s-auth">
               <p className="s-note">No upcoming tickets.</p>
               <Link href="/" className="s-btn s-btn-quiet">See what’s on</Link>
             </div>
           ) : (
-            <div className="s-tickets">
-              {upcoming.map((g, k) =>
-                k === 0 || openId === g.event.id ? (
-                  <TicketStack key={g.event.id} g={g} holder={holder} offers={offers} reload={load} />
-                ) : (
-                  <button key={g.event.id} type="button" className="s-past" style={{ cursor: 'pointer', textAlign: 'left', width: '100%' }} onClick={() => setOpenId(g.event.id)}>
+            // Phase 27 (docs/store-rework.md): your events on the left and the
+            // chosen one's tickets on the right on a computer; on a phone the
+            // chosen one comes first and the others are listed under it.
+            <div className="s-tk2">
+              {selected && (
+                <div className="s-tk2-show">
+                  <TicketStack key={selected.event.id} g={selected} holder={holder} offers={offers} reload={load} />
+                </div>
+              )}
+              <div className="s-tk2-list">
+              {upcoming.map((g) => {
+                const n = g.tickets.filter((t) => SHOWN.includes(t.status)).length;
+                const on = g.event.id === selected?.event.id;
+                return (
+                  <button key={g.event.id} type="button" className={`s-past s-tk2-row${on ? ' is-on' : ''}`} aria-current={on || undefined} onClick={() => { setOpenId(g.event.id); if (window.innerWidth < 900) window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                     <span className="s-past-date" style={{ background: eventColour(g.event.id), color: '#fff' }}><span>{when(g.event.startDate).month}</span><strong>{when(g.event.startDate).day}</strong></span>
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
                       <strong>{g.event.name}</strong>
-                      <span className="s-meta" style={{ fontSize: 13 }}>{g.tickets.filter((t) => SHOWN.includes(t.status)).length} ticket{g.tickets.filter((t) => SHOWN.includes(t.status)).length === 1 ? '' : 's'} · {g.event.venue.name}</span>
+                      <span className="s-meta" style={{ fontSize: 13 }}>{when(g.event.startDate).short} · {n} ticket{n === 1 ? '' : 's'}</span>
                     </span>
                     <Icon name="right" />
                   </button>
-                ),
+                );
+              })}
+              {going.filter((e) => e.status !== 'CANCELLED').length > 0 && (
+                <section aria-labelledby="going-h" style={{ display: 'grid', gap: 10 }}>
+                  <h2 id="going-h" className="s-h2" style={{ margin: '8px 0 0' }}>You’re going · no ticket needed</h2>
+                  {going.filter((e) => e.status !== 'CANCELLED').map((e) => (
+                    <Link key={e.id} href={`/e/${e.slug}`} className="s-past">
+                      <span className="s-past-date" style={{ background: eventColour(e.id), color: '#fff' }}><span>{when(e.startDate).month}</span><strong>{when(e.startDate).day}</strong></span>
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                        <strong>{e.name}</strong>
+                        <span className="s-meta" style={{ fontSize: 13 }}>{when(e.startDate).short} · {when(e.startDate).time} · {e.venue.name}</span>
+                      </span>
+                      <Icon name="right" />
+                    </Link>
+                  ))}
+                </section>
               )}
+              </div>
             </div>
           )
         ) : past.length === 0 ? (

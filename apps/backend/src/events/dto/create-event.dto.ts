@@ -12,10 +12,36 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { RefundPolicy } from '@prisma/client';
-import { ApiEnumOptional } from '../../common/api-enum';
+import { EntryMode, RefundPolicy, SeriesEnd, SeriesFrequency } from '@prisma/client';
+import { ApiEnum, ApiEnumOptional } from '../../common/api-enum';
+
+// Phase 24: how an event repeats (docs/series.md).
+export class RepeatDto {
+  @ApiEnum(SeriesFrequency, 'SeriesFrequency', 'WEEKLY, BIWEEKLY (every 2 weeks) or MONTHLY (the same weekday of the month, e.g. the first Saturday)')
+  @IsEnum(SeriesFrequency)
+  frequency!: SeriesFrequency;
+
+  @ApiEnum(SeriesEnd, 'SeriesEnd', 'DATE (until endsOn), COUNT (count sessions) or OPEN (keep going: the next 8 are always on sale)')
+  @IsEnum(SeriesEnd)
+  endMode!: SeriesEnd;
+
+  /** With DATE: the last day a session may fall on. */
+  @ValidateIf((o: RepeatDto) => o.endMode === SeriesEnd.DATE)
+  @IsDateString()
+  endsOn?: string;
+
+  /** With COUNT: how many sessions in all (2–52). */
+  @ValidateIf((o: RepeatDto) => o.endMode === SeriesEnd.COUNT)
+  @IsInt()
+  @Min(2)
+  @Max(52)
+  count?: number;
+}
 
 export class CreateEventDto {
   @IsString()
@@ -87,4 +113,21 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   transfersEnabled?: boolean;
+
+  // Phase 24 (docs/series.md)
+  @ApiEnumOptional(EntryMode, 'EntryMode', 'TICKETS (default; free or paid) or OPEN (no tickets: "Free entry, no ticket needed")')
+  @IsOptional()
+  @IsEnum(EntryMode)
+  entryMode?: EntryMode;
+
+  /** Open entry: show an "I'm going" button and count. Default true. */
+  @IsOptional()
+  @IsBoolean()
+  goingEnabled?: boolean;
+
+  /** The event repeats. Sessions are added once it goes live. null (on edit) = no longer repeats; only while it's a draft. */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RepeatDto)
+  repeat?: RepeatDto | null;
 }

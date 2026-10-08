@@ -232,6 +232,30 @@
         ]
       }
     },
+    "/api/v1/tickets/{id}/give-back": {
+      "post": {
+        "operationId": "Refunds_giveBack[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Give a free ticket back so someone else can come (Phase 24).",
+        "tags": [
+          "Refunds"
+        ]
+      }
+    },
     "/api/v1/events/{id}/refunds": {
       "get": {
         "operationId": "Refunds_listForEvent[0]",
@@ -2775,6 +2799,28 @@
         "tags": [
           "TicketTypes"
         ]
+      },
+      "delete": {
+        "operationId": "TicketTypes_remove[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Phase 26: remove a ticket type nobody has bought or is holding (the event form's rows).",
+        "tags": [
+          "TicketTypes"
+        ]
       }
     },
     "/api/v1/orders/checkout": {
@@ -4768,6 +4814,376 @@
         ]
       }
     },
+    "/api/v1/events/{id}/sessions": {
+      "get": {
+        "operationId": "Series_sessions[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The host's sessions of a repeating event (any session's id).",
+        "tags": [
+          "Series"
+        ]
+      }
+    },
+    "/api/v1/series/{id}/stop": {
+      "post": {
+        "operationId": "Series_stop[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Stop repeating: no new sessions are added. Sessions already made stay on sale.",
+        "tags": [
+          "Series"
+        ]
+      }
+    },
+    "/api/v1/events/{id}/going": {
+      "post": {
+        "operationId": "Series_going[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "\"I'm going\" to an open-entry event.",
+        "tags": [
+          "Series"
+        ]
+      },
+      "delete": {
+        "operationId": "Series_notGoing[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Not going after all.",
+        "tags": [
+          "Series"
+        ]
+      }
+    },
+    "/api/v1/me/going": {
+      "get": {
+        "operationId": "Series_myGoing[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Open-entry events I said I'm going to.",
+        "tags": [
+          "Series"
+        ]
+      }
+    },
+    "/api/v1/support/contacts": {
+      "get": {
+        "operationId": "Support_contacts[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Bantaba's WhatsApp, email and hours for the Help pages (public).",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/support": {
+      "post": {
+        "operationId": "Support_create[0]",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewSupportThreadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Write to Bantaba (signed-in buyers and hosts).",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/support/mine": {
+      "get": {
+        "operationId": "Support_mine[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "My messages to Bantaba, newest first.",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/support/{id}": {
+      "get": {
+        "operationId": "Support_get[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "One of my messages, with Bantaba's answers (marks them read).",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/support/{id}/messages": {
+      "post": {
+        "operationId": "Support_add[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Add to one of my messages (opens it again if it was closed).",
+        "tags": [
+          "Support"
+        ]
+      }
+    },
+    "/api/v1/admin/support": {
+      "get": {
+        "operationId": "AdminSupport_list[0]",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "waiting",
+                "closed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Threads by status (open: oldest first), with counts for the tabs.",
+        "tags": [
+          "AdminSupport"
+        ]
+      }
+    },
+    "/api/v1/admin/support/count": {
+      "get": {
+        "operationId": "AdminSupport_count[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "How many are waiting for an answer (the menu badge).",
+        "tags": [
+          "AdminSupport"
+        ]
+      }
+    },
+    "/api/v1/admin/support/{id}": {
+      "get": {
+        "operationId": "AdminSupport_get[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "One thread, with the person and the order or event beside it.",
+        "tags": [
+          "AdminSupport"
+        ]
+      }
+    },
+    "/api/v1/admin/support/{id}/reply": {
+      "post": {
+        "operationId": "AdminSupport_reply[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Answer: emailed to them, and the thread waits for them.",
+        "tags": [
+          "AdminSupport"
+        ]
+      }
+    },
+    "/api/v1/admin/support/{id}/close": {
+      "post": {
+        "operationId": "AdminSupport_close[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminSupport"
+        ]
+      }
+    },
+    "/api/v1/admin/support/{id}/reopen": {
+      "post": {
+        "operationId": "AdminSupport_reopen[0]",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminSupport"
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "Me_get[0]",
@@ -5242,15 +5658,27 @@
             "name": "when",
             "required": false,
             "in": "query",
-            "description": "Date buttons on Discover: all (default), weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`)",
+            "description": "Date buttons on Discover: all (default), today, weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`)",
             "schema": {
               "type": "string",
               "enum": [
                 "all",
+                "today",
                 "weekend",
                 "week",
                 "date"
               ]
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "description": "Phase 27: one category, by its slug (e.g. concerts)",
+            "schema": {
+              "maxLength": 60,
+              "pattern": "^[a-z0-9-]+$",
+              "type": "string"
             }
           },
           {
@@ -5878,6 +6306,67 @@
         ],
         "description": "When ticket holders may ask for a refund. Default NONE."
       },
+      "EntryMode": {
+        "type": "string",
+        "enum": [
+          "TICKETS",
+          "OPEN"
+        ],
+        "description": "TICKETS (default; free or paid) or OPEN (no tickets: \"Free entry, no ticket needed\")"
+      },
+      "SeriesFrequency": {
+        "type": "string",
+        "enum": [
+          "WEEKLY",
+          "BIWEEKLY",
+          "MONTHLY"
+        ],
+        "description": "WEEKLY, BIWEEKLY (every 2 weeks) or MONTHLY (the same weekday of the month, e.g. the first Saturday)"
+      },
+      "SeriesEnd": {
+        "type": "string",
+        "enum": [
+          "DATE",
+          "COUNT",
+          "OPEN"
+        ],
+        "description": "DATE (until endsOn), COUNT (count sessions) or OPEN (keep going: the next 8 are always on sale)"
+      },
+      "RepeatDto": {
+        "type": "object",
+        "properties": {
+          "frequency": {
+            "description": "WEEKLY, BIWEEKLY (every 2 weeks) or MONTHLY (the same weekday of the month, e.g. the first Saturday)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeriesFrequency"
+              }
+            ]
+          },
+          "endMode": {
+            "description": "DATE (until endsOn), COUNT (count sessions) or OPEN (keep going: the next 8 are always on sale)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SeriesEnd"
+              }
+            ]
+          },
+          "endsOn": {
+            "type": "string",
+            "description": "With DATE: the last day a session may fall on."
+          },
+          "count": {
+            "type": "number",
+            "description": "With COUNT: how many sessions in all (2–52).",
+            "minimum": 2,
+            "maximum": 52
+          }
+        },
+        "required": [
+          "frequency",
+          "endMode"
+        ]
+      },
       "CreateEventDto": {
         "type": "object",
         "properties": {
@@ -5895,6 +6384,14 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/RefundPolicy"
+              }
+            ]
+          },
+          "entryMode": {
+            "description": "TICKETS (default; free or paid) or OPEN (no tickets: \"Free entry, no ticket needed\")",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EntryMode"
               }
             ]
           },
@@ -5946,6 +6443,20 @@
           "transfersEnabled": {
             "type": "boolean",
             "description": "Whether ticket holders may send their tickets to someone else. Default true."
+          },
+          "goingEnabled": {
+            "type": "boolean",
+            "description": "Open entry: show an \"I'm going\" button and count. Default true."
+          },
+          "repeat": {
+            "nullable": true,
+            "description": "The event repeats. Sessions are added once it goes live. null (on edit) = no longer repeats; only while it's a draft.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RepeatDto"
+              }
+            ]
           }
         },
         "required": [
@@ -5976,6 +6487,14 @@
               }
             ]
           },
+          "entryMode": {
+            "description": "TICKETS (default; free or paid) or OPEN (no tickets: \"Free entry, no ticket needed\")",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EntryMode"
+              }
+            ]
+          },
           "name": {
             "type": "string",
             "maxLength": 200
@@ -6024,6 +6543,28 @@
           "transfersEnabled": {
             "type": "boolean",
             "description": "Whether ticket holders may send their tickets to someone else. Default true."
+          },
+          "goingEnabled": {
+            "type": "boolean",
+            "description": "Open entry: show an \"I'm going\" button and count. Default true."
+          },
+          "repeat": {
+            "nullable": true,
+            "description": "The event repeats. Sessions are added once it goes live. null (on edit) = no longer repeats; only while it's a draft.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RepeatDto"
+              }
+            ]
+          },
+          "applyTo": {
+            "description": "Phase 24, a session of a repeating event: \"this\" (default) changes\nonly this session; \"following\" this one and every later session\n(a new start time moves each of them by the same amount).",
+            "enum": [
+              "this",
+              "following"
+            ],
+            "type": "string"
           }
         }
       },
@@ -7149,13 +7690,32 @@
             "maxLength": 200
           },
           "address": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 300
           },
           "city": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 100
           },
           "country": {
             "type": "string"
+          },
+          "directions": {
+            "type": "string",
+            "description": "How to find it, shown to buyers with the address (Phase 26).",
+            "maxLength": 300
+          },
+          "latitude": {
+            "type": "number",
+            "description": "Its spot on the map (\"I'm there now\"), or mapsLink instead."
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "mapsLink": {
+            "type": "string",
+            "description": "A Google Maps link to the place; its coordinates are stored.",
+            "maxLength": 500
           }
         },
         "required": [
@@ -7332,6 +7892,26 @@
             "description": "What the seats face, shown above every seat grid: \"Stage\", \"Pitch\"…",
             "minLength": 2,
             "maxLength": 20
+          },
+          "directions": {
+            "type": "string",
+            "nullable": true,
+            "description": "Phase 26: how to find it; null clears it.",
+            "maxLength": 300
+          },
+          "latitude": {
+            "type": "number",
+            "nullable": true,
+            "description": "Its spot on the map; null (both) clears it."
+          },
+          "longitude": {
+            "type": "number",
+            "nullable": true
+          },
+          "mapsLink": {
+            "type": "string",
+            "description": "A Google Maps link to the place; its coordinates are stored.",
+            "maxLength": 500
           }
         }
       },
@@ -7476,6 +8056,57 @@
           "name",
           "startDate",
           "endDate"
+        ]
+      },
+      "NewSupportThreadDto": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Buyers: order, event, account, other. Hosts: event, payouts, scanner, account, other.",
+            "enum": [
+              "order",
+              "event",
+              "payouts",
+              "scanner",
+              "account",
+              "other"
+            ]
+          },
+          "orderId": {
+            "type": "string",
+            "description": "With topic \"order\": one of your orders.",
+            "format": "uuid"
+          },
+          "eventId": {
+            "type": "string",
+            "description": "With topic \"event\": the event it's about (hosts: one of theirs).",
+            "format": "uuid"
+          },
+          "subject": {
+            "type": "string",
+            "description": "A short title; the start of the message if left out.",
+            "maxLength": 120
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "SupportMessageDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "message"
         ]
       },
       "UpdateMeDto": {

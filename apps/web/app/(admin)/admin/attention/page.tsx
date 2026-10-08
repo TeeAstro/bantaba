@@ -22,6 +22,8 @@ const ITEMS: Item[] = [
     what: () => 'Approved refunds for bank transfers, partial Wave refunds and cards. Pay them back, then record the reference.' },
   { key: 'failedProviderRefunds', icon: 'failed', title: 'Refunds that failed', tone: 'money', href: '/admin/refunds?view=failed',
     what: () => 'The payment provider refused these. Check the error, then retry or pay by hand.' },
+  { key: 'supportOpen', icon: 'chat', title: 'Support messages', tone: 'ops', href: '/admin/support',
+    what: () => 'Buyers and hosts waiting for an answer.' },
   { key: 'payoutsToSend', icon: 'cash', title: 'Payouts to send', tone: 'money', href: '/admin/payouts?status=APPROVED',
     what: (n, c) => `Approved and waiting for the money to go out${c.payoutsToSendAuto ? ` (${c.payoutsToSendAuto} approved automatically)` : ''}.` },
   { key: 'payoutRequests', icon: 'payouts', title: 'Payout requests', tone: 'money', href: '/admin/payouts?status=REQUESTED',

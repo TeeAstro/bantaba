@@ -292,6 +292,13 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
     let count = 0;
     for (const o of orders) {
       const ctx = (await this.orderContext(tx, o.id))!;
+      // Phase 24: free tickets, nothing was paid: they're just cancelled.
+      if (!ctx.payment && ctx.order.total === 0) {
+        const ids = ctx.order.tickets.filter((t) => t.status === TicketStatus.ACTIVE || t.status === TicketStatus.USED).map((t) => t.id);
+        await this.releaseFree(tx, o.id, ids, true);
+        count += 1;
+        continue;
+      }
       // Pending requests are superseded by the full refund.
       await tx.refund.updateMany({ where: { orderId: o.id, status: RefundStatus.REQUESTED }, data: { status: RefundStatus.WITHDRAWN, decisionNote: 'Superseded: the event was cancelled and refunded in full' } });
       const refundable = ctx.order.tickets.filter((t) => t.status === TicketStatus.ACTIVE || t.status === TicketStatus.USED);
@@ -537,6 +544,40 @@ export class RefundsService implements OnApplicationBootstrap, OnApplicationShut
         items: { create: items },
       },
       include: { items: true, order: true },
+    });
+  }
+
+  // Phase 24: free tickets stop working and go back on offer (no money,
+  // so no refund record). The order closes when none are left.
+  private async releaseFree(tx: Db, orderId: string, ids: string[], allowUsed: boolean) {
+    if (ids.length) {
+      const freed = await tx.ticket.findMany({ where: { id: { in: ids }, status: { in: allowUsed ? [TicketStatus.ACTIVE, TicketStatus.USED] : [TicketStatus.ACTIVE] } }, select: { id: true, ticketTypeId: true } });
+      await tx.ticket.updateMany({ where: { id: { in: freed.map((t) => t.id) } }, data: { status: TicketStatus.CANCELLED } });
+      const perType = new Map<string, number>();
+      for (const t of freed) perType.set(t.ticketTypeId, (perType.get(t.ticketTypeId) ?? 0) + 1);
+      for (const [ticketTypeId, n] of perType) await tx.ticketType.update({ where: { id: ticketTypeId }, data: { quantitySold: { decrement: n } } });
+      await tx.eventSeat.deleteMany({ where: { ticketId: { in: freed.map((t) => t.id) } } });
+      await this.cancelPendingTransfers(tx, freed.map((t) => t.id));
+    }
+    const left = await tx.ticket.count({ where: { orderId, status: { notIn: [TicketStatus.REFUNDED, TicketStatus.CANCELLED] } } });
+    if (left === 0) await tx.ticketOrder.update({ where: { id: orderId }, data: { status: OrderStatus.CANCELLED } });
+  }
+
+  /**
+   * Phase 24: give a free ticket back ("Can't come?"), so someone else can
+   * have the place. Before the event starts, and only an unused ticket.
+   */
+  async giveBack(user: Actor, ticketId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM tickets WHERE id = ${ticketId} FOR UPDATE`;
+      const ticket = await tx.ticket.findUnique({ where: { id: ticketId }, include: { order: { select: { id: true, total: true } }, ticketType: { select: { price: true, event: { select: { startDate: true, name: true } } } } } });
+      if (!ticket || ticket.ownerId !== user.id) throw new NotFoundException('Ticket not found');
+      if (!ticket.order || ticket.order.total !== 0 || ticket.ticketType.price !== 0) throw new BadRequestException('Only free tickets can be given back. Ask for a refund instead');
+      if (ticket.status !== TicketStatus.ACTIVE) throw new BadRequestException('This ticket is no longer valid');
+      if (ticket.ticketType.event.startDate <= new Date()) throw new BadRequestException('The event has started');
+      await this.releaseFree(tx, ticket.order.id, [ticket.id], false);
+      await tx.auditLog.create({ data: { actorId: user.id, actorRole: user.role, action: 'free_ticket_given_back', entityType: 'Ticket', entityId: ticket.id } });
+      return { ticketId: ticket.id, status: TicketStatus.CANCELLED };
     });
   }
 

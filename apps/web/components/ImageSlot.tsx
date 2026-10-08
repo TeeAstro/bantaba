@@ -30,10 +30,14 @@ export interface ImageSpec {
 const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-export function ImageSlot<T>({ spec, current, uploadPath, onSaved, disabled = false, round = false }: {
+export function ImageSlot<T>({ spec, current, uploadPath, resolveUploadPath, onSaved, disabled = false, round = false, compact = false }: {
   spec: ImageSpec;
   current: string | null;
-  uploadPath: string; // POST (upload) and DELETE (remove) here
+  uploadPath?: string; // POST (upload) and DELETE (remove) here
+  // Phase 26: a new event has no address yet; this saves the draft first
+  // and returns where to upload.
+  resolveUploadPath?: () => Promise<string>;
+  compact?: boolean; // the event form's smaller slots
   onSaved: (result: T) => void;
   disabled?: boolean;
   round?: boolean; // show the current image as a circle (profile pictures)
@@ -97,7 +101,8 @@ export function ImageSlot<T>({ spec, current, uploadPath, onSaved, disabled = fa
       for (const [k, v] of Object.entries(crop!)) fd.append(k, String(v));
     }
     try {
-      const updated = await api<T>(uploadPath, { method: 'POST', body: fd });
+      const path = uploadPath ?? (await resolveUploadPath!());
+      const updated = await api<T>(path, { method: 'POST', body: fd });
       cancel();
       onSaved(updated);
     } catch (err) {
@@ -112,7 +117,7 @@ export function ImageSlot<T>({ spec, current, uploadPath, onSaved, disabled = fa
     setBusy(true);
     setError(null);
     try {
-      onSaved(await api<T>(uploadPath, { method: 'DELETE' }));
+      onSaved(await api<T>(uploadPath!, { method: 'DELETE' }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : `Could not remove the ${kind}`);
     } finally {
@@ -121,12 +126,14 @@ export function ImageSlot<T>({ spec, current, uploadPath, onSaved, disabled = fa
   }
 
   return (
-    <section className={`panel image-slot image-slot-${spec.key}`}>
-      <div className="panel-head">
-        <h2>{spec.title}</h2>
-        <span className="small faint">{spec.ratio}, saved as {spec.stored}</span>
-      </div>
-      <div className="panel-pad stack-s">
+    <section className={`panel image-slot image-slot-${spec.key}${compact ? ' image-slot-compact' : ''}`}>
+      {!compact && (
+        <div className="panel-head">
+          <h2>{spec.title}</h2>
+          <span className="small faint">{spec.ratio}, saved as {spec.stored}</span>
+        </div>
+      )}
+      <div className={compact ? 'stack-s' : 'panel-pad stack-s'}>
         {error && <div className="notice notice-error" role="alert">{error}</div>}
 
         {preview ? (
@@ -183,6 +190,18 @@ export function ImageSlot<T>({ spec, current, uploadPath, onSaved, disabled = fa
               <button className="btn" onClick={save} disabled={busy || !!problem || (mode === 'fill' && !crop)}>{busy ? 'Uploading…' : `Save ${kind}`}</button>
               <button className="btn btn-quiet" onClick={cancel} disabled={busy}>Cancel</button>
             </div>
+          </>
+        ) : compact ? (
+          <>
+            <button type="button" className={`image-tile${current ? ' has-image' : ''}`} style={{ aspectRatio: String(spec.aspect) }} onClick={() => input.current?.click()} disabled={busy || disabled} aria-label={current ? `Replace the ${kind}` : `Add a ${kind}`}>
+              {current ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={current} alt="" />
+              ) : (
+                <span><b>Add {kind}</b><span className="small">{spec.ratio}</span></span>
+              )}
+            </button>
+            {current && <button type="button" className="link-btn small" onClick={remove} disabled={busy || disabled}>Remove</button>}
           </>
         ) : (
           <>

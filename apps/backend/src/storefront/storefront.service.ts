@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CARD_SELECT, CardEvent, SalesCounts, eventCard, host, visibleWhere } from './cards';
+import { CARD_SELECT, CardEvent, SalesCounts, eventCard, host, onePerSeries, visibleWhere } from './cards';
 import { TrendingService } from './trending.service';
 import { DiscoverQueryDto } from './storefront.dto';
 
@@ -12,10 +12,14 @@ const PER_HOST = 2; // events shown per host on the front page; "See all" opens 
 const FEW = 8;
 
 // The date buttons on Discover. Banjul is on UTC all year, so days are UTC days.
+const EVENTS_PER_PAGE = 24;
+
 export function dateWindow(when: DiscoverQueryDto['when'], date: string | undefined, now = new Date()): { from: Date; to: Date | null } {
   const startOfDay = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
   const endOfDay = (d: Date) => new Date(startOfDay(d).getTime() + DAY - 1);
   switch (when) {
+    case 'today':
+      return { from: now, to: endOfDay(now) };
     case 'week':
       return { from: now, to: new Date(now.getTime() + 7 * DAY) };
     case 'weekend': {
@@ -75,10 +79,17 @@ export class StorefrontService {
       ],
     };
 
-    const [events, sold] = await Promise.all([
-      this.prisma.event.findMany({ where, orderBy: { startDate: 'asc' }, take: 500, select: CARD_SELECT }),
+    const [unfiltered, sold, cats] = await Promise.all([
+      this.prisma.event.findMany({ where, orderBy: { startDate: 'asc' }, take: 500, select: { ...CARD_SELECT, category: { select: { slug: true } } } }),
       this.sales.lastSevenDays(),
+      this.prisma.eventCategory.findMany({ orderBy: [{ position: 'asc' }, { name: 'asc' }], select: { slug: true, name: true } }),
     ]);
+    // Phase 27: categories with something on in this window, for the chips.
+    const perCat = new Map<string, number>();
+    for (const e of onePerSeries(unfiltered)) perCat.set(e.category.slug, (perCat.get(e.category.slug) ?? 0) + 1);
+    const all = query.category ? unfiltered.filter((e) => e.category.slug === query.category) : unfiltered;
+    // A repeating event shows once, with its next date (Phase 24).
+    const events = onePerSeries(all);
 
     // Hosts in the order of their next event.
     const byHost = new Map<string, CardEvent[]>();
@@ -87,21 +98,21 @@ export class StorefrontService {
     const shown = groups.slice((page - 1) * perPage, page * perPage);
 
     // Trending stays put while browsing dates; a search shows only matches.
-    const withTrending = !term && page === 1;
+    const withTrending = !term && !query.category && page === 1;
     const card = (e: CardEvent) => eventCard(e, sold.get(e.id) ?? 0, now);
 
     // Nothing on the chosen dates: what's on next, and which of the next
     // two weeks have events.
     let next: ReturnType<typeof eventCard>[] = [];
     let eventDays: string[] = [];
-    if (events.length === 0 && !term && (query.when ?? 'all') !== 'all') {
+    if (events.length === 0 && !term && !query.category && (query.when ?? 'all') !== 'all') {
       const after = to ?? from;
       const until = new Date(from.getTime() + 14 * DAY);
       const [later, starts] = await Promise.all([
         this.prisma.event.findMany({
           where: { ...visibleWhere(now), startDate: { gt: after } },
           orderBy: { startDate: 'asc' },
-          take: 4,
+          take: 12,
           select: CARD_SELECT,
         }),
         this.prisma.event.findMany({
@@ -110,7 +121,7 @@ export class StorefrontService {
           take: 500,
         }),
       ]);
-      next = later.map(card);
+      next = onePerSeries(later).slice(0, 4).map(card);
       eventDays = [...new Set(starts.map((e) => e.startDate.toISOString().slice(0, 10)))].sort();
     }
     return {
@@ -127,6 +138,10 @@ export class StorefrontService {
       list: page === 1 && events.length > 0 && events.length <= FEW ? events.map(card) : null,
       next,
       eventDays,
+      // Phase 27: everything on, by date, 24 at a time (the page groups it by day).
+      events: events.slice((page - 1) * EVENTS_PER_PAGE, page * EVENTS_PER_PAGE).map(card),
+      eventPages: Math.max(1, Math.ceil(events.length / EVENTS_PER_PAGE)),
+      categories: cats.filter((c) => perCat.has(c.slug)).map((c) => ({ ...c, count: perCat.get(c.slug)! })),
       totalHosts: groups.length,
       totalEvents: events.length,
       page,

@@ -89,13 +89,23 @@ async function main() {
 
   // Categories are upserted by slug — always safe to re-run.
   const categoryDefs = [
-    { name: 'Concerts', slug: 'concerts' },
-    { name: 'Movies', slug: 'movies' },
-    { name: 'Football', slug: 'football' },
-    { name: 'Festivals', slug: 'festivals' },
-    { name: 'Comedy Shows', slug: 'comedy-shows' },
-    { name: 'Theatre', slug: 'theatre' },
-    { name: 'Conferences', slug: 'conferences' },
+    { name: 'Concerts', slug: 'concerts', position: 1 },
+    { name: 'Parties & nightlife', slug: 'parties-nightlife', position: 2 },
+    { name: 'Football', slug: 'football', position: 3 },
+    { name: 'Other sports', slug: 'sports', position: 4 },
+    { name: 'Festivals', slug: 'festivals', position: 5 },
+    { name: 'Comedy', slug: 'comedy-shows', position: 6 },
+    { name: 'Theatre & dance', slug: 'theatre', position: 7 },
+    { name: 'Movies', slug: 'movies', position: 8 },
+    { name: 'Arts & exhibitions', slug: 'arts', position: 9 },
+    { name: 'Games & hobbies', slug: 'games-hobbies', position: 10 },
+    { name: 'Classes & workshops', slug: 'classes-workshops', position: 11 },
+    { name: 'Conferences & business', slug: 'conferences', position: 12 },
+    { name: 'Community', slug: 'community', position: 13 },
+    { name: 'Faith', slug: 'faith', position: 14 },
+    { name: 'Family & kids', slug: 'family-kids', position: 15 },
+    { name: 'Food & drink', slug: 'food-drink', position: 16 },
+    { name: 'Other', slug: 'other', position: 99 },
   ];
   const categories: Record<string, Awaited<ReturnType<typeof prisma.eventCategory.upsert>>> = {};
   for (const c of categoryDefs) {

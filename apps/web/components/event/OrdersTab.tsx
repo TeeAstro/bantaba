@@ -47,16 +47,16 @@ export function OrdersTab({ eventId }: { eventId: string }) {
             <div className="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Customer</th><th>Items</th><th>Status</th><th>Payment</th><th className="right">Total</th><th>Placed</th></tr>
+                  <tr><th>Buyer</th><th>Tickets</th><th>Paid with</th><th className="right">Total</th><th>Status</th><th>When</th></tr>
                 </thead>
                 <tbody>
                   {data.items.map((o) => (
                     <tr key={o.id}>
-                      <td>{o.customer.fullName ?? o.customer.email}<span className="cell-sub">{o.customer.fullName ? o.customer.email : ''} #{o.id.slice(0, 8)}</span></td>
-                      <td>{o.items.map((i) => `${i.quantity} × ${i.ticketType}`).join(', ')}</td>
-                      <td><StatusBadge status={o.status} /></td>
+                      <td><b>{o.customer.fullName ?? o.customer.email}</b><span className="cell-sub">{o.customer.fullName ? o.customer.email : ''} #{o.id.slice(0, 8)}</span></td>
+                      <td>{o.items.length ? o.items.map((i) => `${i.quantity} × ${i.ticketType}`).join(', ') : o.tickets ? `${o.tickets} ${o.tickets === 1 ? 'ticket' : 'tickets'}` : <span className="faint">—</span>}</td>
                       <td className="small">{o.payment ? `${label(o.payment.provider)}` : '—'}</td>
-                      <td className="right num">{money(o.total, o.currency)}</td>
+                      <td className="right num"><b>{money(o.total, o.currency)}</b></td>
+                      <td><StatusBadge status={o.status} /></td>
                       <td className="num small">{dateTime(o.createdAt)}</td>
                     </tr>
                   ))}

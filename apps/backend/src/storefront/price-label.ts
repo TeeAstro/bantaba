@@ -17,7 +17,7 @@ export interface PricedType {
   salesEnd: Date | null;
 }
 
-export type PriceKind = 'price' | 'from' | 'free' | 'soldOut' | 'ended' | 'soon' | 'none';
+export type PriceKind = 'price' | 'from' | 'free' | 'soldOut' | 'ended' | 'soon' | 'none' | 'open'; // open: open entry, no tickets (Phase 24)
 
 export interface PriceLabel {
   label: string | null;

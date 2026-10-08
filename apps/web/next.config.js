@@ -13,6 +13,8 @@ const csp = [
   `img-src 'self' data: blob: https:${api ? ` ${api}` : ''}${dev ? ' http:' : ''}`,
   `connect-src 'self'${api ? ` ${api}` : ''}${dev ? ' ws: http://localhost:4000' : ''}`,
   "media-src 'self' blob:",
+  // Phase 26: the small map showing where a venue is pinned.
+  "frame-src https://www.openstreetmap.org",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -23,8 +25,9 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  // The scanner needs the camera; nothing needs the microphone or location.
-  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
+  // The scanner needs the camera; hosts pinning a venue ("I'm there now")
+  // need the location (Phase 26); nothing needs the microphone.
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(self)' },
   ...(dev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]),
 ];
 

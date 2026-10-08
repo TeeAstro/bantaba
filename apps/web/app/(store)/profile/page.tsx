@@ -166,7 +166,7 @@ function Orders() {
               <span>{o.tickets} {o.tickets === 1 ? 'ticket' : 'tickets'} · {shortDate(o.createdAt)}</span>
             </span>
             <span className="s-porder-total">
-              <strong>{dalasi(o.total, o.currency)}</strong>
+              <strong>{o.total === 0 ? 'Free' : dalasi(o.total, o.currency)}</strong>
               <span className={`s-badge ${cls}`}>{label}</span>
             </span>
           </Link>

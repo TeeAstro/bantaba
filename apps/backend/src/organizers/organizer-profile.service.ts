@@ -8,6 +8,7 @@ import { CropDto } from '../events/dto/event-image.dto';
 import { UpdateOrganizerProfileDto } from './dto/organizer-profile.dto';
 import { normalizeSocial, normalizeWebsite, SOCIAL_PLATFORMS } from './social-links';
 import { priceLabel } from '../storefront/price-label';
+import { cardSeries, onePerSeries } from '../storefront/cards';
 
 type Actor = { id: string; role: UserRole };
 export type ProfileImageKind = 'logo' | 'banner';
@@ -48,6 +49,9 @@ export class OrganizerProfileService {
       venue: { select: { name: true, city: true } },
       category: { select: { name: true, slug: true } },
       ticketTypes: { select: { price: true, currency: true, quantityTotal: true, quantitySold: true, isActive: true, salesStart: true, salesEnd: true } },
+      entryMode: true,
+      seriesId: true,
+      series: { select: { frequency: true, anchorStart: true } },
     } satisfies Prisma.EventSelect;
     const [upcoming, past, pastCount, sold] = await Promise.all([
       this.prisma.event.findMany({ where: { organizerId: o.id, status: { in: SHOWN }, endDate: { gte: now } }, orderBy: { startDate: 'asc' }, take: 50, select: eventSelect }),
@@ -56,20 +60,24 @@ export class OrganizerProfileService {
       // Phase 18b: tickets sold over all their events, for the host page's stats line
       this.prisma.ticket.count({ where: { ticketType: { event: { organizerId: o.id } }, status: { in: ['ACTIVE', 'USED', 'TRANSFERRED'] } } }),
     ]);
+    // A repeating event shows once, with its next date (Phase 24).
+    const upcomingOnce = onePerSeries(upcoming);
     const card = (e: (typeof upcoming)[number]) => ({
       id: e.id, slug: e.slug, name: e.name, startDate: e.startDate, endDate: e.endDate, posterUrl: e.posterUrl, bannerUrl: e.bannerUrl,
       soldOut: e.status === EventStatus.SOLD_OUT, venue: e.venue, category: e.category,
       priceFrom: e.ticketTypes.length ? Math.min(...e.ticketTypes.map((t) => t.price)) : null,
       // Phase 16: the storefront's price label (docs/storefront.md)
-      price: (({ label, kind, min, currency }) => ({ label, kind, min, currency }))(priceLabel(e.ticketTypes, now)),
+      price: e.entryMode === 'OPEN' ? { label: 'Free entry', kind: 'open', min: 0, currency: 'GMD' } : (({ label, kind, min, currency }) => ({ label, kind, min, currency }))(priceLabel(e.ticketTypes, now)),
       // Tickets still for sale, so the page can say "Few left" (Phase 18b)
-      left: priceLabel(e.ticketTypes, now).left,
+      left: e.entryMode === 'OPEN' ? 0 : priceLabel(e.ticketTypes, now).left,
+      series: cardSeries(e),
+      open: e.entryMode === 'OPEN',
     });
     return {
       ...this.presentPublic(o),
       preview: !approved,
-      stats: { upcomingEvents: upcoming.length, pastEvents: pastCount, ticketsSold: sold },
-      upcoming: upcoming.map(card),
+      stats: { upcomingEvents: upcomingOnce.length, pastEvents: pastCount, ticketsSold: sold },
+      upcoming: upcomingOnce.map(card),
       past: past.map(card),
     };
   }

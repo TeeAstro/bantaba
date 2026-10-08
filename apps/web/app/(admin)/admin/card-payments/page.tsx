@@ -7,6 +7,7 @@ import { CardFlag, useAttention, waitingFor } from '@/lib/admin';
 import { dateTime, label, money } from '@/lib/format';
 import { ErrorNotice, Loading } from '@/components/ui';
 import { ActionModal } from '@/components/admin/ActionModal';
+import { ListPager, ListSearch, useListTools } from '@/components/admin/ListTools';
 
 // docs/payments.md, "Paid after the order closed": a card payment came
 // through after the reservation lapsed. The customer was charged but has
@@ -17,14 +18,16 @@ export default function CardPaymentsPage() {
   const { refresh } = useAttention();
   const [resolving, setResolving] = useState<CardFlag | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const lt = useListTools(data, (f) => `${f.customer.fullName ?? ''} ${f.customer.email} ${f.event.name} ${f.chargeId ?? ''} ${f.providerReference ?? ''}`);
 
   return (
     <div className="stack-l">
-      <div className="page-head">
-        <div>
-          <h1>Card payments with no tickets</h1>
-          <p className="muted">Customers charged after their order had already closed. Refund each one in the Modem Pay dashboard, then record it here.</p>
-        </div>
+      <div className="hl-head">
+        <h1>Card payments with no tickets</h1>
+        <ListSearch value={lt.term} onChange={lt.setTerm} placeholder="Buyer, event or charge" />
+      </div>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <p className="small muted" style={{ margin: 0 }}>Charged after their order had closed. Refund each one in the Modem Pay dashboard, then record it here.</p>
         <div className="segmented" role="group" aria-label="Show">
           <button type="button" aria-pressed={state === 'open'} onClick={() => { setState('open'); setNotice(null); }}>To refund</button>
           <button type="button" aria-pressed={state === 'resolved'} onClick={() => { setState('resolved'); setNotice(null); }}>Refunded</button>
@@ -37,8 +40,8 @@ export default function CardPaymentsPage() {
 
       {data && (
         <section className="panel">
-          {data.length === 0 ? (
-            <div className="empty"><p>{state === 'open' ? 'None. Every card payment has its tickets.' : 'Nothing refunded yet.'}</p></div>
+          {lt.total === 0 ? (
+            <div className="empty"><p>{lt.term ? 'Nothing matches.' : state === 'open' ? 'None. Every card payment has its tickets.' : 'Nothing refunded yet.'}</p></div>
           ) : (
             <div className="table-wrap">
               <table>
@@ -46,9 +49,9 @@ export default function CardPaymentsPage() {
                   <tr><th>Customer</th><th>Event</th><th className="num">Charged</th><th>Modem Pay</th><th>{state === 'open' ? 'Flagged' : 'Refunded'}</th><th /></tr>
                 </thead>
                 <tbody>
-                  {data.map((f) => (
+                  {lt.shown.map((f) => (
                     <tr key={f.paymentId}>
-                      <td>{f.customer.fullName ?? f.customer.email}<span className="cell-sub">{f.customer.email}</span></td>
+                      <td><b>{f.customer.fullName ?? f.customer.email}</b><span className="cell-sub">{f.customer.fullName ? f.customer.email : ''}</span></td>
                       <td>{f.event.name}<span className="cell-sub">order {label(f.order.status).toLowerCase()}</span></td>
                       <td className="num"><strong>{money(f.amount, f.currency)}</strong></td>
                       <td className="small">
@@ -73,6 +76,7 @@ export default function CardPaymentsPage() {
               </table>
             </div>
           )}
+          <ListPager page={lt.page} pageSize={lt.pageSize} total={lt.total} onPage={lt.setPage} />
         </section>
       )}
 

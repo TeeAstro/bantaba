@@ -19,6 +19,7 @@ export interface AttentionCounts {
   cardPaymentsFlagged: number;
   organizersPending: number;
   lookalikeWarnings: number;
+  supportOpen: number; // Phase 25: support messages waiting for an answer
 }
 
 export interface Attention {

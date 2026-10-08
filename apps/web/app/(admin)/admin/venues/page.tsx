@@ -8,6 +8,7 @@ import { useApi } from '@/lib/hooks';
 import { AdminVenueRow } from '@/lib/seating';
 import { Icon } from '@/components/Icon';
 import { ErrorNotice, Loading } from '@/components/ui';
+import { ListPager, ListSearch, useListTools } from '@/components/admin/ListTools';
 
 // Venues and their seat maps (Phase 17, docs/seating.md): Bantaba's, and
 // organizers' own (Phase 18), with who can use each.
@@ -19,6 +20,8 @@ export default function AdminVenuesPage() {
   const [form, setForm] = useState({ name: '', address: '', city: '' });
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [who, setWho] = useState<'all' | 'bantaba' | 'hosts'>('all');
+  const lt = useListTools(data?.filter((v) => who === 'all' || (who === 'bantaba') === !v.owner), (v) => `${v.name} ${v.city} ${v.owner?.name ?? 'Bantaba'}`);
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -38,8 +41,9 @@ export default function AdminVenuesPage() {
 
   return (
     <div className="stack">
-      <div className="page-head" style={{ marginBottom: 0 }}>
+      <div className="hl-head">
         <h1>Venues</h1>
+        <ListSearch value={lt.term} onChange={lt.setTerm} placeholder="Venue, town or host" />
         {!adding && (
           <button className="btn" onClick={() => setAdding(true)}>
             <Icon name="plus" size={16} /> New venue
@@ -71,15 +75,21 @@ export default function AdminVenuesPage() {
         </form>
       )}
 
+      <div className="hl-chips" role="group" aria-label="Show">
+        {([['all', 'All', data.length], ['bantaba', 'Bantaba’s', data.filter((v) => !v.owner).length], ['hosts', 'Hosts’ own', data.filter((v) => v.owner).length]] as const).map(([k, text, n]) => (
+          <button key={k} type="button" className="hl-chip" aria-pressed={who === k} onClick={() => setWho(k)}>{text} <span>{n}</span></button>
+        ))}
+      </div>
+
       <div className="panel table-wrap">
         <table>
           <thead>
             <tr><th>Venue</th><th>Made by</th><th>Who can use it</th><th className="right">Sections</th><th className="right">Seats</th><th className="right">Coming events</th></tr>
           </thead>
           <tbody>
-            {data.map((v) => (
+            {lt.shown.map((v) => (
               <tr key={v.id}>
-                <td><Link href={`/admin/venues/${v.id}`}>{v.name}</Link><div className="small muted">{v.city}{v.hasDrawing ? '' : ' · no drawing'}</div></td>
+                <td><Link href={`/admin/venues/${v.id}`}><b>{v.name}</b></Link><div className="small muted">{v.city}{v.hasDrawing ? '' : ' · no drawing'}</div></td>
                 <td>{v.owner ? v.owner.name : <span className="badge vm-own vm-own-bantaba">Bantaba</span>}</td>
                 <td className="muted">{v.owner ? 'Only them' : v.sharing === 'everyone' ? 'Every organizer' : `${v.sharedWith} ${v.sharedWith === 1 ? 'organizer' : 'organizers'}`}</td>
                 <td className="right num">{v.sections}</td>
@@ -89,7 +99,8 @@ export default function AdminVenuesPage() {
             ))}
           </tbody>
         </table>
-        {data.length === 0 && <p className="empty">No venues yet.</p>}
+        {lt.total === 0 && <p className="empty">{lt.term ? 'Nothing matches.' : 'No venues yet.'}</p>}
+        <ListPager page={lt.page} pageSize={lt.pageSize} total={lt.total} onPage={lt.setPage} />
       </div>
     </div>
   );

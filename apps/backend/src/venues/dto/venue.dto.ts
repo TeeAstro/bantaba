@@ -5,6 +5,8 @@ import {
   IsArray,
   IsBoolean,
   IsInt,
+  IsLatitude,
+  IsLongitude,
   IsOptional,
   IsString,
   IsUUID,
@@ -21,14 +23,37 @@ export class CreateVenueDto {
   name!: string;
 
   @IsString()
+  @MaxLength(300)
   address!: string;
 
   @IsString()
+  @MaxLength(100)
   city!: string;
 
   @IsOptional()
   @IsString()
   country?: string;
+
+  /** How to find it, shown to buyers with the address (Phase 26). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  directions?: string;
+
+  /** Its spot on the map ("I'm there now"), or mapsLink instead. */
+  @IsOptional()
+  @IsLatitude()
+  latitude?: number;
+
+  @IsOptional()
+  @IsLongitude()
+  longitude?: number;
+
+  /** A Google Maps link to the place; its coordinates are stored. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  mapsLink?: string;
 }
 
 export class SectionRowDto {

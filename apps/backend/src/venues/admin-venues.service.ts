@@ -1,3 +1,4 @@
+import { resolveSpot } from './location';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventStatus, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -74,6 +75,10 @@ export class AdminVenuesService {
       id: v.id,
       name: v.name,
       city: v.city,
+      address: v.address,
+      directions: v.directions,
+      latitude: v.latitude,
+      longitude: v.longitude,
       sections: v._count.sections,
       seats: seatMap.get(v.id) ?? 0,
       hasDrawing: !!v.map,
@@ -95,8 +100,12 @@ export class AdminVenuesService {
   async create(actor: Actor, dto: CreateVenueDto) {
     const ownerId = actor.role === UserRole.ADMIN ? null : await organizerIdOf(this.prisma, actor.id);
     if (actor.role !== UserRole.ADMIN && !ownerId) throw new BadRequestException('Only organizers can add venues');
+    const spot = await resolveSpot(dto);
     const venue = await this.prisma.venue.create({
-      data: { name: dto.name.trim(), address: dto.address.trim(), city: dto.city.trim(), country: dto.country, ownerId },
+      data: {
+        name: dto.name.trim(), address: dto.address.trim(), city: dto.city.trim(), country: dto.country, ownerId,
+        directions: dto.directions?.trim() || null, latitude: spot?.latitude ?? null, longitude: spot?.longitude ?? null,
+      },
     });
     await this.audit(this.prisma, actor, 'venue_created', venue.id, { name: venue.name, ownerId });
     return this.detail(venue.id);
@@ -149,6 +158,9 @@ export class AdminVenuesService {
       name: venue.name,
       address: venue.address,
       city: venue.city,
+      directions: venue.directions,
+      latitude: venue.latitude,
+      longitude: venue.longitude,
       frontLabel: venue.frontLabel,
       drawing: venue.map ? { fileName: venue.map.fileName, sizeBytes: venue.map.sizeBytes, uploadedAt: venue.map.uploadedAt, svg: venue.map.svg } : null,
       gates,
@@ -172,10 +184,15 @@ export class AdminVenuesService {
 
   async update(actor: Actor, id: string, dto: UpdateVenueDto) {
     await assertCanEditVenue(this.prisma, actor, id);
+    const spot = await resolveSpot(dto);
     await this.prisma.$transaction(async (tx) => {
       await tx.venue.update({
         where: { id },
-        data: { name: dto.name?.trim(), address: dto.address?.trim(), city: dto.city?.trim(), frontLabel: dto.frontLabel?.trim() },
+        data: {
+          name: dto.name?.trim(), address: dto.address?.trim(), city: dto.city?.trim(), frontLabel: dto.frontLabel?.trim(),
+          directions: dto.directions === undefined ? undefined : dto.directions?.trim() || null,
+          ...(spot === undefined ? {} : { latitude: spot?.latitude ?? null, longitude: spot?.longitude ?? null }),
+        },
       });
       await this.audit(tx, actor, 'venue_updated', id, { ...dto });
     });

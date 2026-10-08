@@ -8,7 +8,7 @@ import { useApi } from '@/lib/hooks';
 import { EventDashboard, EventRecord } from '@/lib/types';
 import { PendingChanges } from '@/components/event/PendingChanges';
 import { Icon, IconName } from '@/components/Icon';
-import { dateTime, dayParts } from '@/lib/format';
+import { dateTime, dayParts, money } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
 import { OverviewTab } from '@/components/event/OverviewTab';
 import { TicketsTab } from '@/components/event/TicketsTab';
@@ -19,6 +19,7 @@ import { StaffTab } from '@/components/event/StaffTab';
 import { RefundsTab } from '@/components/event/RefundsTab';
 import { SeatingTab } from '@/components/event/SeatingTab';
 import { SaveTemplateDialog } from '@/components/event/SaveTemplateDialog';
+import { SessionsTab } from '@/components/event/SessionsTab';
 
 function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +30,7 @@ function EventDetail() {
   const record = useApi<EventRecord>(`/events/${id}`);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(params.get('cancel') === '1');
   const [templateOpen, setTemplateOpen] = useState(false);
   const [refundMode, setRefundMode] = useState<'AUTOMATIC' | 'ORGANIZER'>('AUTOMATIC');
 
@@ -39,24 +40,28 @@ function EventDetail() {
 
   const { event } = data;
   const d = dayParts(event.startDate);
+  // Phase 24 (docs/series.md)
+  const series = record.data?.series ?? null;
+  const open = record.data?.entryMode === 'OPEN';
+  const sessionDate = `${d.weekday} ${d.day} ${d.month}`;
+  const canPublish = open || data.ticketTypes.length > 0;
   const editable = event.status !== 'CANCELLED' && event.status !== 'COMPLETED';
 
-  // Five groups instead of eight tabs (Phase 15). Each sub-page keeps its
-  // own ?tab= key, so links like ?tab=refunds still work.
-  const groups: { key: string; label: string; icon: IconName; badge?: number; subs: { key: string; label: string; badge?: number }[] }[] = [
-    { key: 'overview', label: 'Overview', icon: 'dashboard', subs: [{ key: 'overview', label: 'Overview' }] },
-    { key: 'tickets', label: 'Tickets', icon: 'tickets', subs: [{ key: 'tickets', label: 'Ticket types' }, { key: 'seating', label: 'Seating' }] },
-    {
-      key: 'sales', label: 'Sales', icon: 'orders', badge: data.refunds.requests,
-      subs: [{ key: 'orders', label: 'Orders' }, { key: 'refunds', label: 'Refunds', badge: data.refunds.requests }],
-    },
-    { key: 'people', label: 'People', icon: 'attendees', subs: [{ key: 'attendees', label: 'Attendees' }, { key: 'staff', label: 'Gate staff' }] },
-    {
-      key: 'gate', label: 'At the gate', icon: 'checkins',
-      subs: [{ key: 'checkins', label: 'Check-ins' }],
-    },
+  // Phase 27 (docs/host-rework.md): one row of tabs. Older links keep
+  // working: ?tab=staff and ?tab=checkins open Gate, ?tab=seats Seating.
+  const seated = data.ticketTypes.some((t) => t.seated);
+  const ALIAS: Record<string, string> = { staff: 'gate', checkins: 'gate', seats: 'seating', sales: 'orders', people: 'attendees' };
+  const tabs: { key: string; label: string; icon: IconName; badge?: number }[] = [
+    { key: 'overview', label: 'Overview', icon: 'dashboard' },
+    ...(series ? [{ key: 'sessions', label: 'Sessions', icon: 'calendar' as IconName }] : []),
+    { key: 'tickets', label: 'Tickets', icon: 'tickets' },
+    ...(seated || tab === 'seating' || tab === 'seats' ? [{ key: 'seating', label: 'Seating', icon: 'seats' as IconName }] : []),
+    { key: 'orders', label: 'Orders', icon: 'orders' },
+    { key: 'attendees', label: 'Attendees', icon: 'attendees' },
+    { key: 'gate', label: 'Gate', icon: 'checkins' },
+    { key: 'refunds', label: 'Refunds', icon: 'refunds', badge: data.refunds.requests },
   ];
-  const group = groups.find((g) => g.subs.some((x) => x.key === tab)) ?? groups[0];
+  const current = ALIAS[tab] ?? tab;
   const href = (key: string) => `/organizer/events/${event.id}?tab=${key}`;
   const share = data.summary.capacity ? data.summary.ticketsSold / data.summary.capacity : 0;
   const started = new Date(event.startDate).getTime() <= Date.now();
@@ -91,6 +96,8 @@ function EventDetail() {
         <div className="ev-title">
           <div className="row ev-chips">
             <StatusBadge status={event.status} />
+            {series && <span className="badge badge-blue">{series.label}</span>}
+            {open && <span className="badge badge-green">Open entry</span>}
             {(event.status === 'PUBLISHED') && share >= 0.8 && share < 1 && <span className="badge badge-gold">Almost sold out</span>}
           </div>
           <h1>{event.name}</h1>
@@ -104,8 +111,8 @@ function EventDetail() {
         </div>
         <div className="ev-actions">
           {event.status === 'DRAFT' && (
-            <button className="btn" disabled={busy || data.ticketTypes.length === 0} onClick={() => act('publish')} title={data.ticketTypes.length === 0 ? 'Add a ticket type first' : undefined}>
-              {data.permissions.requireEventReview ? 'Submit for review' : 'Publish'}
+            <button className="btn" disabled={busy || !canPublish} onClick={() => act('publish')} title={!canPublish ? 'Add a ticket type first' : undefined}>
+              {data.permissions.requireEventReview ? 'Submit for review' : series ? 'Publish series' : 'Publish'}
             </button>
           )}
           {editable && (
@@ -123,7 +130,7 @@ function EventDetail() {
               )}
               {editable && event.status !== 'DRAFT' && <Link role="menuitem" href={`/scan/${event.id}`}>Open the scanner</Link>}
               {editable && event.status !== 'DRAFT' && (
-                <button role="menuitem" className="menu-danger" disabled={busy} onClick={(e) => { (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; setCancelOpen(true); }}>Cancel event…</button>
+                <button role="menuitem" className="menu-danger" disabled={busy} onClick={(e) => { (e.currentTarget.closest('details') as HTMLDetailsElement).open = false; setCancelOpen(true); }}>{series ? 'Cancel this session…' : 'Cancel event…'}</button>
               )}
             </div>
           </details>
@@ -131,8 +138,8 @@ function EventDetail() {
       </header>
 
       <div className="ev-notices">
-        {event.status === 'DRAFT' && data.ticketTypes.length === 0 && (
-          <div className="notice notice-info">Add a ticket type before publishing: <Link href={href('tickets')}>Ticket types</Link>.</div>
+        {event.status === 'DRAFT' && !canPublish && (
+          <div className="notice notice-info">Add a ticket type before publishing: <Link href={`/organizer/events/${event.id}/edit#entry`}>Edit event</Link>.</div>
         )}
         {actionError && <div className="notice notice-error" role="alert">{actionError}</div>}
         {/* docs/organizer-trust.md */}
@@ -163,9 +170,12 @@ function EventDetail() {
       {cancelOpen && (
         <div className="modal-backdrop" role="presentation" onClick={(e) => e.target === e.currentTarget && !busy && setCancelOpen(false)}>
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="cancel-title">
-            <h2 id="cancel-title">Cancel {event.name}?</h2>
-            <p className="muted">Ticket sales stop and every ticket holder is emailed. This can’t be undone here.</p>
-            <fieldset className="choice-list" style={{ border: 0, padding: 0, margin: 0 }}>
+            <h2 id="cancel-title">{series ? `Cancel ${sessionDate}?` : `Cancel ${event.name}?`}</h2>
+            <p className="muted">
+              {open ? 'Everyone who said they’re going is emailed.' : 'Ticket sales stop and every ticket holder is emailed.'}
+              {series ? ' The other sessions go on as planned.' : ''} This can’t be undone here.
+            </p>
+            {!open && <fieldset className="choice-list" style={{ border: 0, padding: 0, margin: 0 }}>
               <legend className="small" style={{ fontWeight: 600, marginBottom: 8 }}>What happens to the money?</legend>
               <label className={`choice ${refundMode === 'AUTOMATIC' ? 'is-on' : ''}`}>
                 <input type="radio" name="refundMode" checked={refundMode === 'AUTOMATIC'} onChange={() => setRefundMode('AUTOMATIC')} />
@@ -179,45 +189,57 @@ function EventDetail() {
               ) : (
                 <p className="small muted">Handling refunds yourself isn’t available for new organizer accounts.</p>
               )}
-            </fieldset>
+            </fieldset>}
             {actionError && <div className="notice notice-error" role="alert">{actionError}</div>}
             <div className="row" style={{ justifyContent: 'flex-end' }}>
               <button className="btn btn-quiet" disabled={busy} onClick={() => setCancelOpen(false)}>Keep the event</button>
-              <button className="btn btn-danger" disabled={busy} onClick={() => act('cancel')}>{busy ? 'Cancelling…' : 'Cancel event'}</button>
+              <button className="btn btn-danger" disabled={busy} onClick={() => act('cancel')}>{busy ? 'Cancelling…' : series ? 'Cancel session' : 'Cancel event'}</button>
             </div>
           </div>
         </div>
       )}
 
+      {current !== 'overview' && !open && event.status !== 'DRAFT' && (
+        <div className="ev-strip">
+          <div>
+            <span>Sold</span>
+            <b>{data.summary.ticketsSold.toLocaleString()} <small>of {data.summary.capacity.toLocaleString()}</small></b>
+            <span className="hl-bar"><span style={{ width: `${Math.round(Math.min(1, share) * 100)}%` }} /></span>
+          </div>
+          <div><span>Sales</span><b>{money(data.summary.ticketRevenue, data.summary.currency)}</b></div>
+          <div><span>Today</span><b>+{data.today.tickets} <small>tickets</small></b></div>
+          <div><span>Let in</span><b>{data.summary.checkedIn.toLocaleString()}</b></div>
+        </div>
+      )}
+
       <nav className="tabs ev-tabs" aria-label="Event sections">
-        {groups.map((g) => (
-          <Link key={g.key} href={href(g.subs[0].key)} aria-current={group.key === g.key ? 'page' : undefined} scroll={false}>
+        {tabs.map((g) => (
+          <Link key={g.key} href={href(g.key)} aria-current={current === g.key ? 'page' : undefined} scroll={false}>
             <Icon name={g.icon} size={16} />
             {g.label}
             {!!g.badge && <span className="tab-count" aria-label={`${g.badge} waiting`}>{g.badge}</span>}
           </Link>
         ))}
       </nav>
-      {group.subs.length > 1 && (
-        <nav className="subtabs" aria-label={`${group.label} sections`}>
-          {group.subs.map((x) => (
-            <Link key={x.key} href={href(x.key)} aria-current={tab === x.key ? 'page' : undefined} scroll={false}>
-              {x.label}
-              {!!x.badge && <span className="tab-count">{x.badge}</span>}
-            </Link>
-          ))}
-        </nav>
-      )}
 
       <div className="ev-body">
-      {tab === 'overview' && <OverviewTab d={data} />}
-      {tab === 'tickets' && <TicketsTab d={data} onChange={reload} />}
-      {(tab === 'seating' || tab === 'seats') && <SeatingTab eventId={event.id} onChange={reload} />}
-      {tab === 'orders' && <OrdersTab eventId={event.id} />}
-      {tab === 'attendees' && <AttendeesTab eventId={event.id} onChange={reload} />}
-      {tab === 'refunds' && <RefundsTab d={data} onChange={reload} />}
-      {tab === 'checkins' && <CheckInsTab eventId={event.id} />}
-      {tab === 'staff' && <StaffTab eventId={event.id} venueId={event.venue.id} editable={editable} />}
+      {current === 'overview' && <OverviewTab d={data} />}
+      {current === 'sessions' && series && <SessionsTab eventId={event.id} />}
+      {current === 'tickets' && (open ? (
+        <div className="notice notice-info">
+          Open entry: no tickets and no check-in. {record.data?.going ? `${record.data.going.count} ${record.data.going.count === 1 ? 'person has' : 'people have'} said they’re going.` : ''} To sell or limit places, switch to tickets in <Link href={`/organizer/events/${event.id}/edit`}>Edit event</Link>.
+        </div>
+      ) : <TicketsTab d={data} onChange={reload} />)}
+      {current === 'seating' && <SeatingTab eventId={event.id} onChange={reload} />}
+      {current === 'orders' && <OrdersTab eventId={event.id} />}
+      {current === 'attendees' && <AttendeesTab eventId={event.id} onChange={reload} />}
+      {current === 'refunds' && <RefundsTab d={data} onChange={reload} />}
+      {current === 'gate' && (
+        <div className="stack-l">
+          <StaffTab eventId={event.id} venueId={event.venue.id} editable={editable} />
+          <CheckInsTab eventId={event.id} />
+        </div>
+      )}
       </div>
     </div>
   );

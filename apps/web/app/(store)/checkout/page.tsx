@@ -210,33 +210,16 @@ function CheckoutInner() {
       <CheckoutHeader back={back} />
       {order && !expired && (
         <div className="s-hold" role="status">
-          <div className="s-wrap s-narrow"><Icon name="clock" /><span>Held for <strong>{clock}</strong></span></div>
+          <div className="s-wrap"><Icon name="clock" /><span>Held for <strong>{clock}</strong></span></div>
         </div>
       )}
-      <main className="s-main s-wrap s-narrow s-page">
+      {/* Phase 27 (docs/store-rework.md): ways to pay on the left, the order
+          and Pay on the right on a computer; on a phone the order is on top
+          and Pay sits in the bar at the bottom. */}
+      <main className={`s-main s-wrap s-page s-co2${order && !expired ? ' has-pay' : ''}`}>
         <h1>Checkout</h1>
-
-        <section aria-label="Your order" className="s-box">
-          <div className="s-summary-top" style={{ background: eventColour(ev.id) }}>
-            <span className="s-summary-thumb">
-              {ev.posterUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={ev.posterUrl} alt="" />
-              )}
-            </span>
-            <span style={{ display: 'flex', flexDirection: 'column' }}>
-              <strong style={{ fontSize: 17 }}>{ev.name}</strong>
-              <span style={{ fontSize: 13, opacity: 0.88 }}>{d.short} · {d.time} · {ev.venue.name}</span>
-            </span>
-          </div>
-          <div className="s-lines">
-            {lines.map((l) => <div key={l.key} className="s-line"><span>{l.label}</span><span>{dalasi(l.amount, currency)}</span></div>)}
-            {order && order.platformFee > 0 && !order.feeIncluded && <div className="s-line s-line-soft"><span>Booking fee</span><span>{dalasi(order.platformFee, currency)}</span></div>}
-            {order && order.platformFee > 0 && order.feeIncluded && <div className="s-line s-line-soft"><span>Fees included</span><span /></div>}
-            <div className="s-line s-line-total"><span>{order ? 'Total' : 'Tickets'}</span><span>{dalasi(total, currency)}</span></div>
-          </div>
-        </section>
-
+        <div className="s-co2-grid">
+          <div className="s-co2-main">
         {error && <div className="s-notice s-notice-bad" role="alert"><Icon name="close" />{error}{!order && <> <Link href={back}>Change tickets</Link></>}</div>}
 
         {expired ? (
@@ -295,10 +278,40 @@ function CheckoutInner() {
             <p className="s-note">{refundLine(ev)}</p>
           </>
         )}
+          </div>
+          <aside className="s-co2-side">
+        <section aria-label="Your order" className="s-box">
+          <div className="s-summary-top" style={{ background: eventColour(ev.id) }}>
+            <span className="s-summary-thumb">
+              {ev.posterUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={ev.posterUrl} alt="" />
+              )}
+            </span>
+            <span style={{ display: 'flex', flexDirection: 'column' }}>
+              <strong style={{ fontSize: 17 }}>{ev.name}</strong>
+              <span style={{ fontSize: 13, opacity: 0.88 }}>{d.short} · {d.time} · {ev.venue.name}</span>
+            </span>
+          </div>
+          <div className="s-lines">
+            {lines.map((l) => <div key={l.key} className="s-line"><span>{l.label}</span><span>{dalasi(l.amount, currency)}</span></div>)}
+            {order && order.platformFee > 0 && !order.feeIncluded && <div className="s-line s-line-soft"><span>Booking fee</span><span>{dalasi(order.platformFee, currency)}</span></div>}
+            {order && order.platformFee > 0 && order.feeIncluded && <div className="s-line s-line-soft"><span>Fees included</span><span /></div>}
+            <div className="s-line s-line-total"><span>{order ? 'Total' : 'Tickets'}</span><span>{dalasi(total, currency)}</span></div>
+          </div>
+        </section>
+
+            {order && !expired && (
+              <button type="button" className="s-btn s-btn-block s-co2-pay" disabled={busy} onClick={pay}>
+                {busy ? 'One moment…' : method === 'BANK_TRANSFER' ? `Get bank details · ${dalasi(order.total, order.currency)}` : `Pay ${dalasi(order.total, order.currency)}${method === 'MOCK' ? '' : ` with ${method === 'CARD' ? 'card' : methods.find((m) => m.id === method)?.name ?? ''}`}`}
+              </button>
+            )}
+          </aside>
+        </div>
       </main>
 
       {order && !expired && (
-        <div className="s-paybar">
+        <div className="s-paybar s-co2-bar">
           <div className="s-wrap s-narrow">
             <button type="button" className="s-btn s-btn-block" disabled={busy} onClick={pay}>
               {busy ? 'One moment…' : method === 'BANK_TRANSFER' ? `Get bank details · ${dalasi(order.total, order.currency)}` : `Pay ${dalasi(order.total, order.currency)}${method === 'MOCK' ? '' : ` with ${method === 'CARD' ? 'card' : methods.find((m) => m.id === method)?.name ?? ''}`}`}

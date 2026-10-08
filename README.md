@@ -1342,6 +1342,96 @@ Details: `docs/payments.md`, "Ways to pay".
 | 5 | Show all | Tap Show all | All three QR codes, one under another |
 | 6 | Automated | `node payment-methods-test.js` in `apps/backend` | `8/8 passed` |
 
+## Repeating events and free events (Phase 24)
+
+- **Repeats:** when creating an event, choose Every week, Every 2 weeks or Every month (the same weekday of the month, e.g. the first Saturday), and when it ends: on a date, after a number of sessions, or keep going. A preview shows the dates.
+- Each date is its own **session**, with its own places, tickets and check-in. Sessions are added when the series goes live; a series that keeps going always has the next 8 on sale.
+- A new host's series is **reviewed once**; after approval every session goes on sale.
+- **Sessions tab** on the event page: each date and how full it is. **Stop repeating** stops new sessions.
+- **Editing a session** asks: only this date, or this date and all later sessions. A new time moves each later session by the same amount. Cancel one session from its page.
+- **Free tickets:** a D0 ticket type. Buyers get their QR tickets at once, with no payment step; at most 4 per person per event. "Can't come?" in My tickets gives the place back.
+- **Open entry:** no tickets at all. Buyers see "Free entry, no ticket needed" and an **I'm going** button with a count. People going get a reminder the day before, and an email if it's cancelled.
+- Buyers see a series **once** on Discover ("Every Saturday · next Sat 17 Oct"), and choose a date on its page.
+
+Details: `docs/series.md`.
+
+**After pulling:** in `apps/backend`: `npx prisma migrate dev` (new migration `20261008090000_event_series`), then `npm run build`. Restart the backend and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | New series | Create event → Every week, Keep going → add a D0 ticket type → Publish | 8 sessions on the Sessions tab |
+| 2 | Discover | Open the store | The series shows once, "EVERY SAT" badge |
+| 3 | Choose a date | Open it, pick another date, Get free ticket | Ticket in My tickets straight away, no payment |
+| 4 | This and later | Edit a session's time, choose "and all later sessions" | Later sessions move too, earlier ones don't |
+| 5 | Open entry | Create event → Open entry, publish without tickets; open it signed in, tap I'm going | Count goes up; listed under "You're going" in My tickets |
+| 6 | Automated | `node series-test.js` in `apps/backend` | `15/15 passed` |
+
+## Help and support (Phase 25)
+
+- **Help** for buyers (`/help`, in the store footer): answers by topic with a search, then **Send us a message**, WhatsApp and email.
+- **Send us a message:** buyers sign in and choose the order it's about from their orders; they get a reference (B-1042) and the answer by email. Their messages and "New reply" are on the Help page.
+- **Help in Bantaba Host:** answers for hosts, **Contact Bantaba** (about an event, payouts, the scanner…), WhatsApp for urgent problems on the day, and their messages.
+- **Admin → Support:** an inbox (Open, Waiting on them, Closed) with the order or event beside each message: amount, how they paid and whether it's paid. Replies go by email. Open messages show in the menu badge and Needs attention.
+- Set the WhatsApp number, email and hours with `SUPPORT_WHATSAPP`, `SUPPORT_EMAIL` and `SUPPORT_HOURS` (backend `.env`, and Render).
+
+Details: `docs/support.md`.
+
+**After pulling:** in `apps/backend`: `npx prisma migrate dev` (new migration `20261008120000_support`), then `npm run build`. Add the three `SUPPORT_` lines to `apps/backend/.env` (see `.env.example`). Restart the backend and web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Help | Store footer → Help, tap a question; search "refund" | Answers open; search finds them |
+| 2 | Message | Send us a message → An order → pick one → Send | "Sent ✓" with a reference |
+| 3 | Inbox | Admin → Support | The message, with the order beside it; badge on Support |
+| 4 | Reply | Answer it | The buyer gets an email; Help shows "New reply" |
+| 5 | Host | Bantaba Host → Help → Contact Bantaba | Listed under Your messages; in the admin inbox as Host |
+| 6 | Automated | `node support-test.js` in `apps/backend` | `8/8 passed` |
+
+## The event form, categories and venues (Phase 26)
+
+- **One page to make or edit an event**, in five numbered sections: the basics (name, category, poster), when, where, entry (ticket types as rows), more details. Beside it, what buyers will see and a **Ready to publish?** checklist; **Save draft** and **Publish** always at the bottom. On a phone, one section at a time with Back / Next.
+- **17 categories** (Games & hobbies, Community, Faith, Classes & workshops, Family & kids… and Other).
+- **Hosts add their own venues from the form**, with **How to find it** (shown to buyers) and a **map pin**: "I'm there now" or a Google Maps link. Buyers' Directions button goes to the pin.
+- Ticket types are added, changed and removed (while unsold) on the form.
+
+Details: `docs/event-form.md`.
+
+**After pulling:** in `apps/backend`: `npx prisma migrate dev` (new migration `20261008140000_venue_location_categories`, which adds the new categories), then `npm run build`. Restart the backend and the web app (the web app's settings changed: it now may use location, for "I'm there now").
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | New event | Events → Create event, fill in the five sections | The checklist ticks; Publish lights up |
+| 2 | New venue | Where → + Add a new venue, "I'm there now", Save | The map shows the pin; the venue is chosen |
+| 3 | Poster first | On a new event, add a poster before saving | The draft is saved, then the poster |
+| 4 | Buyer | Open the published event | "How to find it" under the address; Directions opens the pin |
+| 5 | Phone | Create event on a phone | One step at a time, Back / Next |
+| 6 | Automated | `node event-form-test.js` in `apps/backend` | `5/5 passed` |
+
+## The whole app, reworked (Phase 27)
+
+Every screen was gone through on a computer and a phone, then redesigned on the canvases.
+
+- **Host on a phone:** tabs at the bottom (Overview, Events, **+**, Withdraw, More) instead of the menu filling the top of every page.
+- **Events:** search, filters with counts, grouped by week, sales on every row; drafts say what's missing.
+- **An event's page:** one row of tabs (Gate = staff and check-ins); key numbers above; Tickets watches sales and sends changes to the event form.
+- **Withdraw:** "Ready to withdraw" and the button at the top, then events by Ready / Not yet. **Staff:** one row per person with their events. **Venues:** a searchable list. **Profile:** Save stays in reach.
+- **Admin lists:** search and 25 at a time on refunds, card payments, payouts, venues and organizers.
+- **Buyers' home:** category chips and what's on **by day**; search and filters in the address. **Event page:** tickets in a box beside the details on a computer. **Checkout** and **My tickets** use the width of a computer.
+
+Details: `docs/host-rework.md`, `docs/store-rework.md`.
+
+**After pulling:** no migration. In `apps/backend`: `npm run build`, then restart the backend and the web app.
+
+| # | Test | How to check | Expected result |
+|---|---|---|---|
+| 1 | Host phone | Open Bantaba Host on a phone | Tabs at the bottom; More has the rest |
+| 2 | Events | Events → type in the search, tap Drafts | Rows narrow; drafts say "Add tickets" |
+| 3 | Event tabs | Open an event | One row of tabs; Gate has staff and check-ins |
+| 4 | Withdraw | Withdraw | The amount and button at the top |
+| 5 | Buyer home | Bantaba home → tap a category | Only that category, by day; the address has `?c=` |
+| 6 | Event page | An event on a computer | Tickets box on the right with the total and Get tickets |
+| 7 | Automated | `node rework-test.js` in `apps/backend` | `11/11 passed` |
+
 ## Project structure
 
 ```

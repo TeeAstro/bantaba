@@ -194,7 +194,8 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
   // both would go on to mint a duplicate set of tickets. Providers
   // (Wave included) deliberately retry webhook delivery, so this is a real
   // scenario, not a hypothetical one.
-  async completeOrder(orderId: string, paymentId: string) {
+  // paymentId null: a free order (Phase 24), nothing to pay.
+  async completeOrder(orderId: string, paymentId: string | null) {
     return this.prisma.$transaction(async (tx) => {
       const claimed = await tx.$executeRaw`
         UPDATE ticket_orders
@@ -222,10 +223,14 @@ export class PaymentsService implements OnApplicationBootstrap, OnApplicationShu
       });
       if (!order) throw new NotFoundException('Order not found');
 
-      await tx.payment.update({
-        where: { id: paymentId },
-        data: { status: 'SUCCESSFUL' },
-      });
+      if (paymentId) {
+        await tx.payment.update({
+          where: { id: paymentId },
+          data: { status: 'SUCCESSFUL' },
+        });
+      } else if (order.total !== 0) {
+        throw new Error(`Order ${order.id}: only a free order completes without a payment`);
+      }
 
       // Reserved-seating holds for this order (Phase 8), grouped by the
       // ticket type each seat was bought as. General-admission items have

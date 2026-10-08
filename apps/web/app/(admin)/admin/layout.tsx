@@ -14,6 +14,7 @@ type Count = (c: AttentionCounts) => number;
 const NAV: { href: string; label: string; icon: IconName; exact?: boolean; count?: Count; group?: string }[] = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard', exact: true, group: 'Overview' },
   { href: '/admin/attention', label: 'Needs attention', icon: 'attention', count: (c) => Object.entries(c).filter(([k]) => k !== 'payoutsToSendAuto').reduce((n, [, v]) => n + v, 0) },
+  { href: '/admin/support', label: 'Support', icon: 'chat', count: (c) => c.supportOpen ?? 0 },
   { group: 'Review', href: '/admin/events', label: 'Event review', icon: 'review', count: (c) => c.eventsInReview + c.eventChangesInReview },
   { href: '/admin/organizers', label: 'Organizers', icon: 'organizers', count: (c) => c.organizersPending + c.payoutAccountsToCheck + c.lookalikeWarnings },
   { group: 'Storefront', href: '/admin/trending', label: 'Trending', icon: 'trending' },

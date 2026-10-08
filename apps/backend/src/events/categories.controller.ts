@@ -9,6 +9,6 @@ export class CategoriesController {
 
   @Get()
   findAll() {
-    return this.prisma.eventCategory.findMany({ orderBy: { name: 'asc' } });
+    return this.prisma.eventCategory.findMany({ orderBy: [{ position: 'asc' }, { name: 'asc' }] });
   }
 }

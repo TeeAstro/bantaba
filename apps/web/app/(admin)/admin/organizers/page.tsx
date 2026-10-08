@@ -8,6 +8,8 @@ import { AdminOrganizer } from '@/lib/admin';
 import { dateOnly } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
 import { VerifiedBadge } from '@/components/VerifiedBadge';
+import { Icon } from '@/components/Icon';
+import { ListPager, useListTools } from '@/components/admin/ListTools';
 
 const VIEWS = [
   { key: '', label: 'All' },
@@ -33,6 +35,7 @@ function OrganizersList() {
   if (q) apiQuery.set('q', q);
   const { data, error, loading, reload } = useApi<AdminOrganizer[]>(`/admin/organizers?${apiQuery}`);
 
+  const lt = useListTools(data, () => '');
   const currentView = needs ? `needs=${needs}` : status ? `status=${status}` : '';
   const go = (view: string, search = q) => {
     const next = new URLSearchParams(view);
@@ -42,11 +45,12 @@ function OrganizersList() {
 
   return (
     <div className="stack-l">
-      <div className="page-head">
-        <div>
-          <h1>Organizers</h1>
-          <p className="muted">Approve sign-ups, set trust levels and limits, check payout details.</p>
-        </div>
+      <div className="hl-head">
+        <h1>Organizers</h1>
+        <form className="hl-search" role="search" onSubmit={(e) => { e.preventDefault(); go(currentView, term.trim()); }}>
+          <Icon name="search" size={16} />
+          <input id="org-search" type="search" placeholder="Name or email, then Enter" aria-label="Search organizers" value={term} onChange={(e) => setTerm(e.target.value)} />
+        </form>
       </div>
 
       <div className="filters">
@@ -57,11 +61,6 @@ function OrganizersList() {
             </button>
           ))}
         </div>
-        <form className="search" role="search" onSubmit={(e) => { e.preventDefault(); go(currentView, term.trim()); }}>
-          <label htmlFor="org-search" className="sr-only">Search organizers</label>
-          <input id="org-search" type="search" placeholder="Name or email" value={term} onChange={(e) => setTerm(e.target.value)} />
-          <button className="btn btn-quiet" type="submit">Search</button>
-        </form>
       </div>
 
       {error && <ErrorNotice message={error} onRetry={reload} />}
@@ -78,11 +77,11 @@ function OrganizersList() {
                   <tr><th>Organizer</th><th>Status</th><th>Trust</th><th>Payout details</th><th className="num">Events</th><th>Joined</th></tr>
                 </thead>
                 <tbody>
-                  {data.map((o) => (
+                  {lt.shown.map((o) => (
                     <tr key={o.id}>
                       <td>
                         <span className="title-with-badge">
-                          <Link href={`/admin/organizers/${o.id}`}>{o.businessName}</Link>
+                          <Link href={`/admin/organizers/${o.id}`}><b>{o.businessName}</b></Link>
                           {o.verifiedBadge && <VerifiedBadge size={15} />}
                         </span>
                         <span className="cell-sub">{o.email}</span>
@@ -101,6 +100,7 @@ function OrganizersList() {
               </table>
             </div>
           )}
+          <ListPager page={lt.page} pageSize={lt.pageSize} total={lt.total} onPage={lt.setPage} />
         </section>
       )}
     </div>

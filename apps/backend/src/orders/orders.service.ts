@@ -46,6 +46,9 @@ const ORDER_INCLUDE = {
   event: { include: { venue: true } },
 } satisfies Prisma.TicketOrderInclude;
 
+// Phase 24: free tickets per person per event.
+const FREE_TICKETS_PER_PERSON = Number(process.env.FREE_TICKETS_PER_PERSON ?? 4);
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -131,6 +134,8 @@ export class OrdersService {
     if (event.status !== EventStatus.PUBLISHED) {
       throw new BadRequestException('Tickets can only be purchased for published events');
     }
+    // Phase 24: open entry has no tickets (docs/series.md).
+    if (event.entryMode === 'OPEN') throw new BadRequestException('No ticket needed for this event: just come along');
 
     // De-duplicate ticketTypeId entries the caller might have sent as two
     // separate line items for the same type — combine into one quantity
@@ -169,11 +174,24 @@ export class OrdersService {
     // first. Only a quick look: the locked update below still decides.
     const stock = await this.prisma.ticketType.findMany({
       where: { id: { in: [...quantitiesByType.keys()] }, eventId: dto.eventId },
-      select: { id: true, name: true, quantitySold: true, quantityTotal: true },
+      select: { id: true, name: true, quantitySold: true, quantityTotal: true, price: true },
     });
     for (const t of stock) {
       if (t.quantitySold + (quantitiesByType.get(t.id) ?? 0) > t.quantityTotal) {
         throw new ConflictException(`Not enough "${t.name}" tickets available`);
+      }
+    }
+
+    // Phase 24: free tickets are a few per person, so one person can't
+    // take every place (docs/series.md).
+    if (stock.length > 0 && stock.every((t) => t.price === 0)) {
+      const have = await this.prisma.ticket.count({ where: { ownerId: customer.id, status: 'ACTIVE', ticketType: { eventId: dto.eventId } } });
+      if (have + totalQuantity > FREE_TICKETS_PER_PERSON) {
+        throw new ConflictException(
+          have > 0
+            ? `You already have ${have} free ${have === 1 ? 'ticket' : 'tickets'} for this event. Free tickets are ${FREE_TICKETS_PER_PERSON} per person`
+            : `Free tickets are ${FREE_TICKETS_PER_PERSON} per person`,
+        );
       }
     }
 
@@ -369,6 +387,13 @@ export class OrdersService {
 
       return created;
     }, BUSY_TX);
+
+    // Phase 24: nothing to pay (free tickets, no fee): the tickets are
+    // issued at once, with no way-to-pay step.
+    if (order.total === 0) {
+      const done = await this.paymentsService.completeOrder(order.id, null);
+      return { order: this.present(done as typeof done & { guestTokenHash: string | null; items: typeof order.items }) };
+    }
 
     // Phase 16: no provider yet — the tickets are only held while the buyer
     // chooses how to pay (POST /orders/:id/pay).

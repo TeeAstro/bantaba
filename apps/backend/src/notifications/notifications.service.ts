@@ -45,7 +45,10 @@ export const NotificationType = {
   PAYOUT_APPROVED: 'payout_approved', // to the organizer
   PAYOUT_REJECTED: 'payout_rejected',
   PAYOUT_PAID: 'payout_paid',
-  PAYOUT_ACCOUNT_CHANGED: 'payout_account_changed', // to the organizer (security notice) and admins (please verify)
+  PAYOUT_ACCOUNT_CHANGED: 'payout_account_changed',
+  // Support (Phase 25, docs/support.md)
+  SUPPORT_NEW: 'support_new', // to admins: a new message from a buyer or host
+  SUPPORT_REPLY: 'support_reply', // to them: Bantaba's answer // to the organizer (security notice) and admins (please verify)
 } as const;
 
 // Events whose ticket holders hear about changes and get reminders.
@@ -165,17 +168,29 @@ export class NotificationsService {
       data: { status: 'CANCELLED', lastError: 'event cancelled' },
     });
     const holders = await this.holders(db, eventId);
+    // Phase 24: people who said "I'm going" to an open-entry event.
+    const going = await db.eventGoing.findMany({ where: { eventId }, select: { userId: true } });
+    const holderIds = new Set(holders.map((h) => h.ownerId));
     await this.queue(
       db,
-      holders.map((h) => ({
-        userId: h.ownerId,
-        type: NotificationType.EVENT_CANCELLED,
-        dedupeKey: `event_cancelled:${eventId}:${h.ownerId}`,
-        eventId,
-        payload: { ticketCount: h.count },
-      })),
+      [
+        ...holders.map((h) => ({
+          userId: h.ownerId,
+          type: NotificationType.EVENT_CANCELLED,
+          dedupeKey: `event_cancelled:${eventId}:${h.ownerId}`,
+          eventId,
+          payload: { ticketCount: h.count },
+        })),
+        ...going.filter((g) => !holderIds.has(g.userId)).map((g) => ({
+          userId: g.userId,
+          type: NotificationType.EVENT_CANCELLED,
+          dedupeKey: `event_cancelled:${eventId}:${g.userId}`,
+          eventId,
+          payload: { going: true },
+        })),
+      ],
     );
-    return holders.length;
+    return holders.length + going.length;
   }
 
   // Run every few minutes by the worker (and on demand by an admin):
@@ -198,6 +213,18 @@ export class NotificationsService {
         _min: { purchasedAt: true },
       });
       const due = holders.filter((h) => !h._min.purchasedAt || h._min.purchasedAt < recent);
+      // Phase 24: "I'm going" on an open-entry event (said more than 3 hours ago).
+      const going = await this.prisma.eventGoing.findMany({ where: { eventId: e.id, createdAt: { lt: recent } }, select: { userId: true } });
+      queued += await this.queue(
+        this.prisma,
+        going.map((g) => ({
+          userId: g.userId,
+          type: NotificationType.EVENT_REMINDER,
+          dedupeKey: `event_reminder:${e.id}:${e.startDate.toISOString()}:${g.userId}`,
+          eventId: e.id,
+          payload: { startDate: e.startDate.toISOString(), going: true },
+        })),
+      );
       queued += await this.queue(
         this.prisma,
         due.map((h) => ({
@@ -419,6 +446,17 @@ export class NotificationsService {
 
   // Inserts outbox rows; a row whose dedupeKey already exists is skipped,
   // which is what makes every trigger safe to run twice.
+  // ---------- support (Phase 25) ----------
+
+  async supportNew(db: Db, threadId: string, messageId: string) {
+    const admins = await db.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+    await this.queue(db, admins.map((a) => ({ userId: a.id, type: NotificationType.SUPPORT_NEW, dedupeKey: `support_new:${messageId}:${a.id}`, payload: { threadId, messageId } })));
+  }
+
+  async supportReply(db: Db, r: { threadId: string; messageId: string; userId: string }) {
+    await this.queue(db, [{ userId: r.userId, type: NotificationType.SUPPORT_REPLY, dedupeKey: `support_reply:${r.messageId}`, payload: { threadId: r.threadId, messageId: r.messageId } }]);
+  }
+
   private async queue(
     db: Db,
     rows: { userId: string; type: string; dedupeKey: string; eventId?: string; orderId?: string; sendAfter?: Date; payload?: Prisma.InputJsonValue }[],

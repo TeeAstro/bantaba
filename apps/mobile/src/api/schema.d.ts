@@ -156,6 +156,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tickets/{id}/give-back": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Give a free ticket back so someone else can come (Phase 24). */
+        post: operations["Refunds_giveBack[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/events/{id}/refunds": {
         parameters: {
             query?: never;
@@ -1430,7 +1447,8 @@ export interface paths {
         get?: never;
         put: operations["TicketTypes_update[0]"];
         post?: never;
-        delete?: never;
+        /** Phase 26: remove a ticket type nobody has bought or is holding (the event form's rows). */
+        delete: operations["TicketTypes_remove[0]"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2331,6 +2349,260 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/events/{id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The host's sessions of a repeating event (any session's id). */
+        get: operations["Series_sessions[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/series/{id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop repeating: no new sessions are added. Sessions already made stay on sale. */
+        post: operations["Series_stop[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}/going": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** "I'm going" to an open-entry event. */
+        post: operations["Series_going[0]"];
+        /** Not going after all. */
+        delete: operations["Series_notGoing[0]"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/going": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open-entry events I said I'm going to. */
+        get: operations["Series_myGoing[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/contacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bantaba's WhatsApp, email and hours for the Help pages (public). */
+        get: operations["Support_contacts[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write to Bantaba (signed-in buyers and hosts). */
+        post: operations["Support_create[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My messages to Bantaba, newest first. */
+        get: operations["Support_mine[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of my messages, with Bantaba's answers (marks them read). */
+        get: operations["Support_get[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/support/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add to one of my messages (opens it again if it was closed). */
+        post: operations["Support_add[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/support": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Threads by status (open: oldest first), with counts for the tabs. */
+        get: operations["AdminSupport_list[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/support/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many are waiting for an answer (the menu badge). */
+        get: operations["AdminSupport_count[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/support/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One thread, with the person and the order or event beside it. */
+        get: operations["AdminSupport_get[0]"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/support/{id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer: emailed to them, and the thread waits for them. */
+        post: operations["AdminSupport_reply[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/support/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminSupport_close[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/support/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminSupport_reopen[0]"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -2808,6 +3080,31 @@ export interface components {
          * @enum {string}
          */
         RefundPolicy: "NONE" | "UNTIL_DAYS_BEFORE" | "ANYTIME";
+        /**
+         * @description TICKETS (default; free or paid) or OPEN (no tickets: "Free entry, no ticket needed")
+         * @enum {string}
+         */
+        EntryMode: "TICKETS" | "OPEN";
+        /**
+         * @description WEEKLY, BIWEEKLY (every 2 weeks) or MONTHLY (the same weekday of the month, e.g. the first Saturday)
+         * @enum {string}
+         */
+        SeriesFrequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY";
+        /**
+         * @description DATE (until endsOn), COUNT (count sessions) or OPEN (keep going: the next 8 are always on sale)
+         * @enum {string}
+         */
+        SeriesEnd: "DATE" | "COUNT" | "OPEN";
+        RepeatDto: {
+            /** @description WEEKLY, BIWEEKLY (every 2 weeks) or MONTHLY (the same weekday of the month, e.g. the first Saturday) */
+            frequency: components["schemas"]["SeriesFrequency"];
+            /** @description DATE (until endsOn), COUNT (count sessions) or OPEN (keep going: the next 8 are always on sale) */
+            endMode: components["schemas"]["SeriesEnd"];
+            /** @description With DATE: the last day a session may fall on. */
+            endsOn?: string;
+            /** @description With COUNT: how many sessions in all (2–52). */
+            count?: number;
+        };
         CreateEventDto: {
             /**
              * @example {
@@ -2819,6 +3116,8 @@ export interface components {
             };
             /** @description When ticket holders may ask for a refund. Default NONE. */
             refundPolicy?: components["schemas"]["RefundPolicy"];
+            /** @description TICKETS (default; free or paid) or OPEN (no tickets: "Free entry, no ticket needed") */
+            entryMode?: components["schemas"]["EntryMode"];
             name: string;
             /** Format: uuid */
             categoryId: string;
@@ -2836,6 +3135,10 @@ export interface components {
             refundDaysBefore?: number;
             /** @description Whether ticket holders may send their tickets to someone else. Default true. */
             transfersEnabled?: boolean;
+            /** @description Open entry: show an "I'm going" button and count. Default true. */
+            goingEnabled?: boolean;
+            /** @description The event repeats. Sessions are added once it goes live. null (on edit) = no longer repeats; only while it's a draft. */
+            repeat?: components["schemas"]["RepeatDto"] | null;
         };
         UpdateEventDto: {
             /**
@@ -2848,6 +3151,8 @@ export interface components {
             };
             /** @description When ticket holders may ask for a refund. Default NONE. */
             refundPolicy?: components["schemas"]["RefundPolicy"];
+            /** @description TICKETS (default; free or paid) or OPEN (no tickets: "Free entry, no ticket needed") */
+            entryMode?: components["schemas"]["EntryMode"];
             name?: string;
             /** Format: uuid */
             categoryId?: string;
@@ -2865,6 +3170,17 @@ export interface components {
             refundDaysBefore?: number;
             /** @description Whether ticket holders may send their tickets to someone else. Default true. */
             transfersEnabled?: boolean;
+            /** @description Open entry: show an "I'm going" button and count. Default true. */
+            goingEnabled?: boolean;
+            /** @description The event repeats. Sessions are added once it goes live. null (on edit) = no longer repeats; only while it's a draft. */
+            repeat?: components["schemas"]["RepeatDto"] | null;
+            /**
+             * @description Phase 24, a session of a repeating event: "this" (default) changes
+             *     only this session; "following" this one and every later session
+             *     (a new start time moves each of them by the same amount).
+             * @enum {string}
+             */
+            applyTo?: "this" | "following";
         };
         /**
          * @description AUTOMATIC (default): every ticket holder is refunded in full, booking fee included. ORGANIZER: you handle it; ticket holders may request a refund at any time.
@@ -3197,6 +3513,13 @@ export interface components {
             address: string;
             city: string;
             country?: string;
+            /** @description How to find it, shown to buyers with the address (Phase 26). */
+            directions?: string;
+            /** @description Its spot on the map ("I'm there now"), or mapsLink instead. */
+            latitude?: number;
+            longitude?: number;
+            /** @description A Google Maps link to the place; its coordinates are stored. */
+            mapsLink?: string;
         };
         SectionRowDto: {
             label: string;
@@ -3243,6 +3566,13 @@ export interface components {
             city?: string;
             /** @description What the seats face, shown above every seat grid: "Stage", "Pitch"… */
             frontLabel?: string;
+            /** @description Phase 26: how to find it; null clears it. */
+            directions?: string | null;
+            /** @description Its spot on the map; null (both) clears it. */
+            latitude?: number | null;
+            longitude?: number | null;
+            /** @description A Google Maps link to the place; its coordinates are stored. */
+            mapsLink?: string;
         };
         CreateVenueGateDto: {
             name: string;
@@ -3291,6 +3621,29 @@ export interface components {
             name: string;
             startDate: string;
             endDate: string;
+        };
+        NewSupportThreadDto: {
+            /**
+             * @description Buyers: order, event, account, other. Hosts: event, payouts, scanner, account, other.
+             * @enum {string}
+             */
+            topic?: "order" | "event" | "payouts" | "scanner" | "account" | "other";
+            /**
+             * Format: uuid
+             * @description With topic "order": one of your orders.
+             */
+            orderId?: string;
+            /**
+             * Format: uuid
+             * @description With topic "event": the event it's about (hosts: one of theirs).
+             */
+            eventId?: string;
+            /** @description A short title; the start of the message if left out. */
+            subject?: string;
+            message: string;
+        };
+        SupportMessageDto: {
+            message: string;
         };
         UpdateMeDto: {
             fullName: string;
@@ -3589,6 +3942,25 @@ export interface operations {
         };
     };
     "Refunds_withdraw[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Refunds_giveBack[0]": {
         parameters: {
             query?: never;
             header?: never;
@@ -5428,6 +5800,25 @@ export interface operations {
             };
         };
     };
+    "TicketTypes_remove[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "Orders_checkout[0]": {
         parameters: {
             query?: never;
@@ -6873,6 +7264,312 @@ export interface operations {
             };
         };
     };
+    "Series_sessions[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Series_stop[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Series_going[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Series_notGoing[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Series_myGoing[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Support_contacts[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Support_create[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewSupportThreadDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Support_mine[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Support_get[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "Support_add[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportMessageDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AdminSupport_list[0]": {
+        parameters: {
+            query?: {
+                status?: "open" | "waiting" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AdminSupport_count[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AdminSupport_get[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AdminSupport_reply[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportMessageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AdminSupport_close[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    "AdminSupport_reopen[0]": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     "Me_get[0]": {
         parameters: {
             query?: never;
@@ -7202,8 +7899,10 @@ export interface operations {
     "Storefront_discover[0]": {
         parameters: {
             query?: {
-                /** @description Date buttons on Discover: all (default), weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`) */
-                when?: "all" | "weekend" | "week" | "date";
+                /** @description Date buttons on Discover: all (default), today, weekend (Friday to Sunday), week (next 7 days), date (one day, with `date`) */
+                when?: "all" | "today" | "weekend" | "week" | "date";
+                /** @description Phase 27: one category, by its slug (e.g. concerts) */
+                category?: string;
                 /** @description With when=date: YYYY-MM-DD */
                 date?: string;
                 /** @description Search: event, artist (in the description), host, venue or town */

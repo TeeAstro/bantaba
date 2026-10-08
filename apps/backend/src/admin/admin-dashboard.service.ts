@@ -39,6 +39,7 @@ export class AdminDashboardService {
       cardPaymentsFlagged,
       organizersPending, organizersPendingOldest,
       lookalikeWarnings,
+      supportOpen, supportOldest,
     ] = await Promise.all([
       this.prisma.event.count({ where: { status: 'PENDING_APPROVAL' } }),
       oldest(this.prisma.event.aggregate({ where: { status: 'PENDING_APPROVAL' }, _min: { submittedForReviewAt: true } })),
@@ -58,15 +59,18 @@ export class AdminDashboardService {
       this.prisma.organizer.count({ where: { verificationStatus: 'PENDING' } }),
       oldest(this.prisma.organizer.aggregate({ where: { verificationStatus: 'PENDING' }, _min: { createdAt: true } })),
       this.lookalikeIds().then((ids) => ids.length),
+      // Phase 25: messages waiting for an answer (docs/support.md)
+      this.prisma.supportThread.count({ where: { status: 'OPEN' } }),
+      this.prisma.supportThread.aggregate({ where: { status: 'OPEN' }, _min: { lastAt: true } }).then((r) => r._min.lastAt),
     ]);
     const counts = {
       eventsInReview, eventChangesInReview, payoutRequests, payoutsToSend, payoutsToSendAuto, payoutAccountsToCheck, manualRefundsToPay,
-      failedProviderRefunds, failedEmails, cardPaymentsFlagged, organizersPending, lookalikeWarnings,
+      failedProviderRefunds, failedEmails, cardPaymentsFlagged, organizersPending, lookalikeWarnings, supportOpen,
     };
     const { payoutsToSendAuto: _auto, ...open } = counts;
     return {
       counts,
-      oldest: { eventsInReview: eventsOldest, eventChangesInReview: eventChangesOldest, payoutRequests: payoutRequestsOldest, payoutsToSend: payoutsToSendOldest, manualRefundsToPay: manualRefundsOldest, organizersPending: organizersPendingOldest },
+      oldest: { eventsInReview: eventsOldest, eventChangesInReview: eventChangesOldest, payoutRequests: payoutRequestsOldest, payoutsToSend: payoutsToSendOldest, manualRefundsToPay: manualRefundsOldest, organizersPending: organizersPendingOldest, supportOpen: supportOldest },
       total: Object.values(open).reduce((a, b) => a + b, 0),
     };
   }

@@ -65,6 +65,8 @@ export class TicketTypesService {
       );
     }
 
+    // Phase 24: open entry has no tickets (docs/series.md).
+    if (event.entryMode === 'OPEN') throw new BadRequestException('This event is open entry: no tickets needed. Switch it to tickets in Edit event first');
     if (dto.accessZoneId) await this.assertZoneInVenue(dto.accessZoneId, event.venueId);
 
     return this.prisma.ticketType.create({
@@ -106,6 +108,17 @@ export class TicketTypesService {
       orderBy: { price: 'asc' },
     });
     return types.map(({ _count, ...t }) => ({ ...t, seated: _count.eventSections > 0, sections: _count.eventSections }));
+  }
+
+  async remove(user: AuthenticatedUser, ticketTypeId: string) {
+    const tt = await this.prisma.ticketType.findUnique({ where: { id: ticketTypeId }, include: { _count: { select: { tickets: true, orderItems: true } } } });
+    if (!tt) throw new NotFoundException('Ticket type not found');
+    await this.assertOwnsEvent(tt.eventId, user);
+    if (tt.quantitySold > 0 || tt._count.tickets > 0 || tt._count.orderItems > 0) {
+      throw new BadRequestException('People have bought or are holding this ticket. Turn it off instead so it isn’t sold any more');
+    }
+    await this.prisma.ticketType.delete({ where: { id: ticketTypeId } });
+    return { deleted: true };
   }
 
   async update(user: AuthenticatedUser, ticketTypeId: string, dto: UpdateTicketTypeDto) {

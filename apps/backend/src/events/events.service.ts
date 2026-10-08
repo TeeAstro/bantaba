@@ -2,11 +2,14 @@ import { deleteImageIfUnused } from './image-refs';
 import { assertCanUseVenue } from '../venues/venue-access';
 import {
   Injectable,
+  Logger,
   ForbiddenException,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { CancellationRefundMode, Event, EventStatus, Prisma, RefundPolicy, UserRole } from '@prisma/client';
+import { CancellationRefundMode, EntryMode, Event, EventStatus, Prisma, RefundPolicy, UserRole } from '@prisma/client';
+import { goingInfo, publicSessions, seriesData, seriesInfo } from '../series/series-view';
+import { seriesLabel } from '../series/series-rule';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -70,6 +73,22 @@ function publicEvent<T extends Record<string, unknown>>(e: T) {
 
 @Injectable()
 export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
+  // Phase 24: run when an event goes live (published, or approved by an
+  // admin). SeriesService adds the sessions of a repeating event here; a
+  // hook keeps the series code out of this module (no module cycle).
+  private readonly liveHooks: ((eventId: string) => Promise<unknown>)[] = [];
+
+  onLive(hook: (eventId: string) => Promise<unknown>) {
+    this.liveHooks.push(hook);
+  }
+
+  private async wentLive(eventId: string) {
+    for (const hook of this.liveHooks) {
+      await hook(eventId).catch((e) => this.logger.warn(`After going live (${eventId}): ${(e as Error).message}`));
+    }
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
@@ -105,7 +124,21 @@ export class EventsService {
   // waiting for review, and whether their edits need review at all
   // (docs/event-change-review.md).
   private async ownerView<E extends Event>(event: E, user: AuthenticatedUser) {
-    return { ...event, changeRequest: await this.changes.forOrganizer(event.id), editsNeedReview: await this.changes.holds(user, event) };
+    return {
+      ...event,
+      changeRequest: await this.changes.forOrganizer(event.id),
+      editsNeedReview: await this.changes.holds(user, event),
+      series: await this.seriesOf(event),
+    };
+  }
+
+  // Phase 24: how the event repeats, if it does.
+  private async seriesOf(event: { seriesId: string | null }) {
+    if (!event.seriesId) return null;
+    const series = await this.prisma.eventSeries.findUnique({ where: { id: event.seriesId } });
+    if (!series) return null;
+    const first = await this.prisma.event.findFirst({ where: { seriesId: series.id }, orderBy: { seriesIndex: 'asc' }, select: { startDate: true } });
+    return seriesInfo(series, first?.startDate ?? new Date());
   }
 
   private async getOrganizerForUser(userId: string) {
@@ -119,7 +152,7 @@ export class EventsService {
   }
 
   private async generateUniqueSlug(name: string): Promise<string> {
-    const base = slugify(name) || 'event';
+    const base = (slugify(name) || 'event').slice(0, 80).replace(/-$/, '');
     let candidate = base;
     let suffix = 1;
 
@@ -148,7 +181,7 @@ export class EventsService {
     }
   }
 
-  async create(user: AuthenticatedUser, dto: CreateEventDto) {
+  async create(user: AuthenticatedUser, dto: CreateEventDto, opts: { slugBase?: string } = {}) {
     const organizer = await this.getOrganizerForUser(user.id);
 
     if (new Date(dto.endDate) <= new Date(dto.startDate)) {
@@ -162,10 +195,17 @@ export class EventsService {
     // Phase 18: their own venues, and Bantaba's they can use.
     await assertCanUseVenue(this.prisma, dto.venueId, organizer.id);
 
-    const slug = await this.generateUniqueSlug(dto.name);
+    const slug = await this.generateUniqueSlug(opts.slugBase ?? dto.name);
+    // Phase 24: the first session of a repeating event.
+    const repeat = dto.repeat ? seriesData(dto.repeat, new Date(dto.startDate)) : null;
 
-    return this.prisma.event.create({
-      data: {
+    return this.prisma.$transaction(async (tx) => {
+      const series = repeat ? await tx.eventSeries.create({ data: { organizerId: organizer.id, ...repeat } }) : null;
+      return tx.event.create({ data: {
+        seriesId: series?.id,
+        seriesIndex: series ? 0 : undefined,
+        entryMode: dto.entryMode,
+        goingEnabled: dto.goingEnabled,
         organizerId: organizer.id,
         categoryId: dto.categoryId,
         venueId: dto.venueId,
@@ -183,12 +223,76 @@ export class EventsService {
         refundDaysBefore: dto.refundPolicy === RefundPolicy.UNTIL_DAYS_BEFORE ? dto.refundDaysBefore : null,
         transfersEnabled: dto.transfersEnabled,
         status: EventStatus.DRAFT,
-      },
+      } });
     });
   }
 
   async update(user: AuthenticatedUser, eventId: string, dto: UpdateEventDto) {
+    const { applyTo, repeat, ...change } = dto;
     const event = await this.getEditableEvent(user, eventId);
+    if (repeat !== undefined) await this.changeRepeat(event, repeat, change.startDate);
+    const updated = await this.updateOne(user, event, change);
+    if (applyTo !== 'following' || !event.seriesId || event.seriesIndex === null) return updated;
+
+    // Phase 24: this session and every later one. A new start or end moves
+    // each of them by the same amount; everything else is set as given.
+    // Each goes through the same rules (review, emails to ticket holders).
+    const later = await this.prisma.event.findMany({
+      where: { seriesId: event.seriesId, seriesIndex: { gt: event.seriesIndex }, status: { notIn: [EventStatus.CANCELLED, EventStatus.COMPLETED] } },
+      orderBy: { seriesIndex: 'asc' },
+    });
+    const shiftStart = change.startDate ? new Date(change.startDate).getTime() - event.startDate.getTime() : 0;
+    const shiftEnd = change.endDate ? new Date(change.endDate).getTime() - event.endDate.getTime() : 0;
+    for (const s of later) {
+      await this.updateOne(user, s, {
+        ...change,
+        startDate: change.startDate ? new Date(s.startDate.getTime() + shiftStart).toISOString() : undefined,
+        endDate: change.endDate ? new Date(s.endDate.getTime() + shiftEnd).toISOString() : undefined,
+      });
+    }
+    return { ...updated, alsoUpdated: later.length };
+  }
+
+  // Phase 24: a draft's repeat can be set, changed or removed (null) until
+  // it goes live; after that the host can only stop it (POST /series/:id/stop).
+  private async changeRepeat(event: Event, repeat: UpdateEventDto['repeat'], newStart?: string | null) {
+    if (event.status !== EventStatus.DRAFT || (event.seriesIndex ?? 0) > 0) {
+      throw new BadRequestException("How an event repeats can only be changed while it's a draft. Stop the series from its sessions list instead");
+    }
+    if (repeat === null) {
+      if (!event.seriesId) return;
+      await this.prisma.$transaction([
+        this.prisma.event.update({ where: { id: event.id }, data: { seriesId: null, seriesIndex: null } }),
+        this.prisma.eventSeries.delete({ where: { id: event.seriesId } }),
+      ]);
+      event.seriesId = null;
+      event.seriesIndex = null;
+      return;
+    }
+    if (!repeat) return;
+    const rule = seriesData(repeat, new Date(newStart ?? event.startDate));
+    if (event.seriesId) {
+      await this.prisma.eventSeries.update({ where: { id: event.seriesId }, data: { ...rule, stoppedAt: null } });
+    } else {
+      const series = await this.prisma.eventSeries.create({ data: { organizerId: event.organizerId, ...rule } });
+      await this.prisma.event.update({ where: { id: event.id }, data: { seriesId: series.id, seriesIndex: 0 } });
+      event.seriesId = series.id;
+      event.seriesIndex = 0;
+    }
+  }
+
+  // Phase 24: open entry has no tickets. Unsold ticket types are removed
+  // when switching to it; with tickets already sold it's refused.
+  private async assertEntryModeChange(event: Event, mode: EntryMode | undefined) {
+    if (!mode || mode === event.entryMode || mode !== EntryMode.OPEN) return;
+    const sold = await this.prisma.ticket.count({ where: { ticketType: { eventId: event.id } } });
+    const held = await this.prisma.ticketType.count({ where: { eventId: event.id, quantitySold: { gt: 0 } } });
+    if (sold + held > 0) throw new BadRequestException('People already have tickets for this event, so it can\'t switch to open entry');
+    await this.prisma.ticketType.deleteMany({ where: { eventId: event.id } });
+  }
+
+  private async updateOne(user: AuthenticatedUser, event: Event, dto: Omit<UpdateEventDto, 'applyTo' | 'repeat'>) {
+    const eventId = event.id;
 
     // Optional fields can be cleared by sending null; required ones can't
     // (without this, null would slip past validation and fail in the database).
@@ -204,6 +308,10 @@ export class EventsService {
     for (const k of ['refundPolicy', 'transfersEnabled'] as const) {
       if ((dto as Record<string, unknown>)[k] === null) throw new BadRequestException(`${k} can't be empty`);
     }
+    for (const k of ['entryMode', 'goingEnabled'] as const) {
+      if ((dto as Record<string, unknown>)[k] === null) throw new BadRequestException(`${k} can't be empty`);
+    }
+    await this.assertEntryModeChange(event, dto.entryMode);
     const policy = dto.refundPolicy ?? event.refundPolicy;
     assertRefundPolicy(policy, dto.refundDaysBefore !== undefined ? dto.refundDaysBefore : event.refundDaysBefore);
 
@@ -218,7 +326,7 @@ export class EventsService {
     // Everything else applies straight away.
     const hold = await this.changes.holds(user, event);
     const proposed: ChangeSet = {};
-    const immediate: UpdateEventDto = { ...dto };
+    const immediate: Omit<UpdateEventDto, 'applyTo' | 'repeat'> = { ...dto };
     if (hold) {
       if (dto.name !== undefined) proposed.name = dto.name.trim();
       if (dto.description !== undefined) proposed.description = dto.description ?? null;
@@ -273,6 +381,8 @@ export class EventsService {
           refundPolicy: immediate.refundPolicy,
           refundDaysBefore: policy === RefundPolicy.UNTIL_DAYS_BEFORE ? immediate.refundDaysBefore : immediate.refundPolicy ? null : undefined,
           transfersEnabled: immediate.transfersEnabled,
+          entryMode: immediate.entryMode,
+          goingEnabled: immediate.goingEnabled,
           // Phase 13: buyers from before a date/venue change on a live event
           // may then always ask for a refund (refunds/refund-rules.ts).
           scheduleChangedAt: moved ? new Date() : undefined,
@@ -321,6 +431,9 @@ export class EventsService {
     // An admin publishing is the review itself.
     if (user.role === UserRole.ADMIN) return this.approveReview(user, eventId, event.status);
 
+    // Phase 24: a later session of a series is published with the series.
+    if ((event.seriesIndex ?? 0) > 0) throw new BadRequestException('This session goes live with its series');
+
     // Organizers not yet trusted: the ticket limits are checked again here
     // (the limits may have changed since the ticket types were made), and
     // the event goes to an admin for review instead of straight live
@@ -343,16 +456,18 @@ export class EventsService {
       });
     }
 
-    return this.prisma.event.update({
+    const published = await this.prisma.event.update({
       where: { id: eventId },
       // An earlier "sent back" note is private to host and admin (security review, Phase 21b).
       data: { status: EventStatus.PUBLISHED, reviewNote: null },
     });
+    await this.wentLive(eventId);
+    return published;
   }
 
   // Admin: an event passes review and goes live.
   async approveReview(user: AuthenticatedUser, eventId: string, expected?: EventStatus) {
-    return this.prisma.$transaction(async (tx) => {
+    const approved = await this.prisma.$transaction(async (tx) => {
       const done = await tx.event.updateMany({
         where: { id: eventId, status: { in: [EventStatus.PENDING_APPROVAL, EventStatus.DRAFT] }, ...(expected ? { status: expected } : {}) },
         data: { status: EventStatus.PUBLISHED, reviewedAt: new Date(), reviewedById: user.id, reviewNote: null },
@@ -364,6 +479,8 @@ export class EventsService {
       const { organizer: _o, ...plain } = event;
       return plain;
     });
+    await this.wentLive(eventId);
+    return approved;
   }
 
   // Admin: send an event back to draft with a reason the organizer sees.
@@ -451,6 +568,10 @@ export class EventsService {
     }
 
     await this.prisma.event.delete({ where: { id: eventId } });
+    // Phase 24: a draft series goes with its only session.
+    if (event.seriesId && (await this.prisma.event.count({ where: { seriesId: event.seriesId } })) === 0) {
+      await this.prisma.eventSeries.delete({ where: { id: event.seriesId } }).catch(() => undefined);
+    }
     await deleteImageIfUnused(this.prisma, this.storage, event.posterUrl);
     await deleteImageIfUnused(this.prisma, this.storage, event.bannerUrl);
     return { success: true };
@@ -496,10 +617,27 @@ export class EventsService {
     const organizer = await this.getOrganizerForUser(user.id);
     const events = await this.prisma.event.findMany({
       where: { organizerId: organizer.id },
-      include: { category: true, venue: true, changeRequests: { where: { status: 'PENDING' }, select: { id: true } } },
+      include: {
+        category: true,
+        venue: true,
+        changeRequests: { where: { status: 'PENDING' }, select: { id: true } },
+        series: { select: { frequency: true, endMode: true, anchorStart: true, stoppedAt: true } },
+        ticketTypes: { select: { quantityTotal: true, quantitySold: true, isActive: true } },
+        _count: { select: { going: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
-    return events.map(({ changeRequests, ...e }) => ({ ...e, changesInReview: changeRequests.length > 0 }));
+    return events.map(({ changeRequests, series, ticketTypes, _count, ...e }) => ({
+      ...e,
+      // Phase 27: the events list shows sales and what a draft still needs.
+      sold: ticketTypes.reduce((n, t) => n + t.quantitySold, 0),
+      capacity: ticketTypes.filter((t) => t.isActive).reduce((n, t) => n + t.quantityTotal, 0),
+      ticketTypes: ticketTypes.length,
+      going: _count.going,
+      changesInReview: changeRequests.length > 0,
+      // Phase 24: the host's list groups a series' sessions under one row.
+      series: series ? { ...series, label: seriesLabel(series.frequency, series.anchorStart ?? e.startDate) } : null,
+    }));
   }
 
   async findOne(idOrSlug: string, viewer: AuthenticatedUser | null) {
@@ -512,12 +650,17 @@ export class EventsService {
 
     // Only the public view of the organizer: never their trust settings,
     // the admin's note or payout details (docs/payouts.md).
-    const shown = { ...event, organizer: publicOrganizer(event.organizer) };
+    // Phase 24: the dates of a repeating event, and "I'm going".
+    const extra = {
+      series: event.seriesId ? { ...(await this.seriesOf(event)), sessions: await publicSessions(this.prisma, event.seriesId) } : null,
+      going: await goingInfo(this.prisma, event, viewer?.id ?? null),
+    };
+    const shown = { ...event, ...extra, organizer: publicOrganizer(event.organizer) };
 
     // The owner and admins also see changes waiting for review (never the public).
     const isOwner = !!viewer && event.organizer.userId === viewer.id;
     const isAdmin = viewer?.role === UserRole.ADMIN;
-    if (isOwner || isAdmin) return { ...(await this.ownerView(event, viewer!)), organizer: shown.organizer };
+    if (isOwner || isAdmin) return { ...(await this.ownerView(event, viewer!)), ...extra, series: extra.series, organizer: shown.organizer };
 
     if (event.status === EventStatus.PUBLISHED) {
       return publicEvent(shown);

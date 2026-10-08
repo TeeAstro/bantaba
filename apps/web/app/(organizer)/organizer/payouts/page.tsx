@@ -7,6 +7,7 @@ import { useApi } from '@/lib/hooks';
 import { EventMoney, Payout, PayoutAccount, PayoutSummary } from '@/lib/types';
 import { dateOnly, dateTime, money } from '@/lib/format';
 import { ErrorNotice, Loading, StatusBadge } from '@/components/ui';
+import { Icon } from '@/components/Icon';
 
 // Organizer payouts (docs/payouts.md): what you've earned, what can be paid
 // out, where it goes, and the payouts so far. Every payout is approved by
@@ -102,12 +103,12 @@ function AccountForm({ current, onSaved, onCancel }: { current: PayoutAccount | 
   );
 }
 
-function AccountPanel({ account, locked, onSaved }: { account: PayoutAccount | null; locked: boolean; onSaved: () => void }) {
-  const [editing, setEditing] = useState(false);
+function AccountPanel({ account, locked, onSaved, editing, setEditing }: { account: PayoutAccount | null; locked: boolean; onSaved: () => void; editing: boolean; setEditing: (v: boolean) => void }) {
   return (
-    <section className="panel panel-pad stack-s">
+    <section className="panel panel-pad stack-s" id="where">
       <div className="spread">
         <h2>Where we send your money</h2>
+        {account && editing && <button className="btn btn-quiet btn-small" onClick={() => setEditing(false)}>Close</button>}
         {account && !editing && (
           <button className="btn btn-quiet btn-small" onClick={() => setEditing(true)} disabled={locked} title={locked ? 'Wait until your withdrawal in progress is paid' : undefined}>
             Change
@@ -255,12 +256,20 @@ function eventState(e: EventMoney, advancePercent: number) {
   }
 }
 
+type Show = 'ready' | 'later' | 'all';
+
 export default function PayoutsPage() {
   const summary = useApi<PayoutSummary>('/payouts/summary');
   const history = useApi<Payout[]>('/payouts');
+  const [asking, setAsking] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [how, setHow] = useState(false);
+  const [show, setShow] = useState<Show>('ready');
+  const [term, setTerm] = useState('');
   const reload = () => {
     summary.reload();
     history.reload();
+    setAsking(false);
   };
 
   if (summary.error) return <ErrorNotice message={summary.error} onRetry={reload} />;
@@ -268,75 +277,101 @@ export default function PayoutsPage() {
   const s = summary.data;
   const t = s.balance.totals;
   const hold = s.balance.holdDays;
+  const cur = s.balance.currency;
+  const ready = (e: EventMoney) => e.state === 'AVAILABLE' || e.state === 'ADVANCE';
+  const counts = { ready: s.balance.events.filter(ready).length, later: s.balance.events.filter((e) => !ready(e)).length, all: s.balance.events.length };
+  const events = s.balance.events.filter((e) => (show === 'all' || (show === 'ready') === ready(e)) && (!term.trim() || e.name.toLowerCase().includes(term.trim().toLowerCase())));
+  const changeWhere = () => {
+    setEditing(true);
+    setTimeout(() => document.getElementById('where')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
 
   return (
     <div className="stack-l">
-      <div className="page-head">
-        <div>
-          <h1>Withdraw</h1>
-          <p className="muted">
-            Ticket buyers pay the platform. Money from an event can be withdrawn {hold ? `${hold} day${hold === 1 ? '' : 's'} after it ends` : 'once it ends'}
-            {s.balance.advancePercent > 0 ? `, and up to ${s.balance.advancePercent}% of an upcoming event’s sales before it` : ''}.{' '}
-            {s.autoApprove
-              ? `Your withdrawals${s.autoApprove.max !== null ? ` up to ${money(s.autoApprove.max)}` : ''} are approved automatically${s.autoApprove.max !== null ? '; larger ones by the platform team' : ''}.`
-              : 'Every withdrawal is approved by the platform team.'}
-          </p>
-        </div>
+      <div className="hl-head">
+        <h1>Withdraw</h1>
+        <button type="button" className="link-btn small" aria-expanded={how} onClick={() => setHow(!how)}>How withdrawing works</button>
       </div>
-
-      <dl className="stats">
-        <div className={`stat${t.available < 0 ? ' stat-negative' : ''}`}>
-          <dt>{t.available < 0 ? 'Owed to the platform' : 'Available now'}</dt>
-          <dd className="num">{money(Math.abs(t.available), s.balance.currency)}</dd>
-          <p className="sub">{t.available < 0 ? 'refunds after your last withdrawal; taken from your next earnings' : 'can be withdrawn'}</p>
-        </div>
-        <div className="stat">
-          <dt>Not available yet</dt>
-          <dd className="num">{money(t.held, s.balance.currency)}</dd>
-          <p className="sub">upcoming events, the hold period and open refund requests</p>
-        </div>
-        <div className="stat">
-          <dt>In progress</dt>
-          <dd className="num">{money(t.inProgress, s.balance.currency)}</dd>
-          <p className="sub">requested or being sent</p>
-        </div>
-        <div className="stat">
-          <dt>Paid out</dt>
-          <dd className="num">{money(t.paidOut, s.balance.currency)}</dd>
-          <p className="sub">of {money(t.earned, s.balance.currency)} earned</p>
-        </div>
-      </dl>
-
-      {s.openPayout ? (
-        <OpenPayout p={s.openPayout} onDone={reload} />
-      ) : s.cannotRequestReason ? (
-        <div className="notice notice-info">{s.cannotRequestReason}</div>
-      ) : (
-        <RequestPanel key={t.available} s={s} onDone={reload} />
+      {how && (
+        <p className="notice notice-info" style={{ margin: 0 }}>
+          Ticket buyers pay Bantaba. Money from an event can be withdrawn {hold ? `${hold} day${hold === 1 ? '' : 's'} after it ends` : 'once it ends'}
+          {s.balance.advancePercent > 0 ? `, and up to ${s.balance.advancePercent}% of an upcoming event’s sales before it` : ''}.{' '}
+          {s.autoApprove
+            ? `Your withdrawals${s.autoApprove.max !== null ? ` up to ${money(s.autoApprove.max)}` : ''} are approved automatically${s.autoApprove.max !== null ? '; larger ones by the platform team' : ''}.`
+            : 'Every withdrawal is approved by the platform team.'}{' '}
+          Booking fees paid by buyers go to Bantaba.
+        </p>
       )}
 
-      <AccountPanel account={s.account} locked={!!s.openPayout} onSaved={reload} />
+      <div className="wd-top">
+        <section className={`wd-hero${t.available < 0 ? ' is-owed' : ''}`} aria-label="Ready to withdraw">
+          <span className="wd-cap">{t.available < 0 ? 'Owed to Bantaba' : 'Ready to withdraw'}</span>
+          <b className="wd-amount">{money(Math.abs(t.available), cur)}</b>
+          <span className="wd-sub">
+            {t.available < 0
+              ? 'Refunds after your last withdrawal; taken from your next earnings.'
+              : counts.ready ? `From ${counts.ready} ${counts.ready === 1 ? 'event' : 'events'} you can withdraw from now` : 'Nothing to withdraw yet'}
+          </span>
+          <div className="wd-act">
+            {s.openPayout ? (
+              <span className="wd-busy">{money(s.openPayout.amount, s.openPayout.currency)} on the way · {STATUS_TEXT[s.openPayout.status]}</span>
+            ) : !s.account ? (
+              <button type="button" className="btn wd-btn" onClick={changeWhere}>Add where we send your money</button>
+            ) : s.cannotRequestReason ? (
+              <span className="wd-busy">{s.cannotRequestReason}</span>
+            ) : (
+              <button type="button" className="btn wd-btn" onClick={() => setAsking(!asking)} aria-expanded={asking}>Withdraw {money(t.available, cur)}</button>
+            )}
+            {s.account && (
+              <span className="wd-to">
+                to <b>{where(s.account)}</b> · {s.account.accountName}
+                {!s.account.verified && ' · being checked'} · <button type="button" className="link-btn" onClick={changeWhere} disabled={!!s.openPayout}>Change</button>
+              </span>
+            )}
+          </div>
+        </section>
+        <section className="panel wd-side">
+          <div><span>On the way to you</span><b>{money(t.inProgress, cur)}</b></div>
+          <div><span>Not ready yet <small>· events still to come or in the hold</small></span><b>{money(t.held, cur)}</b></div>
+          <div><span>Paid out so far <small>· of {money(t.earned, cur)} earned</small></span><b>{money(t.paidOut, cur)}</b></div>
+        </section>
+      </div>
+
+      {s.openPayout && <OpenPayout p={s.openPayout} onDone={reload} />}
+      {asking && !s.openPayout && s.account && !s.cannotRequestReason && <RequestPanel key={t.available} s={s} onDone={reload} />}
+      {(!s.account || editing) && <AccountPanel account={s.account} locked={!!s.openPayout} onSaved={() => { setEditing(false); reload(); }} editing={editing} setEditing={setEditing} />}
 
       <section className="panel">
-        <div className="panel-head"><h2>By event</h2></div>
-        {s.balance.events.length === 0 ? (
-          <div className="empty"><p>No ticket sales yet.</p></div>
+        <div className="panel-head hl-panel-head">
+          <h2>By event</h2>
+          <div className="hl-chips" role="group" aria-label="Show">
+            {([['ready', 'Ready'], ['later', 'Not yet'], ['all', 'All']] as [Show, string][]).map(([k, text]) => (
+              <button key={k} type="button" className="hl-chip" aria-pressed={show === k} onClick={() => setShow(k)}>{text} <span>{counts[k]}</span></button>
+            ))}
+          </div>
+          <label className="hl-search hl-search-s">
+            <Icon name="search" size={16} />
+            <input type="search" placeholder="Search" value={term} onChange={(e) => setTerm(e.target.value)} aria-label="Search events" />
+          </label>
+        </div>
+        {events.length === 0 ? (
+          <div className="empty"><p>{s.balance.events.length === 0 ? 'No ticket sales yet.' : show === 'ready' ? 'Nothing ready yet. Money from an event is ready after it ends.' : 'Nothing here.'}</p></div>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Event</th><th>Ended</th><th className="right">Earned</th><th className="right">Available</th><th>Status</th></tr>
+                <tr><th>Event</th><th>Ends</th><th className="right">Earned</th><th className="right">Ready</th><th>Status</th></tr>
               </thead>
               <tbody>
-                {s.balance.events.map((e) => (
+                {events.map((e) => (
                   <tr key={e.id}>
-                    <td><Link href={`/organizer/events/${e.id}`}>{e.name}</Link></td>
+                    <td><Link href={`/organizer/events/${e.id}`}><b>{e.name}</b></Link></td>
                     <td className="num small">{dateOnly(e.endDate)}</td>
                     <td className="right num">
-                      {money(e.earned, s.balance.currency)}
-                      {e.pendingRefunds > 0 && <span className="cell-sub">{money(e.pendingRefunds, s.balance.currency)} in refund requests</span>}
+                      {money(e.earned, cur)}
+                      {e.pendingRefunds > 0 && <span className="cell-sub">{money(e.pendingRefunds, cur)} in refund requests</span>}
                     </td>
-                    <td className="right num">{money(e.released, s.balance.currency)}</td>
+                    <td className="right num"><b>{money(e.released, cur)}</b></td>
                     <td>{eventState(e, s.balance.advancePercent)}</td>
                   </tr>
                 ))}
@@ -344,11 +379,10 @@ export default function PayoutsPage() {
             </table>
           </div>
         )}
-        <p className="small faint" style={{ padding: '10px 16px' }}>Earned is ticket sales after discounts and refunds. Booking fees paid by buyers go to the platform.</p>
       </section>
 
       <section className="panel">
-        <div className="panel-head"><h2>History</h2></div>
+        <div className="panel-head"><h2>Withdrawals</h2></div>
         {history.error ? (
           <ErrorNotice message={history.error} onRetry={history.reload} />
         ) : !history.data ? (
